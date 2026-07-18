@@ -1370,6 +1370,9 @@ async function pushLive(silent, opts){
     S.teamsLive=true; store.save();
   }
   let includeTeams=!!(opts.includeTeams || S.teamsLive);
+  // Pull latest year ranges / team counts from the Teams inputs
+  if($('#gA1')){ S.gA1=+$('#gA1').value||S.gA1; S.gA2=+$('#gA2').value||S.gA2; S.gB1=+$('#gB1').value||S.gB1; S.gB2=+$('#gB2').value||S.gB2; }
+  renderTally();
   const payload=buildPublicData({ includeTeams });
   // Publish content sync shouldn't wipe teams that are already live
   if(!includeTeams){
@@ -1386,6 +1389,8 @@ async function pushLive(silent, opts){
       }
     }catch(e){ /* keep empty teams */ }
   }
+  // Always include current group year ranges for station tallies
+  payload.groups={ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB };
   const statusEl = opts.statusEl || (opts.includeTeams ? $('#teamsSyncNote') : $('#syncStatus'));
   if(!silent && statusEl) statusEl.textContent='Syncing…';
   try{
@@ -1620,7 +1625,7 @@ function updateScoreboard(){
   $('#sbTeams').textContent=S.teams?[...S.teams.A,...S.teams.B].length:0;
 }
 function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
-['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); }));
+['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); autoPushLive(); }));
 renderAll();
 </script>
 </body>

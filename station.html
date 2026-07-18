@@ -231,7 +231,7 @@ function showApp(){
   $('#app').style.display='block';
   pollPlayers(); pollTeams();
   setInterval(pollPlayers, 4000);
-  setInterval(pollTeams, 8000);
+  setInterval(pollTeams, 4000);
 }
 if(authSession && authSession.access_token) showApp();
 
@@ -327,7 +327,7 @@ function renderGroupTally(){
 async function pollTeams(){
   if(!campCode) return;
   try{
-    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(campCode)+'&select=data',{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(campCode)+'&select=data,updated_at',{
       headers:{apikey:SUPABASE_ANON_KEY}
     });
     if(!res.ok) return;
@@ -338,10 +338,20 @@ async function pollTeams(){
     teamsPosted = teams.length ? (data.teamsPosted!==false) : false;
     if(data.groups){
       groupCfg={
-        gA1:+data.groups.gA1||groupCfg.gA1, gA2:+data.groups.gA2||groupCfg.gA2,
-        gB1:+data.groups.gB1||groupCfg.gB1, gB2:+data.groups.gB2||groupCfg.gB2,
-        numA:+data.groups.numA||groupCfg.numA, numB:+data.groups.numB||groupCfg.numB
+        gA1:Number(data.groups.gA1)||groupCfg.gA1, gA2:Number(data.groups.gA2)||groupCfg.gA2,
+        gB1:Number(data.groups.gB1)||groupCfg.gB1, gB2:Number(data.groups.gB2)||groupCfg.gB2,
+        numA:Number(data.groups.numA)||groupCfg.numA, numB:Number(data.groups.numB)||groupCfg.numB
       };
+    } else if(teams.length){
+      // Infer year ranges from posted team rosters when groups weren't synced yet
+      const byNum=teams.map(t=>({ n:+(String(t.name).match(/\d+/)||[0])[0], years:t.players.map(p=>+p.yr).filter(Boolean) }))
+        .filter(t=>t.n).sort((a,b)=>a.n-b.n);
+      const split=groupCfg.numA || Math.ceil(byNum.length/2) || 3;
+      const aYears=byNum.filter(t=>t.n<=split).flatMap(t=>t.years);
+      const bYears=byNum.filter(t=>t.n>split).flatMap(t=>t.years);
+      if(aYears.length){ groupCfg.gA1=Math.min(...aYears); groupCfg.gA2=Math.max(...aYears); }
+      if(bYears.length){ groupCfg.gB1=Math.min(...bYears); groupCfg.gB2=Math.max(...bYears); }
+      groupCfg.numA=split; groupCfg.numB=Math.max(1, byNum.length-split);
     }
     if(role==='teams') renderList();
   }catch(e){ /* stay quiet, retry next tick */ }
