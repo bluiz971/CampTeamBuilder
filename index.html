@@ -164,6 +164,22 @@ const DEFAULT_WEB_URL = "https://aauselecttour.com";
 
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Heights often arrive as total inches (e.g. 70) — show as 5'10
+function formatHeight(h){
+  if(h==null||h==='') return '';
+  const s=String(h).trim();
+  if(!s||s==='—'||s==='-') return '';
+  let m=s.match(/^(\d+)\s*['′]\s*(\d{1,2})\s*["″]?$/);
+  if(m) return m[1]+"'"+ (+m[2]);
+  m=s.match(/^(\d+)\s*(?:ft|feet|foot)\.?\s*(\d{1,2})?/i);
+  if(m) return m[1]+"'"+ (+(m[2]||0));
+  const n=Number(s);
+  if(Number.isFinite(n)){
+    if(n>40&&n<90){ const f=Math.floor(n/12), inch=Math.round(n%12); return f+"'"+inch; }
+    if(n>=3&&n<8){ const f=Math.floor(n), inch=Math.round((n-f)*12); return f+"'"+inch; }
+  }
+  return s;
+}
 
 const params=new URLSearchParams(location.search);
 const campCode=(params.get('camp')||DEFAULT_CAMP_CODE||'').trim();
@@ -266,7 +282,7 @@ $('#q').addEventListener('input',e=>{
   const hits=D.roster.filter(p=>p.n.toLowerCase().includes(q)||p.j===q||('#'+p.j)===q).slice(0,6);
   if(!hits.length){r.innerHTML='<div class="nores">No match yet — check spelling or try the jersey number.</div>';myTeam=null;return;}
   myTeam=hits.length===1?hits[0].team:null;
-  r.innerHTML=hits.map((p,i)=>`<div class="rcard clickable" data-lookup="${i}"><div class="jbig">#${esc(p.j)}</div><div class="info"><b>${esc(p.n)}</b><span class="tm">${esc(p.team)}</span><small>${esc(p.yr)}${p.pos?' · '+esc(p.pos):''}${p.ht?' · '+esc(p.ht):''}</small></div></div>`).join('');
+  r.innerHTML=hits.map((p,i)=>`<div class="rcard clickable" data-lookup="${i}"><div class="jbig">#${esc(p.j)}</div><div class="info"><b>${esc(p.n)}</b><span class="tm">${esc(p.team)}</span><small>${esc(p.yr)}${p.pos?' · '+esc(p.pos):''}${formatHeight(p.ht)?' · '+esc(formatHeight(p.ht)):''}</small></div></div>`).join('');
   r.querySelectorAll('[data-lookup]').forEach(el=>el.addEventListener('click',()=>openPlayerModal(hits[+el.dataset.lookup])));
   if(myTeam) renderSched();
 });
@@ -284,7 +300,7 @@ function openPlayerModal(p){
         <div class="grid">
           <div><label>Grad Year</label>${esc(p.yr)||'—'}</div>
           <div><label>Position</label>${esc(p.pos)||'—'}</div>
-          <div><label>Height</label>${esc(p.ht)||'—'}</div>
+          <div><label>Height</label>${esc(formatHeight(p.ht))||'—'}</div>
           <div><label>School</label>${esc(p.sc)||'—'}</div>
         </div>
       </div>
@@ -335,7 +351,7 @@ function renderSched(){
 // TEAMS
 function renderTeamsView(){
   $('#teams').innerHTML=D.teams.length?D.teams.map((t,ti)=>`<div class="tcard"><h3>${esc(t.name)}</h3><ul>
-  ${t.players.map((p,pi)=>`<li class="clickable" data-team="${ti}" data-p="${pi}"><span class="jn">#${esc(p.j)}</span><span>${esc(p.n)}<br><span class="sub">${esc(p.yr)}${p.pos?' · '+esc(p.pos):''}</span></span><span class="sub">${esc(p.ht)}</span></li>`).join('')}
+  ${t.players.map((p,pi)=>`<li class="clickable" data-team="${ti}" data-p="${pi}"><span class="jn">#${esc(p.j)}</span><span>${esc(p.n)}<br><span class="sub">${esc(p.yr)}${p.pos?' · '+esc(p.pos):''}</span></span><span class="sub">${esc(formatHeight(p.ht))}</span></li>`).join('')}
   </ul></div>`).join(''):'<div class="empty">Teams not posted yet.</div>';
   $$('#teams [data-team]').forEach(el=>el.addEventListener('click',()=>{
     const t=D.teams[+el.dataset.team], p=t.players[+el.dataset.p];

@@ -482,7 +482,14 @@ function heightToInches(h){
   if(m && +m[1]>=120 && +m[1]<=231) return Math.round(+m[1]/2.54);
   return 0;
 }
-function inchesToH(i){ if(!i) return '—'; const f=Math.floor(i/12), n=Math.round(i-f*12); return f+"'"+n+'"'; }
+function inchesToH(i){ if(!i) return '—'; const f=Math.floor(i/12), n=Math.round(i-f*12); return f+"'"+n; }
+function formatHeight(h){
+  if(h==null||h==='') return '—';
+  const s=String(h).trim();
+  if(!s||s==='—'||s==='-') return '—';
+  const inches=heightToInches(h);
+  return inches?inchesToH(inches):s;
+}
 function posCat(p){
   const s=String(p||'').toLowerCase();
   if(/center|power forward|forward\/post/.test(s)) return 'Big';
@@ -664,7 +671,7 @@ function renderRosterTbl(){
   if(!S.players.length){ t.innerHTML=''; $('#rosterLoaded').hidden=true; return; }
   $('#rosterLoaded').hidden=false;
   t.innerHTML='<tr><th>#</th><th>Name</th><th>Year</th><th>Ht</th><th>Position</th><th>School</th><th>City</th><th>Status</th></tr>'+
-    S.players.map((p,i)=>`<tr><td>${i+1}</td><td><b>${esc(p.first)} ${esc(p.last)}</b></td><td>${esc(p.year)}</td><td>${esc(p.height)}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td><td>${hasDue(p)?'<span class="badge due">Balance Due</span>':'<span class="badge paid">Paid</span>'}</td></tr>`).join('');
+    S.players.map((p,i)=>`<tr><td>${i+1}</td><td><b>${esc(p.first)} ${esc(p.last)}</b></td><td>${esc(p.year)}</td><td>${esc(formatHeight(p.height))}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td><td>${hasDue(p)?'<span class="badge due">Balance Due</span>':'<span class="badge paid">Paid</span>'}</td></tr>`).join('');
 }
 
 /* =============================================================
@@ -698,7 +705,7 @@ function renderCheckin(){
     });
   list.innerHTML = rows.length ? rows.map(({p,i})=>`<div class="ci-row ${p.checkedIn?'done':''}">
       <span class="ci-num">${i+1}</span>
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${esc(p.height)||'—'} · ${esc(p.school)}</small></div>
+      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))} · ${esc(p.school)}</small></div>
       ${hasDue(p)?`<span class="badge due">Owes ${p.balance?'$'+esc(p.balance):''}</span>`:'<span class="badge paid">Paid</span>'}
       ${p.checkedIn
         ?`<span class="badge paid">✓ In${p.jersey?' · #'+esc(p.jersey):''}</span><button class="btn btn-ghost btn-sm" data-undo="${i}">Undo</button>`
@@ -733,7 +740,7 @@ function renderJersey(){
   }
   list.innerHTML=rows.map(({p,i})=>`<div class="ci-row">
       <span class="ci-num">${i+1}</span>
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${esc(p.height)||'—'} · ${esc(p.school)}</small></div>
+      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))} · ${esc(p.school)}</small></div>
       <input class="jersey-in" type="text" inputmode="numeric" placeholder="##" data-i="${i}" aria-label="Jersey number">
       <button class="btn btn-orange btn-sm" data-assign="${i}">Assign</button>
       <button class="btn btn-ghost btn-sm" data-undo="${i}" title="Send back to Check-In">Undo</button>
@@ -804,7 +811,7 @@ function renderPlayers(){
     pool.sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>{
       const g=groupOf(p.year), i=S.players.indexOf(p);
       const tags=displayAddOns(p);
-      return `<tr><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b>${esc(p.first)} ${esc(p.last)}</b></td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${esc(p.height)}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
+      return `<tr><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b>${esc(p.first)} ${esc(p.last)}</b></td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${esc(formatHeight(p.height))}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
       <td class="addon-cell">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}<button class="addon-add" data-addon="${i}" title="Add / edit add-ons">+ Add</button></td>
       <td class="row-actions"><button class="mv" data-ej="${i}" title="Change jersey number">✎</button><button class="mv" data-cj="${i}" title="Remove jersey (back to Jersey page)">✕</button></td></tr>`;
     }).join('');
@@ -1001,7 +1008,7 @@ function renderTeams(){
       <ul>${ps.sort((a,b)=>b.hin-a.hin).map(p=>`<li>
         <span class="jnum">#${esc(p.jersey)}</span>
         <span><b>${esc(p.first)} ${esc(p.last)}</b><br><span style="color:var(--mut);font-size:12px">${esc(p.school)}</span></span>
-        <span class="pmeta">${esc(p.height)}<br>${esc(p.position)} · ${esc(p.year)}</span>
+        <span class="pmeta">${esc(formatHeight(p.height))}<br>${esc(p.position)} · ${esc(p.year)}</span>
         <button class="mv" data-id="${p.id}" title="Move to another team" aria-label="Move ${esc(p.first)} ${esc(p.last)}">⇄</button>
       </li>`).join('')}</ul>
       <footer><span>Guards: ${cats.Guard}</span><span>Wings: ${cats.Wing}</span><span>Bigs: ${cats.Big}</span></footer>
@@ -1043,7 +1050,7 @@ function renderTeams(){
 const dlg=$('#mvDlg'); let mvId=null;
 function openMove(id){
   mvId=id; const p=playerById(id);
-  $('#mvWho').textContent=`#${p.jersey} ${p.first} ${p.last} — ${p.position}, ${p.height}`;
+  $('#mvWho').textContent=`#${p.jersey} ${p.first} ${p.last} — ${p.position}, ${formatHeight(p.height)}`;
   const g=groupOf(p.year), teams=g==='B'?S.teams.B:S.teams.A;
   $('#mvSel').innerHTML=teams.map((t,i)=>`<option value="${i}" ${t.players.includes(id)?'selected':''}>${esc(t.name)} (${t.players.length})</option>`).join('');
   dlg.showModal();
@@ -1468,12 +1475,12 @@ function buildPublicData(){
   const roster=[];
   if(S.teams){
     [...S.teams.A,...S.teams.B].forEach(t=>t.players.map(playerById).filter(Boolean).forEach(p=>{
-      roster.push({ n:(p.first+' '+p.last), j:String(p.jersey), team:t.name, yr:String(p.year), pos:p.position||'', ht:p.height||'', sc:p.school||'', ph:p.photoUrl||'' });
+      roster.push({ n:(p.first+' '+p.last), j:String(p.jersey), team:t.name, yr:String(p.year), pos:p.position||'', ht:formatHeight(p.height)==='—'?'':formatHeight(p.height), sc:p.school||'', ph:p.photoUrl||'' });
     }));
   }
   const teamsList=S.teams?[...S.teams.A,...S.teams.B].map(t=>({
     name:t.name,
-    players:t.players.map(playerById).filter(Boolean).sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>({j:String(p.jersey),n:p.first+' '+p.last,yr:String(p.year),pos:p.position||'',ht:p.height||'',sc:p.school||'',ph:p.photoUrl||''}))
+    players:t.players.map(playerById).filter(Boolean).sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>({j:String(p.jersey),n:p.first+' '+p.last,yr:String(p.year),pos:p.position||'',ht:formatHeight(p.height)==='—'?'':formatHeight(p.height),sc:p.school||'',ph:p.photoUrl||''}))
   })):[];
   const sched=schedSorted().map(g=>({d:g.date,t:g.time,c:g.court,cp:g.camp,h:g.home,a:g.away}));
   const title=(S.pubTitle||'Camp Teams & Schedule').replace(/</g,'');

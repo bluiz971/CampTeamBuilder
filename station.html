@@ -166,6 +166,21 @@ const DEFAULT_CAMP_CODE = "mid-atlantic-2026";
 
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function formatHeight(h){
+  if(h==null||h==='') return '';
+  const s=String(h).trim();
+  if(!s||s==='—'||s==='-') return '';
+  let m=s.match(/^(\d+)\s*['′]\s*(\d{1,2})\s*["″]?$/);
+  if(m) return m[1]+"'"+ (+m[2]);
+  m=s.match(/^(\d+)\s*(?:ft|feet|foot)\.?\s*(\d{1,2})?/i);
+  if(m) return m[1]+"'"+ (+(m[2]||0));
+  const n=Number(s);
+  if(Number.isFinite(n)){
+    if(n>40&&n<90){ const f=Math.floor(n/12), inch=Math.round(n%12); return f+"'"+inch; }
+    if(n>=3&&n<8){ const f=Math.floor(n), inch=Math.round((n-f)*12); return f+"'"+inch; }
+  }
+  return s;
+}
 
 let campCode = localStorage.getItem('stationCampCode') || DEFAULT_CAMP_CODE || '';
 $('#campCodeInput').value = campCode;
@@ -396,7 +411,7 @@ function renderList(){
       <img class="thumb" src="${esc(p.photo_url)}">
       <div class="who">
         <b>${esc(p.first)} ${esc(p.last)}</b>
-        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.height)||'—'} · ${esc(p.school)}</small>
+        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))||'—'} · ${esc(p.school)}</small>
       </div>
       <span class="badge done">Ready</span>
       <button class="bigbtn ghost" data-photo="${p.id}">Retake 📷</button>
