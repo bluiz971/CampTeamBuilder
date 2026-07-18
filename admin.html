@@ -233,6 +233,7 @@ dialog select{width:100%;margin:10px 0 16px}
     <p style="font-size:13px;color:var(--mut);margin-bottom:10px">If Live Sync is set up (Publish tab), the roster pushes to Supabase automatically on load so the Check-In, Jersey, Add-Ons, and Photos tablets (station.html) can start working immediately. This page also pulls their updates back in every few seconds — no re-uploading needed either direction.</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-dark btn-sm" id="btnPushRoster">📤 Push Roster to Stations</button>
+      <button class="btn btn-ghost btn-sm" id="btnClearStations">🗑 Clear Stations for Camp</button>
       <span id="rosterSyncNote" style="font-size:13px;color:var(--mut)"></span>
     </div>
   </div>
@@ -1519,9 +1520,35 @@ async function deletePlayerIds(ids){
   }
 }
 
+async function clearCampRemote(campCode){
+  if(!(S.syncUrl && S.syncKey && campCode && authSession && authSession.access_token)){
+    return {ok:false, reason:'not-configured'};
+  }
+  const code=String(campCode).trim();
+  const headers={ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token };
+  // Delete every station player row for this camp
+  const listRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{ headers });
+  if(listRes.ok){
+    const ids=(await listRes.json()).map(r=>r.id);
+    await deletePlayerIds(ids);
+  }
+  // Clear parent/station public payload for this camp
+  await fetch(S.syncUrl+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(code),{
+    method:'DELETE', headers
+  });
+  return {ok:true};
+}
+
 async function pushRosterLive(){
   if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return;
-  if(!S.players.length) return;
+  if(!S.players.length){
+    // Empty local roster → wipe stations for this camp (used after Reset)
+    const r=await clearCampRemote(S.syncCode);
+    if(r.ok){
+      $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code> at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
+    }
+    return;
+  }
   try{
     const rows=S.players.filter(p=>p.uid).map(playerRow);
     // Supabase/PostgREST handles reasonable batch sizes fine; chunk just in case
@@ -1622,11 +1649,28 @@ async function pollPlayersLive(){
 }
 setInterval(pollPlayersLive, 5000);
 $('#btnPushRoster').addEventListener('click', ()=>{
-  if(!S.players.length){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Load a roster first.</span>'; return; }
+  if(!S.players.length){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Load a roster first. To wipe tablets only, use Clear Stations for Camp.</span>'; return; }
   if(!(S.syncUrl && S.syncKey && S.syncCode)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Set up Live Sync on the Publish tab first.</span>'; return; }
   if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
   $('#rosterSyncNote').textContent='Pushing…';
   pushRosterLive();
+});
+$('#btnClearStations').addEventListener('click', async ()=>{
+  if(!(S.syncUrl && S.syncKey && S.syncCode)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Set Camp Code + Live Sync on the Publish tab first.</span>'; return; }
+  if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
+  if(!confirm('Delete ALL station players and parent-page data for camp "'+S.syncCode+'"?\n\nTablets will go empty within a few seconds. Local admin roster is left alone.')) return;
+  $('#rosterSyncNote').textContent='Clearing stations…';
+  try{
+    const r=await clearCampRemote(S.syncCode);
+    if(r.ok){
+      S.teamsLive=false; store.save();
+      $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code>. Hard-refresh tablets if they still show old names.';
+    }else{
+      $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Could not clear stations — check Live Sync sign-in.</span>';
+    }
+  }catch(e){
+    $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Clear failed: '+(e.message||e)+'</span>';
+  }
 });
 
 function buildPublicData(opts){
@@ -1715,12 +1759,34 @@ $('#btnCsvTeams').addEventListener('click',()=>{
   download('assigned-teams.csv',csv(rows));
 });
 $('#btnPrint').addEventListener('click',()=>window.print());
-$('#btnReset').addEventListener('click',()=>{
-  if(confirm('Clear the roster, check-ins, jerseys and teams? This cannot be undone.')){
-    S={players:[],teams:null,numA:12,numB:16,gA1:2027,gA2:2030,gB1:2031,gB2:2035,schedule:[],pubTitle:'',pubSub:'',appUrl:'https://select360.mvt.so/',shopUrl:'https://aauselecttour.totalcamps.com/shop/GOOD',syncUrl:'',syncKey:'',syncCode:'',siteBaseUrl:DEFAULT_SITE_BASE_URL,teamsLive:false}; store.save();
-    rawRows=[];rawHeaders=[];schedRows=[];schedHeaders=[];$('#mapping').hidden=true;$('#rosterLoaded').hidden=true;$('#mapSched').hidden=true;
-    renderAll();
+$('#btnReset').addEventListener('click', async ()=>{
+  const camp=S.syncCode||'';
+  const msg=camp
+    ? 'Clear local roster, check-ins, jerseys, teams AND wipe stations for camp "'+camp+'"?\n\nThis cannot be undone. Live Sync settings are kept.'
+    : 'Clear the roster, check-ins, jerseys and teams?\n\nNo Camp Code is set, so station tablets will NOT be cleared — set Live Sync first or use Clear Stations for Camp after.';
+  if(!confirm(msg)) return;
+  // Wipe remote first (while we still have credentials)
+  let remoteNote='';
+  if(camp && S.syncUrl && S.syncKey && authSession && authSession.access_token){
+    try{
+      const r=await clearCampRemote(camp);
+      remoteNote=r.ok?' Stations for "'+camp+'" were cleared.':' Could not clear stations — use Clear Stations after signing in.';
+    }catch(e){ remoteNote=' Station clear failed.'; }
+  }else if(camp){
+    remoteNote=' Sign in on Publish, then click Clear Stations for Camp to wipe tablets.';
   }
+  // Keep Live Sync config so you can reload a roster without re-pasting keys
+  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, siteBaseUrl:S.siteBaseUrl||DEFAULT_SITE_BASE_URL,
+    appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl };
+  S={players:[],teams:null,numA:12,numB:16,gA1:2027,gA2:2030,gB1:2031,gB2:2035,schedule:[],pubTitle:'',pubSub:'',
+    appUrl:keep.appUrl||'https://select360.mvt.so/', shopUrl:keep.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD',
+    igUrl:keep.igUrl||'', webUrl:keep.webUrl||'',
+    syncUrl:keep.syncUrl||'', syncKey:keep.syncKey||'', syncCode:keep.syncCode||'',
+    siteBaseUrl:keep.siteBaseUrl, teamsLive:false};
+  store.save();
+  rawRows=[];rawHeaders=[];schedRows=[];schedHeaders=[];$('#mapping').hidden=true;$('#rosterLoaded').hidden=true;$('#mapSched').hidden=true;
+  renderAll();
+  $('#rosterSyncNote').innerHTML='<b>Local data reset.</b>'+esc(remoteNote);
 });
 $$('nav button').forEach(b=>b.addEventListener('click',()=>{
   $$('nav button').forEach(x=>x.classList.remove('on'));
