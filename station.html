@@ -105,6 +105,17 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .gt-detail{font-size:12px;color:var(--mut);margin-top:8px}
 .gt-detail b{color:var(--ink);font-weight:600}
 @media(max-width:640px){.grp-tally{grid-template-columns:1fr}}
+.teams-toolbar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.teams-toolbar .gen-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:640px){.teams-toolbar .gen-row{grid-template-columns:1fr}}
+.teams-toolbar label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:4px}
+.teams-toolbar input[type=number]{width:72px;font-size:16px;padding:8px 6px;border:1.5px solid var(--line);border-radius:8px}
+.teams-toolbar .yr{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.teams-toolbar .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.teams-toolbar .actions .bigbtn{flex:1;min-width:140px}
+.teams-note{font-size:13px;color:var(--mut);margin:8px 0 0;line-height:1.4}
+.teams-note.ok{color:var(--green)}
+.teams-note.err{color:var(--red)}
 
 /* ---------- Live camera modal ---------- */
 #camModal{display:none;position:fixed;inset:0;z-index:400;background:rgba(20,26,34,.92);flex-direction:column;align-items:center;justify-content:center;padding:16px}
@@ -311,22 +322,205 @@ async function pollPlayers(){
   }catch(e){ $('#livePill').textContent='⚪ Offline — retrying…'; }
 }
 
-// Team rosters — read from the same public camp_live table the parent
-// page (index.html) uses. Read-only here: teams get assigned in
-// admin.html, this is just so staff can look them up on the tablet.
+// Team rosters — generate on this tablet, sync to camp_live for parents/admin.
 let teams=[];
 let teamsPosted=false;
+let pendingLocalTeams=false; // true after Generate until Sync succeeds
+let campLiveExtra={}; // preserve title/sched/etc when we push teams
 let groupCfg={ gA1:2027, gA2:2030, gB1:2031, gB2:2035, numA:3, numB:3 };
 const TEAM_BRACKETS=[[0,27,3],[28,40,4],[41,54,6],[55,69,8],[70,84,10],[85,98,12],[99,112,14]];
 function teamsForCount(n){
   for(const [lo,hi,t] of TEAM_BRACKETS) if(n>=lo && n<=hi) return t;
   return n>112 ? 14 : 3;
 }
+function heightToInches(h){
+  if(h==null) return 0;
+  if(typeof h==='number'){
+    if(h>40&&h<90) return Math.round(h);
+    if(h>=3&&h<8) return Math.round(h*12);
+    if(h>=120&&h<=231) return Math.round(h/2.54);
+    return 0;
+  }
+  const s=String(h).trim();
+  let m=s.match(/(\d+)\s*'\s*(\d+)?/);
+  if(m) return (+m[1])*12 + (+(m[2]||0));
+  m=s.match(/^(\d+)\s*(?:ft|feet|foot)\.?\s*(\d+)?/i);
+  if(m) return (+m[1])*12 + (+(m[2]||0));
+  m=s.match(/^([4-7])\.(\d{1,2})$/);
+  if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
+  if(/^\d{2}(\.\d+)?$/.test(s)){ const v=+s; if(v>40&&v<90) return Math.round(v); }
+  return 0;
+}
+function posCat(p){
+  const s=String(p||'').toLowerCase();
+  if(/center|power forward|forward\/post/.test(s)) return 'Big';
+  if(/small forward|guard\/forward|wing/.test(s)) return 'Wing';
+  return 'Guard';
+}
 function stationGroupOf(y){
   y=+y;
   if(y>=groupCfg.gA1 && y<=groupCfg.gA2) return 'A';
   if(y>=groupCfg.gB1 && y<=groupCfg.gB2) return 'B';
   return null;
+}
+function eligibleForTeams(){
+  return players.filter(p=>p.checked_in && String(p.jersey||'').trim()).map(p=>({
+    ...p,
+    year:String(p.grad_year||''),
+    hin:heightToInches(p.height)
+  }));
+}
+function readGroupInputs(){
+  const el=$('#stGA1'); if(!el) return;
+  groupCfg.gA1=+$('#stGA1').value||groupCfg.gA1;
+  groupCfg.gA2=+$('#stGA2').value||groupCfg.gA2;
+  groupCfg.gB1=+$('#stGB1').value||groupCfg.gB1;
+  groupCfg.gB2=+$('#stGB2').value||groupCfg.gB2;
+  if(groupCfg.gA2<groupCfg.gA1){ const x=groupCfg.gA1; groupCfg.gA1=groupCfg.gA2; groupCfg.gA2=x; }
+  if(groupCfg.gB2<groupCfg.gB1){ const x=groupCfg.gB1; groupCfg.gB1=groupCfg.gB2; groupCfg.gB2=x; }
+  const pool=eligibleForTeams();
+  groupCfg.numA=teamsForCount(pool.filter(p=>stationGroupOf(p.year)==='A').length);
+  groupCfg.numB=teamsForCount(pool.filter(p=>stationGroupOf(p.year)==='B').length);
+  if($('#stNumA')){ $('#stNumA').value=groupCfg.numA; $('#stNumB').value=groupCfg.numB; }
+}
+function toPublicTeams(built){
+  const byId={}; players.forEach(p=>byId[p.id]=p);
+  return built.map(t=>({
+    name:t.name,
+    players:t.players.map(id=>byId[id]).filter(Boolean)
+      .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0))
+      .map(p=>({
+        j:String(p.jersey), n:p.first+' '+p.last, yr:String(p.grad_year||''),
+        pos:p.position||'', ht:formatHeight(p.height)==='—'?'':formatHeight(p.height),
+        sc:p.school||'', ph:p.photo_url||''
+      }))
+  }));
+}
+function generateStationTeams(){
+  readGroupInputs();
+  const pool=eligibleForTeams();
+  if(!pool.length){ toast('No checked-in players with jersey numbers'); return; }
+  const catRank={Big:0,Wing:1,Guard:2};
+  const BUCKETS=[[76,82],[72,75],[67,71],[61,66],[48,60]];
+  const bIdx=h=>{ for(let i=0;i<5;i++) if(h>=BUCKETS[i][0]&&h<=BUCKETS[i][1]) return i; return -1; };
+  const byId={}; pool.forEach(p=>byId[p.id]=p);
+  const objective=ts=>{
+    const n=ts.length; let gSum=0,gN=0;
+    for(const t of ts){ gSum+=t.ht; gN+=t.kn; }
+    const gAvg=gN?gSum/gN:0;
+    const avgs=ts.map(t=>t.kn?t.ht/t.kn:gAvg);
+    const m=avgs.reduce((a,b)=>a+b,0)/n;
+    let o=avgs.reduce((s,a)=>s+(a-m)*(a-m),0);
+    for(let b=0;b<5;b++){
+      let tot=0; for(const t of ts) tot+=t.bcnt[b];
+      const mb=tot/n;
+      for(const t of ts){ const d=t.bcnt[b]-mb; o+=d*d*0.75; }
+    }
+    return o;
+  };
+  const doSwap=(Ti,Tj,idA,idB,A,B)=>{
+    Ti.players[Ti.players.indexOf(idA)]=idB;
+    Tj.players[Tj.players.indexOf(idB)]=idA;
+    if(A.hin>0){ Ti.ht-=A.hin; Ti.kn--; Tj.ht+=A.hin; Tj.kn++; }
+    if(B.hin>0){ Ti.ht+=B.hin; Ti.kn++; Tj.ht-=B.hin; Tj.kn--; }
+    const ba=bIdx(A.hin), bb=bIdx(B.hin);
+    if(ba>=0){ Ti.bcnt[ba]--; Tj.bcnt[ba]++; }
+    if(bb>=0){ Ti.bcnt[bb]++; Tj.bcnt[bb]--; }
+    Ti.yrs[A.year]--; Ti.yrs[B.year]=(Ti.yrs[B.year]||0)+1;
+    Tj.yrs[B.year]--; Tj.yrs[A.year]=(Tj.yrs[A.year]||0)+1;
+  };
+  const balanceHeights=ts=>{
+    if(ts.length<2) return;
+    let cur=objective(ts);
+    for(let iter=0;iter<120;iter++){
+      let best=null;
+      for(let i=0;i<ts.length;i++) for(let j=i+1;j<ts.length;j++){
+        for(const pa of ts[i].players) for(const pb of ts[j].players){
+          const A=byId[pa], B=byId[pb];
+          if(!A||!B||A.hin===B.hin) continue;
+          if(posCat(A.position)!==posCat(B.position)) continue;
+          doSwap(ts[i],ts[j],pa,pb,A,B);
+          let gain=cur-objective(ts);
+          if(A.year===B.year) gain*=1.001;
+          doSwap(ts[i],ts[j],pb,pa,B,A);
+          if(gain>1e-9 && (!best||gain>best.gain)) best={gain,i,j,pa,pb,A,B};
+        }
+      }
+      if(!best) break;
+      doSwap(ts[best.i],ts[best.j],best.pa,best.pb,best.A,best.B);
+      cur=objective(ts);
+    }
+  };
+  const build=(plist,n,startNum)=>{
+    if(!n) return [];
+    const ts=Array.from({length:n},(_,i)=>({name:'Team '+(startNum+i),num:startNum+i,players:[],cats:{Big:0,Wing:0,Guard:0},yrs:{},ht:0,kn:0,bcnt:[0,0,0,0,0]}));
+    const sorted=[...plist].sort((a,b)=>{
+      const ca=catRank[posCat(a.position)], cb=catRank[posCat(b.position)];
+      return ca!==cb ? ca-cb : b.hin-a.hin;
+    });
+    sorted.forEach(p=>{
+      const c=posCat(p.position);
+      let best=0;
+      for(let t=1;t<n;t++){
+        const T=ts[t],B=ts[best];
+        const tk=[T.players.length,T.cats[c],T.yrs[p.year]||0,T.kn?T.ht/T.kn:0];
+        const bk=[B.players.length,B.cats[c],B.yrs[p.year]||0,B.kn?B.ht/B.kn:0];
+        for(let k=0;k<4;k++){ if(tk[k]!==bk[k]){ if(tk[k]<bk[k]) best=t; break; } }
+      }
+      const T=ts[best];
+      T.players.push(p.id); T.cats[c]++; T.yrs[p.year]=(T.yrs[p.year]||0)+1;
+      if(p.hin>0){ T.ht+=p.hin; T.kn++; }
+      const b=bIdx(p.hin); if(b>=0) T.bcnt[b]++;
+    });
+    const live=ts.filter(t=>t.players.length);
+    balanceHeights(live);
+    return live;
+  };
+  const A=pool.filter(p=>stationGroupOf(p.year)==='A');
+  const B=pool.filter(p=>stationGroupOf(p.year)==='B');
+  const skipped=pool.length-A.length-B.length;
+  const teamsA=build(A, groupCfg.numA, 1);
+  const teamsB=build(B, groupCfg.numB, teamsA.length+1);
+  teams=toPublicTeams([...teamsA, ...teamsB]);
+  teamsPosted=false;
+  pendingLocalTeams=true;
+  if(skipped>0) toast(skipped+' player(s) outside year ranges — adjust Group A/B years');
+  else toast(teams.length+' teams generated — Sync to post for parents');
+  renderList();
+}
+async function syncStationTeams(){
+  if(!teams.length){ toast('Generate teams first'); return; }
+  if(!(authSession && authSession.access_token)){ toast('Sign in required to sync'); return; }
+  readGroupInputs();
+  const note=$('#stTeamsNote');
+  if(note){ note.className='teams-note'; note.textContent='Syncing…'; }
+  const roster=[];
+  teams.forEach(t=>t.players.forEach(p=>{
+    roster.push({ n:p.n, j:String(p.j), team:t.name, yr:p.yr, pos:p.pos||'', ht:p.ht||'', sc:p.sc||'', ph:p.ph||'' });
+  }));
+  const payload=Object.assign({}, campLiveExtra, {
+    teams, roster, teamsPosted:true,
+    groups:{ gA1:groupCfg.gA1, gA2:groupCfg.gA2, gB1:groupCfg.gB1, gB2:groupCfg.gB2, numA:groupCfg.numA, numB:groupCfg.numB }
+  });
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=code',{
+      method:'POST',
+      headers:authHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+      body:JSON.stringify([{ code:campCode, data:payload, updated_at:new Date().toISOString() }])
+    });
+    if(res.ok){
+      teamsPosted=true; pendingLocalTeams=false;
+      if(note){ note.className='teams-note ok'; note.innerHTML='<b>✓ Teams posted</b> — parents & tablets will see them shortly.'; }
+      toast('Teams synced');
+      renderList();
+    }else{
+      if(note){ note.className='teams-note err'; note.textContent='Sync failed ('+res.status+') — try again.'; }
+      toast('Sync failed');
+    }
+  }catch(e){
+    if(note){ note.className='teams-note err'; note.textContent='Could not reach Supabase.'; }
+    toast('Sync failed');
+  }
 }
 function renderGroupTally(){
   const pool=players.filter(p=>String(p.jersey||'').trim());
@@ -351,6 +545,45 @@ function renderGroupTally(){
     + (outside.length? `<div class="gt-card" style="grid-column:1/-1;border-left-color:var(--red)"><h4>Outside both ranges</h4><div class="gt-detail"><b>${outside.length}</b> numbered player(s) outside ${groupCfg.gA1}–${groupCfg.gA2} and ${groupCfg.gB1}–${groupCfg.gB2}.</div></div>`:'')
     + `</div>`;
 }
+function renderTeamsToolbar(){
+  return `<div class="teams-toolbar">
+    <div class="gen-row">
+      <div><label>Group A years</label><div class="yr">
+        <input type="number" id="stGA1" min="2020" max="2045" value="${groupCfg.gA1}"> –
+        <input type="number" id="stGA2" min="2020" max="2045" value="${groupCfg.gA2}">
+      </div></div>
+      <div><label>Group A teams (auto)</label>
+        <input type="number" id="stNumA" value="${groupCfg.numA}" readonly style="background:#faf9f6">
+      </div>
+      <div><label>Group B years</label><div class="yr">
+        <input type="number" id="stGB1" min="2020" max="2045" value="${groupCfg.gB1}"> –
+        <input type="number" id="stGB2" min="2020" max="2045" value="${groupCfg.gB2}">
+      </div></div>
+      <div><label>Group B teams (auto)</label>
+        <input type="number" id="stNumB" value="${groupCfg.numB}" readonly style="background:#faf9f6">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="bigbtn" type="button" id="stBtnGen">🏀 Generate Balanced Teams</button>
+      <button class="bigbtn ghost" type="button" id="stBtnSync">⬆ Sync Teams to Parent Page</button>
+    </div>
+    <div class="teams-note" id="stTeamsNote">${
+      pendingLocalTeams ? 'Teams generated on this tablet — Sync to post them for parents.'
+      : (teamsPosted && teams.length ? 'Teams are live for parents.'
+      : 'Generate when jersey assignment is far enough along, then Sync.')
+    }</div>
+  </div>`;
+}
+function bindTeamsToolbar(){
+  ['stGA1','stGA2','stGB1','stGB2'].forEach(id=>{
+    const el=$('#'+id); if(!el) return;
+    el.addEventListener('change', ()=>{ readGroupInputs(); renderList(); });
+    el.addEventListener('input', ()=>{ readGroupInputs(); });
+  });
+  const gen=$('#stBtnGen'), sync=$('#stBtnSync');
+  if(gen) gen.addEventListener('click', ()=>generateStationTeams());
+  if(sync) sync.addEventListener('click', ()=>syncStationTeams());
+}
 async function pollTeams(){
   if(!campCode) return;
   try{
@@ -360,17 +593,19 @@ async function pollTeams(){
     if(!res.ok) return;
     const rows=await res.json();
     const data=(rows && rows[0] && rows[0].data) || {};
-    teams=data.teams || [];
-    // Legacy rows (no teamsPosted flag) still show teams if present
-    teamsPosted = teams.length ? (data.teamsPosted!==false) : false;
+    campLiveExtra=Object.assign({}, data);
+    delete campLiveExtra.teams; delete campLiveExtra.roster; delete campLiveExtra.teamsPosted; delete campLiveExtra.groups;
+    if(!pendingLocalTeams){
+      teams=data.teams || [];
+      teamsPosted = teams.length ? (data.teamsPosted!==false) : false;
+    }
     if(data.groups){
       groupCfg={
         gA1:Number(data.groups.gA1)||groupCfg.gA1, gA2:Number(data.groups.gA2)||groupCfg.gA2,
         gB1:Number(data.groups.gB1)||groupCfg.gB1, gB2:Number(data.groups.gB2)||groupCfg.gB2,
         numA:Number(data.groups.numA)||groupCfg.numA, numB:Number(data.groups.numB)||groupCfg.numB
       };
-    } else if(teams.length){
-      // Infer year ranges from posted team rosters when groups weren't synced yet
+    } else if(teams.length && !pendingLocalTeams){
       const byNum=teams.map(t=>({ n:+(String(t.name).match(/\d+/)||[0])[0], years:t.players.map(p=>+p.yr).filter(Boolean) }))
         .filter(t=>t.n).sort((a,b)=>a.n-b.n);
       const split=groupCfg.numA || Math.ceil(byNum.length/2) || 3;
@@ -419,19 +654,19 @@ function renderList(){
   const wrap=$('#plist');
 
   if(role==='teams'){
-    let html=renderGroupTally();
-    const posted = teams.length && teamsPosted;
-    if(!posted){
-      html+='<div class="empty"><b>No Teams Posted yet</b>Group counts update live as jerseys are assigned. Full rosters appear after Sync Teams to Parent Page in admin.</div>';
-      wrap.innerHTML=html;
-      return;
+    // Hide search on teams — generation + roster cards
+    const search=$('.searchbar'); if(search) search.style.display='none';
+    let html=renderTeamsToolbar()+renderGroupTally();
+    if(!teams.length){
+      html+='<div class="empty"><b>No teams yet</b>Assign jerseys, then tap Generate Balanced Teams.</div>';
+      wrap.innerHTML=html; bindTeamsToolbar(); return;
     }
     const q=query;
     const filtered=teams.map(t=>({
       name:t.name,
       players:t.players.filter(p=>!q || (p.n||'').toLowerCase().includes(q) || (p.sc||'').toLowerCase().includes(q) || String(p.j||'')===q)
     })).filter(t=>!q || t.players.length || (t.name||'').toLowerCase().includes(q));
-    if(!filtered.length){ wrap.innerHTML=html+'<div class="empty"><b>No matches</b></div>'; return; }
+    if(!filtered.length){ wrap.innerHTML=html+'<div class="empty"><b>No matches</b></div>'; bindTeamsToolbar(); return; }
     wrap.innerHTML=html+`<div class="team-grid">${filtered.map(t=>{
       const ps=t.players.slice().sort((a,b)=>(+b.j||0)-(+a.j||0));
       return `<div class="team-card">
@@ -443,26 +678,23 @@ function renderList(){
         </li>`).join('')}</ul>
       </div>`;
     }).join('')}</div>`;
+    bindTeamsToolbar();
     return;
   }
+  const searchBar=$('.searchbar'); if(searchBar) searchBar.style.display='';
 
   let rows;
   if(role==='checkin') rows=players.filter(p=>!p.checked_in && matches(p));
   else if(role==='jersey') rows=players.filter(p=>p.checked_in && !String(p.jersey).trim() && matches(p));
   else if(role==='addons') rows=players.filter(p=>p.checked_in && matches(p));
   else if(role==='photos'){
-    // Stay here until they have BOTH a jersey and a photo. No jersey → still Photos.
-    rows=players.filter(p=>{
-      const hasJ=!!String(p.jersey||'').trim();
-      const hasPh=!!p.photo_url;
-      return matches(p) && (!hasJ || !hasPh);
-    }).sort((a,b)=>{
-      const aj=String(a.jersey||'').trim()?1:0, bj=String(b.jersey||'').trim()?1:0;
-      if(aj!==bj) return bj-aj; // jersey holders (ready to shoot) first
-      const an=a.photo_url?1:0, bn=b.photo_url?1:0;
-      if(an!==bn) return an-bn;
-      return (a.last||'').localeCompare(b.last||'');
-    });
+    // Photos queue: jersey holders only (no names until a number is assigned)
+    rows=players.filter(p=>String(p.jersey||'').trim() && matches(p))
+      .sort((a,b)=>{
+        const an=a.photo_url?1:0, bn=b.photo_url?1:0;
+        if(an!==bn) return an-bn; // need photo first
+        return (+a.jersey||0)-(+b.jersey||0);
+      });
   }
   else if(role==='playerdata'){
     // Photo taken + jersey assigned → done with photo line
@@ -477,7 +709,7 @@ function renderList(){
       checkin:'Everyone is checked in',
       jersey:'No one waiting on a jersey',
       addons:'No checked-in players yet',
-      photos:'Everyone with a jersey has a photo — see Player Data',
+      photos:'No jersey holders yet — assign numbers on the Jersey tab first',
       playerdata:'No completed player cards yet — take photos after assigning jerseys'
     }[role];
     wrap.innerHTML='<div class="empty"><b>'+msg+'</b></div>'; return;
@@ -519,16 +751,11 @@ function renderList(){
     }).join('');
     wrap.querySelectorAll('[data-pop]').forEach(b=>b.addEventListener('click', ()=>openAddonPopover(b.dataset.pop)));
   } else if(role==='photos'){
-    wrap.innerHTML=rows.map(p=>{
-      const hasJ=!!String(p.jersey||'').trim();
-      return `<div class="prow photo-row">
-        ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
-        <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)||'—'} · ${esc(p.school)}</small></div>
-        ${hasJ
-          ? `<button class="bigbtn" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>`
-          : `<span class="badge due">Needs jersey</span>`}
-      </div>`;
-    }).join('');
+    wrap.innerHTML=rows.map(p=>`<div class="prow photo-row">
+      ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
+      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)} · ${esc(p.school)}</small></div>
+      <button class="bigbtn" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
+    </div>`).join('');
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   } else if(role==='playerdata'){
     wrap.innerHTML=rows.map(p=>`<div class="prow photo-row">
