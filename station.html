@@ -72,7 +72,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .scrim{position:fixed;inset:0;background:rgba(20,26,34,.4);z-index:150}
 
 /* ---------- Photo role ---------- */
-.photo-row .thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;object-position:center 18%;background:#eee}
+.photo-row .thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;object-position:center 25%;background:#eee}
 .photo-row .noimg{width:56px;height:56px;border-radius:8px;background:#eee;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:22px}
 .hiddenfile{display:none}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:9px;font-size:14px;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.3)}
@@ -85,7 +85,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 #camModal .cam-head span{color:#9aa4b1;font-size:13px}
 #camModal .cam-stage{position:relative;width:min(92vw,420px);aspect-ratio:3/4;border-radius:16px;overflow:hidden;background:#000;border:3px solid var(--orange)}
 #camModal video,#camModal canvas.preview{width:100%;height:100%;object-fit:cover;display:block}
-#camModal .face-guide{pointer-events:none;position:absolute;inset:12% 18% 28%;border:2px dashed rgba(255,255,255,.7);border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.28)}
+#camModal .face-guide{pointer-events:none;position:absolute;inset:8% 12% 10%;border:2px dashed rgba(255,255,255,.75);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.28)}
 #camModal .cam-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px;width:min(92vw,420px)}
 #camModal .cam-actions .bigbtn{flex:1;min-width:120px}
 #camModal .cam-hint{color:#9aa4b1;font-size:12px;text-align:center;margin-top:10px;max-width:420px}
@@ -134,7 +134,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 <div id="camModal" aria-hidden="true">
   <div class="cam-head">
     <b id="camWho">Take photo</b>
-    <span>Center the head in the oval, then capture</span>
+    <span>Frame head and upper body in the box, then capture</span>
   </div>
   <div class="cam-stage">
     <video id="camVideo" playsinline muted autoplay></video>
@@ -148,7 +148,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
     <button class="bigbtn" type="button" id="camRetake" style="display:none">Retake</button>
     <button class="bigbtn" type="button" id="camUse" style="display:none">Upload ✓</button>
   </div>
-  <p class="cam-hint">Photos are cropped to the head automatically when possible, then uploaded right away.</p>
+  <p class="cam-hint">Photos are framed as upper-body shots (not tight headshots), then uploaded right away.</p>
 </div>
 
 <script>
@@ -533,30 +533,31 @@ async function cropHeadFromCanvas(sourceCanvas){
   let box=await detectFaceBox(sourceCanvas);
   let sx,sy,sw,sh;
   if(box && box.width>20 && box.height>20){
-    // Expand around the face so shoulders/hair still show a bit
-    const padX=box.width*0.55, padTop=box.height*0.85, padBot=box.height*1.15;
+    // Upper-body crop: head + shoulders/chest, not a tight headshot
+    const padX=box.width*1.15, padTop=box.height*0.95, padBot=box.height*2.4;
     sx=clamp(box.x-padX, 0, w);
     sy=clamp(box.y-padTop, 0, h);
     const right=clamp(box.x+box.width+padX, 0, w);
     const bottom=clamp(box.y+box.height+padBot, 0, h);
     sw=Math.max(40, right-sx); sh=Math.max(40, bottom-sy);
-    // Prefer a portrait square-ish crop
-    const side=Math.max(sw, sh*0.85);
-    const cx=sx+sw/2, cy=sy+sh*0.42;
-    sw=Math.min(side, w); sh=Math.min(side*1.15, h);
+    // Portrait upper-body aspect (~3:4)
+    const targetW=Math.min(w, Math.max(sw, sh*0.78));
+    const targetH=Math.min(h, targetW*1.28);
+    const cx=sx+sw/2, cy=sy+sh*0.38;
+    sw=targetW; sh=targetH;
     sx=clamp(cx-sw/2, 0, w-sw);
     sy=clamp(cy-sh/2, 0, h-sh);
   } else {
-    // Fallback: upper-center crop (typical when FaceDetector isn't supported)
-    const side=Math.min(w, h*0.85);
-    sw=side; sh=Math.min(h, side*1.15);
-    sx=(w-sw)/2; sy=Math.max(0, h*0.06);
+    // Fallback: full-width portrait framed for upper body
+    sw=Math.min(w, h*0.78);
+    sh=Math.min(h, sw*1.28);
+    sx=(w-sw)/2; sy=Math.max(0, h*0.04);
   }
   const out=document.createElement('canvas');
-  const size=720;
+  const size=900;
   out.width=size; out.height=Math.round(size*(sh/sw));
   out.getContext('2d').drawImage(sourceCanvas, sx,sy,sw,sh, 0,0,out.width,out.height);
-  return await new Promise(res=>out.toBlob(b=>res(b),'image/jpeg',0.88));
+  return await new Promise(res=>out.toBlob(b=>res(b),'image/jpeg',0.9));
 }
 
 async function cropHeadFromFile(file){
