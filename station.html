@@ -566,13 +566,39 @@ function renderTeamsToolbar(){
     <div class="actions">
       <button class="bigbtn" type="button" id="stBtnGen">🏀 Generate Balanced Teams</button>
       <button class="bigbtn ghost" type="button" id="stBtnSync">⬆ Sync Teams to Parent Page</button>
+      <button class="bigbtn ghost" type="button" id="stBtnClearTeams">🗑 Clear Teams</button>
     </div>
     <div class="teams-note" id="stTeamsNote">${
       pendingLocalTeams ? 'Teams generated on this tablet — Sync to post them for parents.'
       : (teamsPosted && teams.length ? 'Teams are live for parents.'
-      : 'Generate when jersey assignment is far enough along, then Sync.')
+      : (teams.length ? 'Old teams still loaded — Clear Teams, then Generate when ready.'
+      : 'Generate when jersey assignment is far enough along, then Sync.'))
     }</div>
   </div>`;
+}
+async function clearStationTeams(){
+  if(!confirm('Clear assigned teams for this camp?\n\nRemoves team cards here and on the parent page. Player check-ins/jerseys are left alone.')) return;
+  teams=[]; teamsPosted=false; pendingLocalTeams=false;
+  const note=$('#stTeamsNote');
+  if(note){ note.className='teams-note'; note.textContent='Clearing…'; }
+  if(authSession && authSession.access_token && campCode){
+    const payload=Object.assign({}, campLiveExtra, {
+      teams:[], roster:[], teamsPosted:false,
+      groups:{ gA1:groupCfg.gA1, gA2:groupCfg.gA2, gB1:groupCfg.gB1, gB2:groupCfg.gB2, numA:groupCfg.numA, numB:groupCfg.numB }
+    });
+    try{
+      const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=code',{
+        method:'POST',
+        headers:authHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+        body:JSON.stringify([{ code:campCode, data:payload, updated_at:new Date().toISOString() }])
+      });
+      if(!res.ok){ toast('Could not clear parent page — try again'); }
+      else toast('Teams cleared');
+    }catch(e){ toast('Could not clear parent page'); }
+  } else {
+    toast('Teams cleared locally');
+  }
+  renderList();
 }
 function bindTeamsToolbar(){
   ['stGA1','stGA2','stGB1','stGB2'].forEach(id=>{
@@ -580,9 +606,10 @@ function bindTeamsToolbar(){
     el.addEventListener('change', ()=>{ readGroupInputs(); renderList(); });
     el.addEventListener('input', ()=>{ readGroupInputs(); });
   });
-  const gen=$('#stBtnGen'), sync=$('#stBtnSync');
+  const gen=$('#stBtnGen'), sync=$('#stBtnSync'), clr=$('#stBtnClearTeams');
   if(gen) gen.addEventListener('click', ()=>generateStationTeams());
   if(sync) sync.addEventListener('click', ()=>syncStationTeams());
+  if(clr) clr.addEventListener('click', ()=>clearStationTeams());
 }
 async function pollTeams(){
   if(!campCode) return;

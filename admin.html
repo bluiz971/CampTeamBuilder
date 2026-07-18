@@ -298,6 +298,7 @@ dialog select{width:100%;margin:10px 0 16px}
       <button class="btn btn-dark btn-sm" id="btnPrint">Print Rosters</button>
       <button class="btn btn-dark btn-sm" id="btnCsvTeams">Export CSV</button>
       <button class="btn btn-orange btn-sm" id="btnSyncTeams">⬆ Sync Teams to Parent Page</button>
+      <button class="btn btn-ghost btn-sm" id="btnClearTeams">🗑 Clear Teams</button>
     </div>
   </div>
   <div class="balance-note" id="teamsSyncNote" style="margin-bottom:12px"></div>
@@ -1488,6 +1489,45 @@ async function pushLive(silent, opts){
 }
 $('#btnSyncNow').addEventListener('click',()=>pushLive(false, {includeTeams:false}));
 $('#btnSyncTeams').addEventListener('click',()=>pushLive(false, {includeTeams:true, statusEl:$('#teamsSyncNote')}));
+$('#btnClearTeams').addEventListener('click', async ()=>{
+  if(!confirm('Clear assigned teams?\n\nRemoves local teams and posts empty rosters to the parent/station pages. Check-ins and jerseys stay.')) return;
+  S.teams=null; S.teamsLive=false; store.save(); renderTeams(); updateScoreboard();
+  const note=$('#teamsSyncNote');
+  if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)){
+    if(note) note.innerHTML='Local teams cleared. Sign in on Publish to clear the parent page too.';
+    return;
+  }
+  if(note) note.textContent='Clearing…';
+  try{
+    // Preserve schedule/title/etc, wipe teams
+    let baseData={};
+    try{
+      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(S.syncCode)+'&select=data',{
+        headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+      });
+      if(cur.ok){ const rows=await cur.json(); baseData=(rows&&rows[0]&&rows[0].data)||{}; }
+    }catch(e){}
+    const payload=Object.assign({}, baseData, {
+      teams:[], roster:[], teamsPosted:false,
+      groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }
+    });
+    const res=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?on_conflict=code',{
+      method:'POST',
+      headers:{
+        'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token,
+        'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates'
+      },
+      body:JSON.stringify([{ code:S.syncCode, data:payload, updated_at:new Date().toISOString() }])
+    });
+    if(note){
+      note.innerHTML=res.ok
+        ? '<b style="color:var(--green)">✓ Teams cleared</b> on parent/station pages.'
+        : '<span style="color:var(--red)">Local cleared, but parent sync failed — try again signed in.</span>';
+    }
+  }catch(e){
+    if(note) note.innerHTML='<span style="color:var(--red)">Clear failed: '+(e.message||e)+'</span>';
+  }
+});
 
 // Auto-push (debounced) whenever public-facing data changes.
 let _syncTimer=null;
@@ -1584,6 +1624,18 @@ async function clearCampRemote(campCode){
   await fetch(S.syncUrl+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(code),{
     method:'DELETE', headers
   });
+  // If DELETE is blocked by RLS, overwrite with empty public payload instead
+  try{
+    await fetch(S.syncUrl+'/rest/v1/camp_live?on_conflict=code',{
+      method:'POST',
+      headers:Object.assign({}, headers, {'Content-Type':'application/json'}),
+      body:JSON.stringify([{
+        code,
+        data:{ teams:[], roster:[], teamsPosted:false, sched:[], title:'', sub:'', groups:{} },
+        updated_at:new Date().toISOString()
+      }])
+    });
+  }catch(e){}
   const verify=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{
     headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
   });
