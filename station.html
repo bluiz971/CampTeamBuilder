@@ -158,12 +158,13 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   </main>
 </div>
 
-<input type="file" id="photoInput" class="hiddenfile" accept="image/*" capture="environment">
+<input type="file" id="photoInput" class="hiddenfile" accept="image/*">
+<input type="file" id="photoCameraInput" class="hiddenfile" accept="image/*" capture="environment">
 
 <div id="camModal" aria-hidden="true">
   <div class="cam-head">
     <b id="camWho">Take photo</b>
-    <span>Frame head and upper body in the box, then capture</span>
+    <span>Frame head and upper body, then capture — or upload from the gallery</span>
   </div>
   <div class="cam-stage">
     <video id="camVideo" playsinline muted autoplay></video>
@@ -172,12 +173,12 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   </div>
   <div class="cam-actions">
     <button class="bigbtn ghost" type="button" id="camCancel">Cancel</button>
-    <button class="bigbtn ghost" type="button" id="camFile">From gallery</button>
-    <button class="bigbtn" type="button" id="camShutter">Capture</button>
+    <button class="bigbtn ghost" type="button" id="camFile">Upload Photo</button>
+    <button class="bigbtn" type="button" id="camShutter">Take Photo</button>
     <button class="bigbtn" type="button" id="camRetake" style="display:none">Retake</button>
     <button class="bigbtn" type="button" id="camUse" style="display:none">Upload ✓</button>
   </div>
-  <p class="cam-hint">Photos are framed as upper-body shots (not tight headshots), then uploaded right away.</p>
+  <p class="cam-hint">Uses the rear camera (not selfie). Photos are framed as upper-body shots, then uploaded right away.</p>
 </div>
 
 <script>
@@ -570,23 +571,32 @@ async function openCamera(id){
   camPlayerId=id; camBlob=null;
   $('#camWho').textContent=`#${p.jersey} ${p.first} ${p.last}`;
   $('#photoInput').dataset.forId=id;
+  $('#photoCameraInput').dataset.forId=id;
   setCamMode('live');
   $('#camModal').classList.add('on');
   $('#camModal').setAttribute('aria-hidden','false');
   stopCamera();
   try{
+    // Rear / environment camera — not selfie mode
     camStream=await navigator.mediaDevices.getUserMedia({
       audio:false,
-      video:{ facingMode:{ideal:'user'}, width:{ideal:1280}, height:{ideal:960} }
+      video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:960} }
     });
     const v=$('#camVideo');
     v.srcObject=camStream;
     await v.play().catch(()=>{});
   }catch(err){
-    // Camera blocked / not available — fall back to file picker (still opens device camera on most tablets)
-    toast('Camera unavailable — opening device picker');
-    closeCameraModal(false);
-    $('#photoInput').click();
+    // Fall back to any camera, then to the device camera file picker
+    try{
+      camStream=await navigator.mediaDevices.getUserMedia({ audio:false, video:true });
+      const v=$('#camVideo');
+      v.srcObject=camStream;
+      await v.play().catch(()=>{});
+    }catch(err2){
+      toast('Camera unavailable — choose Take Photo or Upload');
+      closeCameraModal(false);
+      $('#photoCameraInput').click();
+    }
   }
 }
 
@@ -603,11 +613,17 @@ $('#camCancel').addEventListener('click', ()=>closeCameraModal());
 $('#camFile').addEventListener('click', ()=>{
   closeCameraModal(false);
   $('#photoInput').dataset.forId=camPlayerId;
-  $('#photoInput').click();
+  $('#photoInput').click(); // gallery / files — no capture attribute
 });
 $('#camShutter').addEventListener('click', async ()=>{
   const v=$('#camVideo'), c=$('#camSnap');
-  if(!v.videoWidth){ toast('Camera not ready yet'); return; }
+  if(!v.videoWidth){
+    // No live preview — open rear camera via device picker
+    $('#photoCameraInput').dataset.forId=camPlayerId||$('#photoInput').dataset.forId;
+    closeCameraModal(false);
+    $('#photoCameraInput').click();
+    return;
+  }
   c.width=v.videoWidth; c.height=v.videoHeight;
   c.getContext('2d').drawImage(v,0,0);
   setCamMode('preview');
@@ -625,6 +641,29 @@ $('#camUse').addEventListener('click', async ()=>{
     await uploadPlayerPhoto(camPlayerId, blob, 'jpg');
     closeCameraModal();
   }finally{ $('#camUse').disabled=false; }
+});
+
+async function handlePickedPhoto(file, id){
+  if(!file || !id) return;
+  const p=players.find(x=>x.id===id);
+  if(p && !String(p.jersey||'').trim()){ toast('Assign a jersey before taking a photo'); return; }
+  try{
+    const blob=await cropHeadFromFile(file);
+    await uploadPlayerPhoto(id, blob, 'jpg');
+  }catch(err){
+    await uploadPlayerPhoto(id, file, (file.name.split('.').pop()||'jpg').toLowerCase());
+  }
+}
+
+$('#photoInput').addEventListener('change', async e=>{
+  const file=e.target.files[0]; const id=e.target.dataset.forId || camPlayerId;
+  e.target.value='';
+  await handlePickedPhoto(file, id);
+});
+$('#photoCameraInput').addEventListener('change', async e=>{
+  const file=e.target.files[0]; const id=e.target.dataset.forId || camPlayerId;
+  e.target.value='';
+  await handlePickedPhoto(file, id);
 });
 
 async function detectFaceBox(source){
@@ -698,21 +737,6 @@ async function uploadPlayerPhoto(id, blob, ext){
     renderList();
   }catch(err){ toast('⚠ Upload failed — check connection'); }
 }
-
-$('#photoInput').addEventListener('change', async e=>{
-  const file=e.target.files[0]; const id=e.target.dataset.forId || camPlayerId;
-  e.target.value='';
-  if(!file || !id) return;
-  const p=players.find(x=>x.id===id);
-  if(p && !String(p.jersey||'').trim()){ toast('Assign a jersey before taking a photo'); return; }
-  try{
-    const blob=await cropHeadFromFile(file);
-    await uploadPlayerPhoto(id, blob, 'jpg');
-  }catch(err){
-    // If crop fails, upload original so registration isn't blocked
-    await uploadPlayerPhoto(id, file, (file.name.split('.').pop()||'jpg').toLowerCase());
-  }
-});
 </script>
 </body>
 </html>
