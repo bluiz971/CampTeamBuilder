@@ -64,6 +64,8 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .tile .pic.shop{background:linear-gradient(135deg,var(--orange),#ffb63d)}
 .tile .pic.sched{background:linear-gradient(135deg,#1e2733,#3a4a5c)}
 .tile .pic.teamz{background:linear-gradient(135deg,#e8590c,#c92a2a)}
+.tile .pic.insta{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
+.tile .pic.web{background:linear-gradient(135deg,#15803d,#1e2733)}
 .tile .cap{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:3px}
 .tile .cap b{font-family:'Barlow Condensed';font-size:19px;text-transform:uppercase;letter-spacing:.02em}
 .tile .cap span{color:var(--mut);font-size:13px}
@@ -79,7 +81,7 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .scrim{position:fixed;inset:0;background:rgba(20,26,34,.55);z-index:200}
 .pmodal{position:fixed;z-index:210;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;width:92%;max-width:380px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.3)}
 .pmodal .photo{width:100%;height:260px;background:linear-gradient(135deg,#1e2733,#3a4a5c);display:flex;align-items:center;justify-content:center;color:#8b96a4;font-size:70px;position:relative}
-.pmodal .photo img{width:100%;height:100%;object-fit:cover}
+.pmodal .photo img{width:100%;height:100%;object-fit:cover;object-position:center 18%}
 .pmodal .close{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;background:rgba(20,26,34,.55);color:#fff;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .pmodal .jbadge{position:absolute;bottom:-20px;left:20px;background:var(--orange);color:#fff;font-family:'Barlow Condensed';font-weight:700;font-size:26px;padding:6px 16px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
 .pmodal .info{padding:30px 22px 22px}
@@ -164,7 +166,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const params=new URLSearchParams(location.search);
 const campCode=(params.get('camp')||DEFAULT_CAMP_CODE||'').trim();
 
-let D={roster:[],teams:[],sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:''};
+let D={roster:[],teams:[],sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:'',igUrl:'',webUrl:''};
 let myTeam=null, dayFilter='all', lastUpdated=null;
 
 if(!campCode || !SUPABASE_URL || SUPABASE_URL.startsWith('REPLACE_')){
@@ -238,10 +240,12 @@ function goView(name){
 // HOME — tiles for the AAU app, add-ons shop, schedule, and teams
 function renderHome(){
   const tiles=[];
-  if(D.appUrl) tiles.push({href:D.appUrl,ext:true,pic:'app',icon:'🏀',label:'AAU Select Tour App',desc:'Training, recruiting & player tools',go:'Open App ↗'});
+  if(D.appUrl) tiles.push({href:D.appUrl,ext:true,pic:'app',icon:'🏀',label:'Select 360',desc:'Training, recruiting & player tools',go:'Open App ↗'});
   if(D.shopUrl) tiles.push({href:D.shopUrl,ext:true,pic:'shop',icon:'🛒',label:'Add-Ons Shop',desc:'Mixtapes, evals, film & more',go:'Shop Now ↗'});
   tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?D.sched.length+' games posted':'Posted once available',go:'View Schedule'});
   tiles.push({view:'teams',pic:'teamz',icon:'👕',label:'Teams',desc:D.teams.length?D.teams.length+' teams assigned':'Posted once available',go:'View Teams'});
+  if(D.igUrl) tiles.push({href:D.igUrl,ext:true,pic:'insta',icon:'📸',label:'Instagram',desc:'Photos & camp highlights',go:'Follow Us ↗'});
+  if(D.webUrl) tiles.push({href:D.webUrl,ext:true,pic:'web',icon:'🌐',label:'AAU Select Tour',desc:'Full schedule & other camps',go:'Visit Site ↗'});
   $('#homeTiles').innerHTML=tiles.map(t=>{
     const inner=`<div class="pic ${t.pic}">${t.icon}</div><div class="cap"><b>${esc(t.label)}</b><span>${esc(t.desc)}</span><span class="go">${esc(t.go)}</span></div>`;
     return t.ext

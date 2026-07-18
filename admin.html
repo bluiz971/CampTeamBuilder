@@ -188,7 +188,7 @@ dialog select{width:100%;margin:10px 0 16px}
   <div class="brand">
     <h1>Camp Team <span>Builder</span></h1>
     <small>AAU Select Tour · Check-in → Jerseys → Balanced Teams</small>
-    <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v7 · click a player for photo + info</small>
+    <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v8 · Select 360, Instagram & website tiles</small>
   </div>
   <div class="scoreboard">
     <div class="sb-cell"><b id="sbReg">0</b><span>Registered</span></div>
@@ -345,8 +345,12 @@ dialog select{width:100%;margin:10px 0 16px}
       <div><label>Subtitle (optional)</label><input type="text" id="pubSub" placeholder="Hollywood, FL · July 2026" style="width:260px"></div>
     </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
-      <div><label>AAU Select Tour App link</label><input type="text" id="pubAppUrl" placeholder="https://select360.mvt.so/" style="width:320px"></div>
+      <div><label>Select 360 app link</label><input type="text" id="pubAppUrl" placeholder="https://select360.mvt.so/" style="width:320px"></div>
       <div><label>Add-Ons shop link</label><input type="text" id="pubShopUrl" placeholder="https://aauselecttour.totalcamps.com/shop/GOOD" style="width:320px"></div>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
+      <div><label>Instagram link</label><input type="text" id="pubIgUrl" placeholder="https://www.instagram.com/aauselecttour" style="width:320px"></div>
+      <div><label>AAU Select Tour website</label><input type="text" id="pubWebUrl" placeholder="https://aauselecttour.com" style="width:320px"></div>
     </div>
   </div>
 
@@ -427,7 +431,7 @@ const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 const DEFAULT_CAMP_CODE = "mid-atlantic-2026";
 /* ===================================================================== */
 
-let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', syncUrl: '', syncKey: '', syncCode: '', siteBaseUrl: '' };
+let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', syncUrl: '', syncKey: '', syncCode: '', siteBaseUrl: '' };
 const store = {
   ok: (()=>{ try{ localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return true; }catch(e){ return false; } })(),
   save(){ if(this.ok){ try{ localStorage.setItem('campTeamBuilder', JSON.stringify(S)); }catch(e){} } },
@@ -438,6 +442,7 @@ store.load();
 S.gA1=S.gA1||2027; S.gA2=S.gA2||2030; S.gB1=S.gB1||2031; S.gB2=S.gB2||2035;
 S.schedule=S.schedule||[]; S.pubTitle=S.pubTitle||''; S.pubSub=S.pubSub||'';
 S.appUrl=S.appUrl||'https://select360.mvt.so/'; S.shopUrl=S.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD';
+S.igUrl=S.igUrl||'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA=='; S.webUrl=S.webUrl||'https://aauselecttour.com';
 S.syncUrl=S.syncUrl||DEFAULT_SUPABASE_URL||''; S.syncKey=S.syncKey||DEFAULT_SUPABASE_ANON_KEY||''; S.syncCode=S.syncCode||DEFAULT_CAMP_CODE||''; S.siteBaseUrl=S.siteBaseUrl||'';
 // Migration: teams saved by v1 used "N-Mascot" names. Detect and clear so the
 // stale display can't linger — user just presses Generate to rebuild as Team N.
@@ -1276,6 +1281,8 @@ $('#pubTitle').addEventListener('input',e=>{ S.pubTitle=e.target.value; store.sa
 $('#pubSub').addEventListener('input',e=>{ S.pubSub=e.target.value; store.save(); autoPushLive(); });
 $('#pubAppUrl').addEventListener('input',e=>{ S.appUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#pubShopUrl').addEventListener('input',e=>{ S.shopUrl=e.target.value.trim(); store.save(); autoPushLive(); });
+$('#pubIgUrl').addEventListener('input',e=>{ S.igUrl=e.target.value.trim(); store.save(); autoPushLive(); });
+$('#pubWebUrl').addEventListener('input',e=>{ S.webUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#syncUrl').addEventListener('input',e=>{ S.syncUrl=e.target.value.trim().replace(/\/$/,''); store.save(); });
 $('#syncKey').addEventListener('input',e=>{ S.syncKey=e.target.value.trim(); store.save(); });
 $('#syncCode').addEventListener('input',e=>{ S.syncCode=e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-'); store.save(); renderSiteLink(); });
@@ -1492,7 +1499,7 @@ function buildPublicData(){
                  .replace(/[·|,\-\s]+$/,'').replace(/^[·|,\-\s]+/,'').trim();
     return { y:dt.getFullYear(), mo:dt.getMonth()+1, d:dt.getDate(), startMin, loc };
   })();
-  return { roster, teams:teamsList, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'' };
+  return { roster, teams:teamsList, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'' };
 }
 
 $('#siteBaseUrl').addEventListener('input', e=>{ S.siteBaseUrl=e.target.value.trim().replace(/\/$/,''); store.save(); renderSiteLink(); });
@@ -1559,7 +1566,7 @@ function updateScoreboard(){
   $('#sbDue').textContent=S.players.filter(hasDue).length;
   $('#sbTeams').textContent=S.teams?[...S.teams.A,...S.teams.B].length:0;
 }
-function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
+function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
 ['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); }));
 renderAll();
 </script>
