@@ -33,9 +33,9 @@ header h1 span{color:var(--amber)}
 .livepill{font-size:11px;color:#9aa4b1;padding:3px 8px}
 .signoutbtn{font-size:12px;color:#9aa4b1;background:transparent;border:1px solid #2c3947;border-radius:6px;padding:5px 10px;cursor:pointer}
 
-.roletabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}
-.roletabs button{padding:14px 6px;border-radius:10px;border:none;background:var(--ink-2);color:#9aa4b1;font-family:'Barlow Condensed';font-size:16px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
-.roletabs button .ic{font-size:22px}
+.roletabs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+.roletabs button{padding:12px 4px;border-radius:10px;border:none;background:var(--ink-2);color:#9aa4b1;font-family:'Barlow Condensed';font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.roletabs button .ic{font-size:20px}
 .roletabs button.on{background:var(--orange);color:#fff}
 
 main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
@@ -72,10 +72,23 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .scrim{position:fixed;inset:0;background:rgba(20,26,34,.4);z-index:150}
 
 /* ---------- Photo role ---------- */
-.photo-row .thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;background:#eee}
+.photo-row .thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;object-position:center 18%;background:#eee}
 .photo-row .noimg{width:56px;height:56px;border-radius:8px;background:#eee;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:22px}
 .hiddenfile{display:none}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:9px;font-size:14px;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+
+/* ---------- Live camera modal ---------- */
+#camModal{display:none;position:fixed;inset:0;z-index:400;background:rgba(20,26,34,.92);flex-direction:column;align-items:center;justify-content:center;padding:16px}
+#camModal.on{display:flex}
+#camModal .cam-head{color:#fff;text-align:center;margin-bottom:12px}
+#camModal .cam-head b{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase;display:block}
+#camModal .cam-head span{color:#9aa4b1;font-size:13px}
+#camModal .cam-stage{position:relative;width:min(92vw,420px);aspect-ratio:3/4;border-radius:16px;overflow:hidden;background:#000;border:3px solid var(--orange)}
+#camModal video,#camModal canvas.preview{width:100%;height:100%;object-fit:cover;display:block}
+#camModal .face-guide{pointer-events:none;position:absolute;inset:12% 18% 28%;border:2px dashed rgba(255,255,255,.7);border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.28)}
+#camModal .cam-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px;width:min(92vw,420px)}
+#camModal .cam-actions .bigbtn{flex:1;min-width:120px}
+#camModal .cam-hint{color:#9aa4b1;font-size:12px;text-align:center;margin-top:10px;max-width:420px}
 </style>
 </head>
 <body>
@@ -106,6 +119,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
       <button data-role="jersey"><span class="ic">🔢</span>Jersey</button>
       <button data-role="addons"><span class="ic">➕</span>Add-Ons</button>
       <button data-role="photos"><span class="ic">📷</span>Photos</button>
+      <button data-role="playerdata"><span class="ic">👤</span>Player Data</button>
       <button data-role="teams"><span class="ic">👕</span>Teams</button>
     </div>
   </header>
@@ -116,6 +130,26 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 </div>
 
 <input type="file" id="photoInput" class="hiddenfile" accept="image/*" capture="environment">
+
+<div id="camModal" aria-hidden="true">
+  <div class="cam-head">
+    <b id="camWho">Take photo</b>
+    <span>Center the head in the oval, then capture</span>
+  </div>
+  <div class="cam-stage">
+    <video id="camVideo" playsinline muted autoplay></video>
+    <canvas id="camSnap" class="preview" style="display:none"></canvas>
+    <div class="face-guide"></div>
+  </div>
+  <div class="cam-actions">
+    <button class="bigbtn ghost" type="button" id="camCancel">Cancel</button>
+    <button class="bigbtn ghost" type="button" id="camFile">From gallery</button>
+    <button class="bigbtn" type="button" id="camShutter">Capture</button>
+    <button class="bigbtn" type="button" id="camRetake" style="display:none">Retake</button>
+    <button class="bigbtn" type="button" id="camUse" style="display:none">Upload ✓</button>
+  </div>
+  <p class="cam-hint">Photos are cropped to the head automatically when possible, then uploaded right away.</p>
+</div>
 
 <script>
 /* =====================================================================
@@ -277,11 +311,36 @@ function renderList(){
   if(role==='checkin') rows=players.filter(p=>!p.checked_in && matches(p));
   else if(role==='jersey') rows=players.filter(p=>p.checked_in && !String(p.jersey).trim() && matches(p));
   else if(role==='addons') rows=players.filter(p=>p.checked_in && matches(p));
+  else if(role==='photos'){
+    // Stay here until they have BOTH a jersey and a photo. No jersey → still Photos.
+    rows=players.filter(p=>{
+      const hasJ=!!String(p.jersey||'').trim();
+      const hasPh=!!p.photo_url;
+      return matches(p) && (!hasJ || !hasPh);
+    }).sort((a,b)=>{
+      const aj=String(a.jersey||'').trim()?1:0, bj=String(b.jersey||'').trim()?1:0;
+      if(aj!==bj) return bj-aj; // jersey holders (ready to shoot) first
+      const an=a.photo_url?1:0, bn=b.photo_url?1:0;
+      if(an!==bn) return an-bn;
+      return (a.last||'').localeCompare(b.last||'');
+    });
+  }
+  else if(role==='playerdata'){
+    // Photo taken + jersey assigned → done with photo line
+    rows=players.filter(p=>String(p.jersey||'').trim() && p.photo_url && matches(p))
+      .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0));
+  }
   else rows=players.filter(p=>matches(p));
 
   if(!players.length){ wrap.innerHTML='<div class="empty"><b>No roster yet</b>Waiting for the roster to be pushed from admin.html.</div>'; return; }
   if(!rows.length){
-    const msg={checkin:'Everyone is checked in',jersey:'No one waiting on a jersey',addons:'No checked-in players yet',photos:'No matches'}[role];
+    const msg={
+      checkin:'Everyone is checked in',
+      jersey:'No one waiting on a jersey',
+      addons:'No checked-in players yet',
+      photos:'Everyone with a jersey has a photo — see Player Data',
+      playerdata:'No completed player cards yet — take photos after assigning jerseys'
+    }[role];
     wrap.innerHTML='<div class="empty"><b>'+msg+'</b></div>'; return;
   }
 
@@ -321,15 +380,28 @@ function renderList(){
     }).join('');
     wrap.querySelectorAll('[data-pop]').forEach(b=>b.addEventListener('click', ()=>openAddonPopover(b.dataset.pop)));
   } else if(role==='photos'){
+    wrap.innerHTML=rows.map(p=>{
+      const hasJ=!!String(p.jersey||'').trim();
+      return `<div class="prow photo-row">
+        ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
+        <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)||'—'} · ${esc(p.school)}</small></div>
+        ${hasJ
+          ? `<button class="bigbtn" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>`
+          : `<span class="badge due">Needs jersey</span>`}
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
+  } else if(role==='playerdata'){
     wrap.innerHTML=rows.map(p=>`<div class="prow photo-row">
-      ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)||'—'} · ${esc(p.school)}</small></div>
-      <button class="bigbtn" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
+      <img class="thumb" src="${esc(p.photo_url)}">
+      <div class="who">
+        <b>${esc(p.first)} ${esc(p.last)}</b>
+        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.height)||'—'} · ${esc(p.school)}</small>
+      </div>
+      <span class="badge done">Ready</span>
+      <button class="bigbtn ghost" data-photo="${p.id}">Retake 📷</button>
     </div>`).join('');
-    wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>{
-      $('#photoInput').dataset.forId=b.dataset.photo;
-      $('#photoInput').click();
-    }));
+    wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   }
 }
 
@@ -362,18 +434,149 @@ function openAddonPopover(id){
   });
 }
 
-// PHOTOS — upload to Supabase Storage, then link the photo_url
-$('#photoInput').addEventListener('change', async e=>{
-  const file=e.target.files[0]; const id=e.target.dataset.forId;
-  if(!file || !id) return;
+// PHOTOS — live camera (preferred) or gallery, head-crop, upload to Storage
+let camStream=null, camPlayerId=null, camBlob=null;
+
+function stopCamera(){
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+  const v=$('#camVideo'); if(v) v.srcObject=null;
+}
+
+function setCamMode(mode){
+  // mode: live | preview
+  const live=mode==='live';
+  $('#camVideo').style.display=live?'block':'none';
+  $('#camSnap').style.display=live?'none':'block';
+  $('#camShutter').style.display=live?'':'none';
+  $('#camRetake').style.display=live?'none':'';
+  $('#camUse').style.display=live?'none':'';
+}
+
+async function openCamera(id){
+  const p=players.find(x=>x.id===id); if(!p) return;
+  if(!String(p.jersey||'').trim()){ toast('Assign a jersey before taking a photo'); return; }
+  camPlayerId=id; camBlob=null;
+  $('#camWho').textContent=`#${p.jersey} ${p.first} ${p.last}`;
+  $('#photoInput').dataset.forId=id;
+  setCamMode('live');
+  $('#camModal').classList.add('on');
+  $('#camModal').setAttribute('aria-hidden','false');
+  stopCamera();
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{ facingMode:{ideal:'user'}, width:{ideal:1280}, height:{ideal:960} }
+    });
+    const v=$('#camVideo');
+    v.srcObject=camStream;
+    await v.play().catch(()=>{});
+  }catch(err){
+    // Camera blocked / not available — fall back to file picker (still opens device camera on most tablets)
+    toast('Camera unavailable — opening device picker');
+    closeCameraModal(false);
+    $('#photoInput').click();
+  }
+}
+
+function closeCameraModal(clearId){
+  stopCamera();
+  $('#camModal').classList.remove('on');
+  $('#camModal').setAttribute('aria-hidden','true');
+  setCamMode('live');
+  camBlob=null;
+  if(clearId!==false) camPlayerId=null;
+}
+
+$('#camCancel').addEventListener('click', ()=>closeCameraModal());
+$('#camFile').addEventListener('click', ()=>{
+  closeCameraModal(false);
+  $('#photoInput').dataset.forId=camPlayerId;
+  $('#photoInput').click();
+});
+$('#camShutter').addEventListener('click', async ()=>{
+  const v=$('#camVideo'), c=$('#camSnap');
+  if(!v.videoWidth){ toast('Camera not ready yet'); return; }
+  c.width=v.videoWidth; c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  setCamMode('preview');
+  stopCamera();
+});
+$('#camRetake').addEventListener('click', ()=>{
+  if(camPlayerId) openCamera(camPlayerId);
+});
+$('#camUse').addEventListener('click', async ()=>{
+  const c=$('#camSnap');
+  if(!camPlayerId || !c.width) return;
+  $('#camUse').disabled=true;
+  try{
+    const blob=await cropHeadFromCanvas(c);
+    await uploadPlayerPhoto(camPlayerId, blob, 'jpg');
+    closeCameraModal();
+  }finally{ $('#camUse').disabled=false; }
+});
+
+async function detectFaceBox(source){
+  // Chrome/Edge FaceDetector when available — finds the head so we can crop tight
+  if(typeof FaceDetector==='undefined') return null;
+  try{
+    const detector=new FaceDetector({fastMode:true, maxDetectedFaces:1});
+    const faces=await detector.detect(source);
+    if(faces && faces[0] && faces[0].boundingBox) return faces[0].boundingBox;
+  }catch(e){}
+  return null;
+}
+
+function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+
+async function cropHeadFromCanvas(sourceCanvas){
+  const w=sourceCanvas.width, h=sourceCanvas.height;
+  let box=await detectFaceBox(sourceCanvas);
+  let sx,sy,sw,sh;
+  if(box && box.width>20 && box.height>20){
+    // Expand around the face so shoulders/hair still show a bit
+    const padX=box.width*0.55, padTop=box.height*0.85, padBot=box.height*1.15;
+    sx=clamp(box.x-padX, 0, w);
+    sy=clamp(box.y-padTop, 0, h);
+    const right=clamp(box.x+box.width+padX, 0, w);
+    const bottom=clamp(box.y+box.height+padBot, 0, h);
+    sw=Math.max(40, right-sx); sh=Math.max(40, bottom-sy);
+    // Prefer a portrait square-ish crop
+    const side=Math.max(sw, sh*0.85);
+    const cx=sx+sw/2, cy=sy+sh*0.42;
+    sw=Math.min(side, w); sh=Math.min(side*1.15, h);
+    sx=clamp(cx-sw/2, 0, w-sw);
+    sy=clamp(cy-sh/2, 0, h-sh);
+  } else {
+    // Fallback: upper-center crop (typical when FaceDetector isn't supported)
+    const side=Math.min(w, h*0.85);
+    sw=side; sh=Math.min(h, side*1.15);
+    sx=(w-sw)/2; sy=Math.max(0, h*0.06);
+  }
+  const out=document.createElement('canvas');
+  const size=720;
+  out.width=size; out.height=Math.round(size*(sh/sw));
+  out.getContext('2d').drawImage(sourceCanvas, sx,sy,sw,sh, 0,0,out.width,out.height);
+  return await new Promise(res=>out.toBlob(b=>res(b),'image/jpeg',0.88));
+}
+
+async function cropHeadFromFile(file){
+  const bmp=await createImageBitmap(file);
+  const c=document.createElement('canvas');
+  c.width=bmp.width; c.height=bmp.height;
+  c.getContext('2d').drawImage(bmp,0,0);
+  bmp.close && bmp.close();
+  return cropHeadFromCanvas(c);
+}
+
+async function uploadPlayerPhoto(id, blob, ext){
+  if(!id || !blob) return;
   toast('Uploading photo…');
   try{
-    const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-    const path=campCode+'/'+id+'.'+ext;
+    const path=campCode+'/'+id+'.'+(ext||'jpg');
     const res=await fetch(SUPABASE_URL+'/storage/v1/object/player-photos/'+path,{
       method:'POST',
-      headers:authHeaders({'Content-Type':file.type||'image/jpeg','x-upsert':'true'}),
-      body:file
+      headers:authHeaders({'Content-Type':blob.type||'image/jpeg','x-upsert':'true'}),
+      body:blob
     });
     if(!res.ok){ toast('⚠ Upload failed'); return; }
     const publicUrl=SUPABASE_URL+'/storage/v1/object/public/player-photos/'+path;
@@ -381,7 +584,21 @@ $('#photoInput').addEventListener('change', async e=>{
     toast('Photo saved ✓');
     renderList();
   }catch(err){ toast('⚠ Upload failed — check connection'); }
+}
+
+$('#photoInput').addEventListener('change', async e=>{
+  const file=e.target.files[0]; const id=e.target.dataset.forId || camPlayerId;
   e.target.value='';
+  if(!file || !id) return;
+  const p=players.find(x=>x.id===id);
+  if(p && !String(p.jersey||'').trim()){ toast('Assign a jersey before taking a photo'); return; }
+  try{
+    const blob=await cropHeadFromFile(file);
+    await uploadPlayerPhoto(id, blob, 'jpg');
+  }catch(err){
+    // If crop fails, upload original so registration isn't blocked
+    await uploadPlayerPhoto(id, file, (file.name.split('.').pop()||'jpg').toLowerCase());
+  }
 });
 </script>
 </body>
