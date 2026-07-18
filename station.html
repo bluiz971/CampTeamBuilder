@@ -90,6 +90,21 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .team-card .pmeta{color:var(--mut);font-size:12px;text-align:right;line-height:1.3}
 .team-card footer{padding:8px 14px;background:#faf9f6;border-top:1px solid var(--line);font-size:12px;color:var(--mut);display:flex;gap:12px;flex-wrap:wrap}
 .team-sec{font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;margin:8px 0 12px}
+.grp-tally{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.gt-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:5px solid var(--orange)}
+.gt-card.b{border-left-color:var(--ink)}
+.gt-card h4{font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}
+.gt-card .rng{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.gt-nums{display:flex;align-items:baseline;gap:16px;margin-top:10px;flex-wrap:wrap}
+.gt-nums .big{font-family:'Barlow Condensed';font-size:32px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.gt-nums .big small{font-size:12px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-left:5px}
+.gt-nums .arrow{font-size:20px;color:var(--mut)}
+.gt-nums .teams{font-family:'Barlow Condensed';font-size:24px;font-weight:700;color:var(--orange)}
+.gt-card.b .gt-nums .teams{color:var(--ink)}
+.gt-nums .teams small{font-size:12px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-left:5px}
+.gt-detail{font-size:12px;color:var(--mut);margin-top:8px}
+.gt-detail b{color:var(--ink);font-weight:600}
+@media(max-width:640px){.grp-tally{grid-template-columns:1fr}}
 
 /* ---------- Live camera modal ---------- */
 #camModal{display:none;position:fixed;inset:0;z-index:400;background:rgba(20,26,34,.92);flex-direction:column;align-items:center;justify-content:center;padding:16px}
@@ -274,6 +289,41 @@ async function pollPlayers(){
 // admin.html, this is just so staff can look them up on the tablet.
 let teams=[];
 let teamsPosted=false;
+let groupCfg={ gA1:2027, gA2:2030, gB1:2031, gB2:2035, numA:3, numB:3 };
+const TEAM_BRACKETS=[[0,27,3],[28,40,4],[41,54,6],[55,69,8],[70,84,10],[85,98,12],[99,112,14]];
+function teamsForCount(n){
+  for(const [lo,hi,t] of TEAM_BRACKETS) if(n>=lo && n<=hi) return t;
+  return n>112 ? 14 : 3;
+}
+function stationGroupOf(y){
+  y=+y;
+  if(y>=groupCfg.gA1 && y<=groupCfg.gA2) return 'A';
+  if(y>=groupCfg.gB1 && y<=groupCfg.gB2) return 'B';
+  return null;
+}
+function renderGroupTally(){
+  const pool=players.filter(p=>String(p.jersey||'').trim());
+  const inA=pool.filter(p=>stationGroupOf(p.grad_year)==='A');
+  const inB=pool.filter(p=>stationGroupOf(p.grad_year)==='B');
+  const outside=pool.filter(p=>!stationGroupOf(p.grad_year));
+  const numA=teamsForCount(inA.length);
+  const numB=teamsForCount(inB.length);
+  const per=(n,t)=>{ if(!t) return '—'; const base=Math.floor(n/t), extra=n%t; return extra? (base+'–'+(base+1)) : String(base); };
+  const card=(cls,label,y1,y2,list,tCount,names)=>`<div class="gt-card ${cls}">
+    <h4>${label}</h4><div class="rng">Grad years ${y1}–${y2} · ${names}</div>
+    <div class="gt-nums">
+      <span class="big">${list.length}<small>players w/ jersey</small></span>
+      <span class="arrow">→</span>
+      <span class="teams">${tCount}<small>teams</small></span>
+    </div>
+    <div class="gt-detail">${list.length? 'About <b>'+per(list.length,tCount)+'</b> players per team.' : 'No numbered players in this range yet.'}</div>
+  </div>`;
+  return `<div class="grp-tally">`
+    + card('','Group A', groupCfg.gA1, groupCfg.gA2, inA, numA, 'Teams 1–'+numA)
+    + card('b','Group B', groupCfg.gB1, groupCfg.gB2, inB, numB, 'Teams '+(numA+1)+'–'+(numA+numB))
+    + (outside.length? `<div class="gt-card" style="grid-column:1/-1;border-left-color:var(--red)"><h4>Outside both ranges</h4><div class="gt-detail"><b>${outside.length}</b> numbered player(s) outside ${groupCfg.gA1}–${groupCfg.gA2} and ${groupCfg.gB1}–${groupCfg.gB2}.</div></div>`:'')
+    + `</div>`;
+}
 async function pollTeams(){
   if(!campCode) return;
   try{
@@ -286,6 +336,13 @@ async function pollTeams(){
     teams=data.teams || [];
     // Legacy rows (no teamsPosted flag) still show teams if present
     teamsPosted = teams.length ? (data.teamsPosted!==false) : false;
+    if(data.groups){
+      groupCfg={
+        gA1:+data.groups.gA1||groupCfg.gA1, gA2:+data.groups.gA2||groupCfg.gA2,
+        gB1:+data.groups.gB1||groupCfg.gB1, gB2:+data.groups.gB2||groupCfg.gB2,
+        numA:+data.groups.numA||groupCfg.numA, numB:+data.groups.numB||groupCfg.numB
+      };
+    }
     if(role==='teams') renderList();
   }catch(e){ /* stay quiet, retry next tick */ }
 }
@@ -325,15 +382,20 @@ function renderList(){
   const wrap=$('#plist');
 
   if(role==='teams'){
+    let html=renderGroupTally();
     const posted = teams.length && teamsPosted;
-    if(!posted){ wrap.innerHTML='<div class="empty"><b>No Teams Posted yet</b>They\'ll appear here after Sync Teams to Parent Page in admin.</div>'; return; }
+    if(!posted){
+      html+='<div class="empty"><b>No Teams Posted yet</b>Group counts update live as jerseys are assigned. Full rosters appear after Sync Teams to Parent Page in admin.</div>';
+      wrap.innerHTML=html;
+      return;
+    }
     const q=query;
     const filtered=teams.map(t=>({
       name:t.name,
       players:t.players.filter(p=>!q || (p.n||'').toLowerCase().includes(q) || (p.sc||'').toLowerCase().includes(q) || String(p.j||'')===q)
     })).filter(t=>!q || t.players.length || (t.name||'').toLowerCase().includes(q));
-    if(!filtered.length){ wrap.innerHTML='<div class="empty"><b>No matches</b></div>'; return; }
-    wrap.innerHTML=`<div class="team-grid">${filtered.map(t=>{
+    if(!filtered.length){ wrap.innerHTML=html+'<div class="empty"><b>No matches</b></div>'; return; }
+    wrap.innerHTML=html+`<div class="team-grid">${filtered.map(t=>{
       const ps=t.players.slice().sort((a,b)=>(+b.j||0)-(+a.j||0));
       return `<div class="team-card">
         <header><h3>${esc(t.name)}</h3><small>${ps.length} players</small></header>

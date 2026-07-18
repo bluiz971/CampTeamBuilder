@@ -1552,7 +1552,7 @@ function buildPublicData(opts){
                  .replace(/[·|,\-\s]+$/,'').replace(/^[·|,\-\s]+/,'').trim();
     return { y:dt.getFullYear(), mo:dt.getMonth()+1, d:dt.getDate(), startMin, loc };
   })();
-  return { roster, teams:teamsList, teamsPosted:postTeams, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'' };
+  return { roster, teams:teamsList, teamsPosted:postTeams, groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'' };
 }
 
 $('#siteBaseUrl').addEventListener('input', e=>{ S.siteBaseUrl=e.target.value.trim().replace(/\/$/,''); store.save(); renderSiteLink(); });
