@@ -269,6 +269,31 @@ function authHeaders(extra){
 // --- Shared player list, polled every 4s ---
 let players=[];
 let role='checkin', query='';
+function playerNameKey(first, last){
+  return (String(first||'').trim()+'|'+String(last||'').trim()).toLowerCase();
+}
+function preferPlayer(a, b){
+  if(!a) return b; if(!b) return a;
+  const score=p=>{
+    let s=0;
+    if(p.photo_url) s+=8;
+    if(String(p.jersey||'').trim()) s+=4;
+    if(p.checked_in) s+=2;
+    if((p.addons_manual||[]).length) s+=1;
+    return s;
+  };
+  return score(b)>score(a)?b:a;
+}
+// Hide ghost duplicates created by older roster pushes (same name, different ids).
+function dedupePlayersByName(list){
+  const byName=new Map();
+  (list||[]).forEach(p=>{
+    const key=playerNameKey(p.first, p.last);
+    if(key==='|'){ byName.set(p.id, p); return; }
+    byName.set(key, preferPlayer(byName.get(key), p));
+  });
+  return [...byName.values()];
+}
 async function pollPlayers(){
   if(!campCode){ $('#livePill').textContent='Enter a Camp Code above.'; return; }
   try{
@@ -280,7 +305,7 @@ async function pollPlayers(){
       else $('#livePill').textContent='Could not load — retrying…';
       return;
     }
-    players=await res.json();
+    players=dedupePlayersByName(await res.json());
     $('#livePill').textContent='🟢 Live — '+players.length+' players · updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
     renderList();
   }catch(e){ $('#livePill').textContent='⚪ Offline — retrying…'; }

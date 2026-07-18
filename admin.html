@@ -635,30 +635,79 @@ function buildMapping(){
   $('#loadMsg').textContent=rawRows.length+' rows found';
 }
 
-$('#btnLoad').addEventListener('click',()=>{
+function playerNameKey(first, last){
+  return (String(first||'').trim()+'|'+String(last||'').trim()).toLowerCase();
+}
+// When two rows are the same person, keep the one with the most station progress.
+function preferPlayerRow(a, b){
+  if(!a) return b; if(!b) return a;
+  const score=p=>{
+    let s=0;
+    if(p.photo_url||p.photoUrl) s+=8;
+    if(String(p.jersey||'').trim()) s+=4;
+    if(p.checked_in||p.checkedIn) s+=2;
+    if((p.addons_manual||p.addonsManual||[]).length) s+=1;
+    return s;
+  };
+  return score(b)>score(a)?b:a;
+}
+
+async function fetchRemotePlayersByName(){
+  const out={};
+  if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return out;
+  try{
+    const res=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(S.syncCode)+'&select=*',{
+      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+    });
+    if(!res.ok) return out;
+    const rows=await res.json();
+    rows.forEach(r=>{
+      const key=playerNameKey(r.first, r.last);
+      if(key==='|') return;
+      out[key]=preferPlayerRow(out[key], r);
+    });
+  }catch(e){}
+  return out;
+}
+
+$('#btnLoad').addEventListener('click', async ()=>{
   const map={};
   $$('#mapGrid select').forEach(s=>map[s.dataset.k]=+s.value);
   if(map.first<0||map.last<0){ alert('First Name and Last Name are required.'); return; }
-  // Preserve existing check-in state on re-upload (match by name)
-  const prev={}; S.players.forEach(p=>prev[(p.first+'|'+p.last).toLowerCase()]=p);
-  S.players=rawRows.map((r,i)=>{
+  // Preserve existing check-in state on re-upload (match by name).
+  // Also reuse Supabase ids by name so a re-upload doesn't create duplicate station rows.
+  const prev={}; S.players.forEach(p=>prev[playerNameKey(p.first,p.last)]=p);
+  const remoteByName=await fetchRemotePlayersByName();
+  const seen={};
+  let dupesInFile=0;
+  const mapped=[];
+  rawRows.forEach((r,i)=>{
     const g=k=>map[k]>=0?String(r[map[k]]??'').trim():'';
-    const key=(g('first')+'|'+g('last')).toLowerCase();
+    const first=g('first'), last=g('last');
+    if(!first && !last) return;
+    const key=playerNameKey(first, last);
+    if(seen[key]){ dupesInFile++; return; } // one row per name from the spreadsheet
+    seen[key]=true;
     const old=prev[key]||{};
+    const remote=remoteByName[key]||{};
     const extra=extraByName[key]||{};
-    const jersey=g('jersey')||extra.jersey||old.jersey||'';
+    const jersey=g('jersey')||extra.jersey||old.jersey||remote.jersey||'';
     // A jersey number means the player was checked in (same rule as the
     // Player Data tab formula), or an explicit check-in mark, or prior state
-    const checkedIn=old.checkedIn||!!g('checkin')||extra.checkin||jersey!=='';
-    return {
-      id:i, uid: old.uid || (crypto.randomUUID ? crypto.randomUUID() : (key+'-'+Date.now()+'-'+i)),
-      first:g('first'), last:g('last'), year:g('year'), height:g('height'),
-      hin:heightToInches(g('height')), position:g('position'), school:g('school'),
-      city:g('city'), state:g('state'), payStatus:g('payStatus'),
-      balance:g('balance'), items:g('items'), email:g('email'),
-      checkedIn, jersey, addonsManual:old.addonsManual||[], addonsRemoved:old.addonsRemoved||[], photoUrl:old.photoUrl||''
-    };
-  }).filter(p=>p.first||p.last);
+    const checkedIn=!!(old.checkedIn||remote.checked_in||g('checkin')||extra.checkin||jersey);
+    mapped.push({
+      id:mapped.length, uid: old.uid || remote.id || (crypto.randomUUID ? crypto.randomUUID() : (key+'-'+Date.now()+'-'+i)),
+      first, last, year:g('year')||remote.grad_year||'', height:g('height')||remote.height||'',
+      hin:heightToInches(g('height')||remote.height||''), position:g('position')||remote.position||'', school:g('school')||remote.school||'',
+      city:g('city')||remote.city||'', state:g('state')||remote.state||'', payStatus:g('payStatus')||remote.pay_status||'',
+      balance:g('balance')||remote.balance||'', items:g('items')||remote.items||'', email:g('email')||remote.email||'',
+      checkedIn, jersey,
+      addonsManual:old.addonsManual||remote.addons_manual||[],
+      addonsRemoved:old.addonsRemoved||remote.addons_removed||[],
+      photoUrl:old.photoUrl||remote.photo_url||''
+    });
+  });
+  S.players=mapped;
   S.teams=null;
   store.save(); renderAll(); pushRosterLive();
   $('#rosterLoaded').hidden=false;
@@ -666,7 +715,8 @@ $('#btnLoad').addEventListener('click',()=>{
   const withC=S.players.filter(p=>p.checkedIn).length;
   $('#loadMsg').textContent=S.players.length+' players loaded'
     +(withJ?' · '+withJ+' jersey numbers carried over':'')
-    +(withC?' · '+withC+' already checked in':'');
+    +(withC?' · '+withC+' already checked in':'')
+    +(dupesInFile?' · '+dupesInFile+' duplicate name'+(dupesInFile===1?'':'s')+' skipped in file':'');
 });
 
 function renderRosterTbl(){
@@ -1457,6 +1507,18 @@ function playerRow(p){
 }
 
 let _rosterPushTimer=null;
+async function deletePlayerIds(ids){
+  if(!ids.length) return;
+  const CHUNK=80;
+  for(let i=0;i<ids.length;i+=CHUNK){
+    const chunk=ids.slice(i,i+CHUNK);
+    await fetch(S.syncUrl+'/rest/v1/players?id=in.('+chunk.map(id=>'"'+id+'"').join(',')+')',{
+      method:'DELETE',
+      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+    });
+  }
+}
+
 async function pushRosterLive(){
   if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return;
   if(!S.players.length) return;
@@ -1473,7 +1535,39 @@ async function pushRosterLive(){
         body:JSON.stringify(chunk)
       });
     }
-    $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Roster pushed to stations</b> ('+rows.length+' players) at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
+    // Remove orphan/duplicate rows left behind by older pushes (new UUIDs).
+    let removed=0;
+    const keep=new Set(rows.map(r=>r.id));
+    const existingRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(S.syncCode)+'&select=id,first,last,jersey,checked_in,photo_url,addons_manual',{
+      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+    });
+    if(existingRes.ok){
+      const existing=await existingRes.json();
+      const orphans=existing.filter(r=>!keep.has(r.id)).map(r=>r.id);
+      // Also collapse same-name duplicates that somehow share keep-set edges
+      const byName={};
+      const nameDupes=[];
+      existing.filter(r=>keep.has(r.id)).forEach(r=>{
+        const key=playerNameKey(r.first,r.last);
+        if(key==='|') return;
+        if(!byName[key]){ byName[key]=r; return; }
+        const keepRow=preferPlayerRow(byName[key], r);
+        const drop=keepRow===byName[key]?r:byName[key];
+        byName[key]=keepRow;
+        nameDupes.push(drop.id);
+        keep.delete(drop.id); // drop from local roster too if present
+      });
+      if(nameDupes.length){
+        S.players=S.players.filter(p=>!nameDupes.includes(p.uid));
+        S.players.forEach((p,i)=>p.id=i);
+        store.save();
+      }
+      const toDelete=[...new Set([...orphans, ...nameDupes])];
+      if(toDelete.length){ await deletePlayerIds(toDelete); removed=toDelete.length; }
+    }
+    $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Roster pushed to stations</b> ('+rows.length+' players'
+      +(removed?' · removed '+removed+' duplicate/orphan'+(removed===1?'':'s'):'')
+      +') at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
   }catch(e){
     $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Could not push roster to stations — check Live Sync is configured and you\'re signed in.</span>';
   }
@@ -1492,9 +1586,23 @@ async function pollPlayersLive(){
     if(!res.ok) return;
     const rows=await res.json();
     if(!rows.length) return;
-    const byUid={}; S.players.forEach(p=>{ if(p.uid) byUid[p.uid]=p; });
-    let changed=false;
+    // Auto-remove same-name duplicates left from older roster pushes
+    const byName={};
+    const dupeIds=[];
     rows.forEach(r=>{
+      const key=playerNameKey(r.first, r.last);
+      if(key==='|') return;
+      if(!byName[key]){ byName[key]=r; return; }
+      const keep=preferPlayerRow(byName[key], r);
+      const drop=keep===byName[key]?r:byName[key];
+      byName[key]=keep;
+      dupeIds.push(drop.id);
+    });
+    if(dupeIds.length) await deletePlayerIds([...new Set(dupeIds)]);
+    const liveRows=rows.filter(r=>!dupeIds.includes(r.id));
+    const byUid={}; S.players.forEach(p=>{ if(p.uid) byUid[p.uid]=p; });
+    let changed=!!dupeIds.length;
+    liveRows.forEach(r=>{
       const p=byUid[r.id];
       if(!p) return; // a station can't add brand-new players, only edit existing ones
       if(p.checkedIn!==r.checked_in || String(p.jersey||'')!==String(r.jersey||'')
@@ -1507,7 +1615,9 @@ async function pollPlayersLive(){
     });
     if(changed){ store.save(); renderCheckin(); renderJersey(); renderPlayers(); updateScoreboard(); }
     _lastStationPull=new Date();
-    $('#rosterSyncNote').innerHTML='Stations last checked: '+_lastStationPull.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})+(changed?' <b style="color:var(--green)">— updates pulled in</b>':'');
+    $('#rosterSyncNote').innerHTML='Stations last checked: '+_lastStationPull.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})
+      +(dupeIds.length?' <b style="color:var(--green)">— removed '+dupeIds.length+' duplicate'+(dupeIds.length===1?'':'s')+'</b>':'')
+      +(changed && !dupeIds.length?' <b style="color:var(--green)">— updates pulled in</b>':'');
   }catch(e){ /* stay quiet, retry on next tick */ }
 }
 setInterval(pollPlayersLive, 5000);
