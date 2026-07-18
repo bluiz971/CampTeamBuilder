@@ -231,6 +231,12 @@ dialog select{width:100%;margin:10px 0 16px}
   <div class="mapping" style="margin-top:14px">
     <h3 style="margin-bottom:6px">Multi-Station Check-In</h3>
     <p style="font-size:13px;color:var(--mut);margin-bottom:10px">If Live Sync is set up (Publish tab), the roster pushes to Supabase automatically on load so the Check-In, Jersey, Add-Ons, and Photos tablets (station.html) can start working immediately. This page also pulls their updates back in every few seconds — no re-uploading needed either direction.</p>
+    <div id="stationWipeBanner" hidden style="background:#fde8e8;border:1px solid #e8a0a0;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:14px;line-height:1.45">
+      <b style="color:var(--red)">Stations still have players for this camp.</b>
+      <span id="stationWipeCount"></span>
+      Admin is empty, but tablets read Supabase — click below to wipe them.
+      <div style="margin-top:10px"><button class="btn btn-orange btn-sm" type="button" id="btnClearStationsBanner">🗑 Clear Stations Now</button></div>
+    </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-dark btn-sm" id="btnPushRoster">📤 Push Roster to Stations</button>
       <button class="btn btn-ghost btn-sm" id="btnClearStations">🗑 Clear Stations for Camp</button>
@@ -1509,34 +1515,66 @@ function playerRow(p){
 
 let _rosterPushTimer=null;
 async function deletePlayerIds(ids){
-  if(!ids.length) return;
+  if(!ids.length) return {ok:true, deleted:0};
   const CHUNK=80;
+  let deleted=0;
   for(let i=0;i<ids.length;i+=CHUNK){
     const chunk=ids.slice(i,i+CHUNK);
-    await fetch(S.syncUrl+'/rest/v1/players?id=in.('+chunk.map(id=>'"'+id+'"').join(',')+')',{
+    const res=await fetch(S.syncUrl+'/rest/v1/players?id=in.('+chunk.map(id=>'"'+id+'"').join(',')+')',{
       method:'DELETE',
-      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token, 'Prefer':'return=representation' }
     });
+    if(res.ok){
+      try{ deleted+=(await res.json()).length; }catch(e){ deleted+=chunk.length; }
+    }
   }
+  return {ok:true, deleted};
 }
 
 async function clearCampRemote(campCode){
   if(!(S.syncUrl && S.syncKey && campCode && authSession && authSession.access_token)){
-    return {ok:false, reason:'not-configured'};
+    return {ok:false, reason:'not-configured', remaining:-1};
   }
   const code=String(campCode).trim();
-  const headers={ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token };
-  // Delete every station player row for this camp
-  const listRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{ headers });
-  if(listRes.ok){
-    const ids=(await listRes.json()).map(r=>r.id);
-    await deletePlayerIds(ids);
+  const headers={
+    'apikey':S.syncKey,
+    'Authorization':'Bearer '+authSession.access_token,
+    'Prefer':'return=representation'
+  };
+  // Direct delete by camp code (avoids pagination / id-list limits)
+  let deleted=0;
+  for(let attempt=0; attempt<8; attempt++){
+    const delRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code),{
+      method:'DELETE', headers
+    });
+    if(delRes.ok){
+      try{ deleted+=(await delRes.json()).length; }catch(e){}
+    }
+    // Confirm nothing left (PostgREST may cap rows per response)
+    const check=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id&limit=1',{
+      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+    });
+    if(!check.ok) break;
+    const left=await check.json();
+    if(!left.length) break;
+    // Fallback: delete by id list if filter delete left rows
+    const all=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{
+      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+    });
+    if(all.ok){
+      const ids=(await all.json()).map(r=>r.id);
+      if(!ids.length) break;
+      await deletePlayerIds(ids);
+    }
   }
-  // Clear parent/station public payload for this camp
   await fetch(S.syncUrl+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(code),{
     method:'DELETE', headers
   });
-  return {ok:true};
+  const verify=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{
+    headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+  });
+  const remaining=verify.ok?(await verify.json()).length:-1;
+  return {ok:remaining===0, deleted, remaining};
 }
 
 async function pushRosterLive(){
@@ -1604,14 +1642,78 @@ async function pushRosterLive(){
 // and merge them into the local roster so admin.html always reflects
 // what's happening at the physical tables, without any manual re-upload.
 let _lastStationPull=null;
+function setStationWipeBanner(remoteCount){
+  const banner=$('#stationWipeBanner');
+  if(!banner) return;
+  const show=!S.players.length && remoteCount>0;
+  banner.hidden=!show;
+  if(show){
+    $('#stationWipeCount').textContent=' Currently '+remoteCount+' on tablets for "'+S.syncCode+'".';
+  }
+}
+async function runClearStations(){
+  if(!(S.syncUrl && S.syncKey && S.syncCode)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Set Camp Code + Live Sync on the Publish tab first.</span>'; return; }
+  if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
+  if(!confirm('Delete ALL station players and parent-page data for camp "'+S.syncCode+'"?\n\nTablets will go empty within a few seconds.')) return;
+  $('#rosterSyncNote').textContent='Clearing stations…';
+  try{
+    const r=await clearCampRemote(S.syncCode);
+    S.teamsLive=false; store.save();
+    try{ sessionStorage.removeItem('wipeCamp'); }catch(e){}
+    setStationWipeBanner(r.remaining||0);
+    if(r.ok){
+      $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code>'
+        +(r.deleted?' ('+r.deleted+' removed)':'')
+        +'. Hard-refresh the station page.';
+    }else{
+      $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Clear incomplete — '+(r.remaining>=0?r.remaining+' still left. Click Clear Stations again.':'check Live Sync / delete policy on players table.')+'</span>';
+    }
+  }catch(e){
+    $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Clear failed: '+(e.message||e)+'</span>';
+  }
+}
 async function pollPlayersLive(){
   if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return;
   try{
+    // After Reset, finish wiping remote until empty
+    let pendingWipe=false;
+    try{ pendingWipe=sessionStorage.getItem('wipeCamp')===S.syncCode; }catch(e){}
+    if(pendingWipe || !S.players.length){
+      const countRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(S.syncCode)+'&select=id',{
+        headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+      });
+      if(countRes.ok){
+        const remote=await countRes.json();
+        setStationWipeBanner(remote.length);
+        if(pendingWipe && remote.length){
+          const r=await clearCampRemote(S.syncCode);
+          setStationWipeBanner(r.remaining||0);
+          if(r.ok){
+            try{ sessionStorage.removeItem('wipeCamp'); }catch(e){}
+            $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code>. Hard-refresh tablets.';
+          }else{
+            $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Still clearing… '+(r.remaining>=0?r.remaining+' left':'retrying')+'. Or click Clear Stations Now.</span>';
+          }
+          return;
+        }
+        if(!S.players.length){
+          _lastStationPull=new Date();
+          if(remote.length){
+            $('#rosterSyncNote').innerHTML='Stations still have <b style="color:var(--red)">'+remote.length+' players</b> for <code>'+esc(S.syncCode)+'</code> — click <b>Clear Stations Now</b> above.';
+          }else{
+            $('#rosterSyncNote').innerHTML='Stations empty for <code>'+esc(S.syncCode)+'</code> · checked '+_lastStationPull.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+          }
+          return;
+        }
+      }
+    }
+
     const res=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(S.syncCode)+'&select=*',{
       headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
     });
     if(!res.ok) return;
     const rows=await res.json();
+    setStationWipeBanner(0);
     if(!rows.length) return;
     // Auto-remove same-name duplicates left from older roster pushes
     const byName={};
@@ -1648,30 +1750,19 @@ async function pollPlayersLive(){
   }catch(e){ /* stay quiet, retry on next tick */ }
 }
 setInterval(pollPlayersLive, 5000);
-$('#btnPushRoster').addEventListener('click', ()=>{
-  if(!S.players.length){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Load a roster first. To wipe tablets only, use Clear Stations for Camp.</span>'; return; }
+$('#btnPushRoster').addEventListener('click', async ()=>{
   if(!(S.syncUrl && S.syncKey && S.syncCode)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Set up Live Sync on the Publish tab first.</span>'; return; }
   if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
+  if(!S.players.length){
+    // Empty admin + Push = wipe stations (what people expect after Reset)
+    await runClearStations();
+    return;
+  }
   $('#rosterSyncNote').textContent='Pushing…';
   pushRosterLive();
 });
-$('#btnClearStations').addEventListener('click', async ()=>{
-  if(!(S.syncUrl && S.syncKey && S.syncCode)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Set Camp Code + Live Sync on the Publish tab first.</span>'; return; }
-  if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
-  if(!confirm('Delete ALL station players and parent-page data for camp "'+S.syncCode+'"?\n\nTablets will go empty within a few seconds. Local admin roster is left alone.')) return;
-  $('#rosterSyncNote').textContent='Clearing stations…';
-  try{
-    const r=await clearCampRemote(S.syncCode);
-    if(r.ok){
-      S.teamsLive=false; store.save();
-      $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code>. Hard-refresh tablets if they still show old names.';
-    }else{
-      $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Could not clear stations — check Live Sync sign-in.</span>';
-    }
-  }catch(e){
-    $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Clear failed: '+(e.message||e)+'</span>';
-  }
-});
+$('#btnClearStations').addEventListener('click', ()=>runClearStations());
+$('#btnClearStationsBanner').addEventListener('click', ()=>runClearStations());
 
 function buildPublicData(opts){
   opts=opts||{};
@@ -1769,9 +1860,11 @@ $('#btnReset').addEventListener('click', async ()=>{
   let remoteNote='';
   if(camp && S.syncUrl && S.syncKey && authSession && authSession.access_token){
     try{
+      try{ sessionStorage.setItem('wipeCamp', camp); }catch(e){}
       const r=await clearCampRemote(camp);
-      remoteNote=r.ok?' Stations for "'+camp+'" were cleared.':' Could not clear stations — use Clear Stations after signing in.';
-    }catch(e){ remoteNote=' Station clear failed.'; }
+      remoteNote=r.ok?' Stations for "'+camp+'" were cleared.':' Still wiping stations in background — leave this tab open a few seconds, or click Clear Stations Now.';
+      setStationWipeBanner(r.remaining||0);
+    }catch(e){ remoteNote=' Station clear failed — click Clear Stations Now.'; }
   }else if(camp){
     remoteNote=' Sign in on Publish, then click Clear Stations for Camp to wipe tablets.';
   }
