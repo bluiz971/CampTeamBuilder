@@ -197,20 +197,20 @@ dialog select{width:100%;margin:10px 0 16px}
     <div class="sb-cell"><b id="sbTeams">0</b><span>Teams Set</span></div>
   </div>
   <nav>
-    <button data-p="roster" class="on"><span class="step">1</span>Roster</button>
-    <button data-p="checkin"><span class="step">2</span>Check-In</button>
-    <button data-p="jersey"><span class="step">3</span>Jersey</button>
-    <button data-p="players"><span class="step">4</span>Player Data</button>
-    <button data-p="teams"><span class="step">5</span>Teams</button>
-    <button data-p="schedule"><span class="step">6</span>Schedule</button>
-    <button data-p="publish"><span class="step">7</span>Publish</button>
+    <button data-p="publish" class="on"><span class="step">1</span>Publish</button>
+    <button data-p="roster"><span class="step">2</span>Roster</button>
+    <button data-p="checkin"><span class="step">3</span>Check-In</button>
+    <button data-p="jersey"><span class="step">4</span>Jersey</button>
+    <button data-p="players"><span class="step">5</span>Player Data</button>
+    <button data-p="teams"><span class="step">6</span>Teams</button>
+    <button data-p="schedule"><span class="step">7</span>Schedule</button>
   </nav>
 </header>
 
 <main>
 
-<!-- ============ 1. ROSTER ============ -->
-<section class="panel on" id="panel-roster">
+<!-- ============ 2. ROSTER ============ -->
+<section class="panel" id="panel-roster">
   <div class="panel-head">
     <div><h2>Master Roster</h2>
     <p>Upload the registration export (.xlsx, .xlsm or .csv). Columns are detected automatically — confirm the mapping below, then load.</p></div>
@@ -331,8 +331,8 @@ dialog select{width:100%;margin:10px 0 16px}
   <div id="schedPreview"></div>
 </section>
 
-<!-- ============ 7. PUBLISH ============ -->
-<section class="panel" id="panel-publish">
+<!-- ============ 1. PUBLISH ============ -->
+<section class="panel on" id="panel-publish">
   <div class="panel-head">
     <div><h2>Publish</h2>
     <p>Two pages, one site: <b>admin.html</b> (this tool, private) and <b>index.html</b> (the parent page). Deploy both together once. After that, everything below happens without touching a file again — updates push straight to Supabase and show up live for parents.</p></div>
