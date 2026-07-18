@@ -239,17 +239,17 @@ function goView(name){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-// HOME — tiles for app, shop, schedule, teams, Instagram, website
+// HOME — tile order: Teams, Schedule, Shop | Select 360, Website, Instagram
 function renderHome(){
   const igUrl=D.igUrl||DEFAULT_IG_URL;
   const webUrl=D.webUrl||DEFAULT_WEB_URL;
   const tiles=[];
-  if(D.appUrl) tiles.push({href:D.appUrl,ext:true,pic:'app',icon:'🏀',label:'Select 360',desc:'Training, recruiting & player tools',go:'Open App ↗'});
-  if(D.shopUrl) tiles.push({href:D.shopUrl,ext:true,pic:'shop',icon:'🛒',label:'Add-Ons Shop',desc:'Mixtapes, evals, film & more',go:'Shop Now ↗'});
-  tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?D.sched.length+' games posted':'Posted once available',go:'View Schedule'});
   tiles.push({view:'teams',pic:'teamz',icon:'👕',label:'Teams',desc:D.teams.length?D.teams.length+' teams assigned':'Posted once available',go:'View Teams'});
-  tiles.push({href:igUrl,ext:true,pic:'insta',icon:'📸',label:'Instagram',desc:'Photos & camp highlights',go:'Follow Us ↗'});
+  tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?D.sched.length+' games posted':'Posted once available',go:'View Schedule'});
+  if(D.shopUrl) tiles.push({href:D.shopUrl,ext:true,pic:'shop',icon:'🛒',label:'Add-Ons Shop',desc:'Mixtapes, evals, film & more',go:'Shop Now ↗'});
+  if(D.appUrl) tiles.push({href:D.appUrl,ext:true,pic:'app',icon:'🏀',label:'Select 360',desc:'Training, recruiting & player tools',go:'Open App ↗'});
   tiles.push({href:webUrl,ext:true,pic:'web',icon:'🌐',label:'AAU Select Tour',desc:'Official website & other camps',go:'Visit Site ↗'});
+  tiles.push({href:igUrl,ext:true,pic:'insta',icon:'📸',label:'Instagram',desc:'Photos & camp highlights',go:'Follow Us ↗'});
   $('#homeTiles').innerHTML=tiles.map(t=>{
     const inner=`<div class="pic ${t.pic}">${t.icon}</div><div class="cap"><b>${esc(t.label)}</b><span>${esc(t.desc)}</span><span class="go">${esc(t.go)}</span></div>`;
     return t.ext
