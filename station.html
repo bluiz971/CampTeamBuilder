@@ -724,8 +724,8 @@ function renderList(){
       });
   }
   else if(role==='playerdata'){
-    // Photo taken + jersey assigned → done with photo line
-    rows=players.filter(p=>String(p.jersey||'').trim() && p.photo_url && matches(p))
+    // Jersey assigned → Player Data (photo optional)
+    rows=players.filter(p=>String(p.jersey||'').trim() && matches(p))
       .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0));
   }
   else rows=players.filter(p=>matches(p));
@@ -737,7 +737,7 @@ function renderList(){
       jersey:'No one waiting on a jersey',
       addons:'No checked-in players yet',
       photos:'No jersey holders yet — assign numbers on the Jersey tab first',
-      playerdata:'No completed player cards yet — take photos after assigning jerseys'
+      playerdata:'No players with jerseys yet — assign numbers on the Jersey tab'
     }[role];
     wrap.innerHTML='<div class="empty"><b>'+msg+'</b></div>'; return;
   }
@@ -786,13 +786,13 @@ function renderList(){
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   } else if(role==='playerdata'){
     wrap.innerHTML=rows.map(p=>`<div class="prow photo-row">
-      <img class="thumb" src="${esc(p.photo_url)}">
+      ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
       <div class="who">
         <b>${esc(p.first)} ${esc(p.last)}</b>
         <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))||'—'} · ${esc(p.school)}</small>
       </div>
-      <span class="badge done">Ready</span>
-      <button class="bigbtn ghost" data-photo="${p.id}">Retake 📷</button>
+      ${p.photo_url?'<span class="badge done">Ready</span>':'<span class="badge due">Needs photo</span>'}
+      <button class="bigbtn ghost" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
     </div>`).join('');
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   }
