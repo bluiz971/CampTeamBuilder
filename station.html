@@ -113,7 +113,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 #camModal .cam-head b{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase;display:block}
 #camModal .cam-head span{color:#9aa4b1;font-size:13px}
 #camModal .cam-stage{position:relative;width:min(92vw,420px);aspect-ratio:3/4;border-radius:16px;overflow:hidden;background:#000;border:3px solid var(--orange)}
-#camModal video,#camModal canvas.preview{width:100%;height:100%;object-fit:cover;display:block}
+#camModal video,#camModal canvas.preview{width:100%;height:100%;object-fit:cover;display:block;transform:none}
 #camModal .face-guide{pointer-events:none;position:absolute;inset:8% 12% 10%;border:2px dashed rgba(255,255,255,.75);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.28)}
 #camModal .cam-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px;width:min(92vw,420px)}
 #camModal .cam-actions .bigbtn{flex:1;min-width:120px}
@@ -174,6 +174,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   <div class="cam-actions">
     <button class="bigbtn ghost" type="button" id="camCancel">Cancel</button>
     <button class="bigbtn ghost" type="button" id="camFile">Upload Photo</button>
+    <button class="bigbtn ghost" type="button" id="camFlip">Flip Camera</button>
     <button class="bigbtn" type="button" id="camShutter">Take Photo</button>
     <button class="bigbtn" type="button" id="camRetake" style="display:none">Retake</button>
     <button class="bigbtn" type="button" id="camUse" style="display:none">Upload ✓</button>
@@ -547,8 +548,8 @@ function openAddonPopover(id){
   });
 }
 
-// PHOTOS — live camera (preferred) or gallery, head-crop, upload to Storage
-let camStream=null, camPlayerId=null, camBlob=null;
+// PHOTOS — live rear camera (preferred) or gallery upload
+let camStream=null, camPlayerId=null, camBlob=null, camDeviceIds=[], camDeviceIdx=0;
 
 function stopCamera(){
   if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
@@ -556,13 +557,86 @@ function stopCamera(){
 }
 
 function setCamMode(mode){
-  // mode: live | preview
   const live=mode==='live';
   $('#camVideo').style.display=live?'block':'none';
   $('#camSnap').style.display=live?'none':'block';
   $('#camShutter').style.display=live?'':'none';
+  $('#camFlip').style.display=live?'':'none';
   $('#camRetake').style.display=live?'none':'';
   $('#camUse').style.display=live?'none':'';
+}
+
+function isRearLabel(label){
+  return /back|rear|environment|world|hind|posterior/i.test(label||'');
+}
+function isFrontLabel(label){
+  return /front|user|face|selfie|facetime/i.test(label||'');
+}
+
+async function listVideoDevices(){
+  // Need a one-time permission grant so device labels are populated
+  try{
+    const probe=await navigator.mediaDevices.getUserMedia({ audio:false, video:true });
+    probe.getTracks().forEach(t=>t.stop());
+  }catch(e){}
+  const all=await navigator.mediaDevices.enumerateDevices();
+  return all.filter(d=>d.kind==='videoinput');
+}
+
+async function pickRearDeviceId(){
+  const cams=await listVideoDevices();
+  camDeviceIds=cams.map(c=>c.deviceId).filter(Boolean);
+  if(!cams.length) return null;
+  const rear=cams.find(c=>isRearLabel(c.label));
+  if(rear){ camDeviceIdx=camDeviceIds.indexOf(rear.deviceId); return rear.deviceId; }
+  // Prefer anything that is NOT labeled as front/selfie
+  const notFront=cams.find(c=>c.label && !isFrontLabel(c.label));
+  if(notFront){ camDeviceIdx=camDeviceIds.indexOf(notFront.deviceId); return notFront.deviceId; }
+  // Multiple cams and no labels: often index 0 is front on phones — try last
+  if(cams.length>1){ camDeviceIdx=cams.length-1; return cams[cams.length-1].deviceId; }
+  camDeviceIdx=0;
+  return cams[0].deviceId;
+}
+
+async function startStreamWithConstraints(videoConstraints){
+  const stream=await navigator.mediaDevices.getUserMedia({ audio:false, video:videoConstraints });
+  const v=$('#camVideo');
+  v.srcObject=stream;
+  // Never mirror — selfie apps flip the preview; we want a normal camera view
+  v.style.transform='none';
+  await v.play().catch(()=>{});
+  return stream;
+}
+
+async function openRearCamera(){
+  // 1) Hard-request environment (rear) camera
+  try{
+    return await startStreamWithConstraints({
+      facingMode:{ exact:'environment' },
+      width:{ ideal:1920 }, height:{ ideal:1080 }
+    });
+  }catch(e){}
+
+  // 2) Pick rear camera by deviceId / label
+  try{
+    const id=await pickRearDeviceId();
+    if(id){
+      return await startStreamWithConstraints({
+        deviceId:{ exact:id },
+        width:{ ideal:1920 }, height:{ ideal:1080 }
+      });
+    }
+  }catch(e){}
+
+  // 3) Soft environment preference
+  try{
+    return await startStreamWithConstraints({
+      facingMode:'environment',
+      width:{ ideal:1280 }, height:{ ideal:960 }
+    });
+  }catch(e){}
+
+  throw new Error('No rear camera');
 }
 
 async function openCamera(id){
@@ -577,27 +651,29 @@ async function openCamera(id){
   $('#camModal').setAttribute('aria-hidden','false');
   stopCamera();
   try{
-    // Rear / environment camera — not selfie mode
-    camStream=await navigator.mediaDevices.getUserMedia({
-      audio:false,
-      video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:960} }
-    });
-    const v=$('#camVideo');
-    v.srcObject=camStream;
-    await v.play().catch(()=>{});
+    camStream=await openRearCamera();
   }catch(err){
-    // Fall back to any camera, then to the device camera file picker
+    toast('Rear camera unavailable — use Upload Photo or Flip Camera');
     try{
-      camStream=await navigator.mediaDevices.getUserMedia({ audio:false, video:true });
-      const v=$('#camVideo');
-      v.srcObject=camStream;
-      await v.play().catch(()=>{});
+      camStream=await startStreamWithConstraints(true);
     }catch(err2){
-      toast('Camera unavailable — choose Take Photo or Upload');
       closeCameraModal(false);
       $('#photoCameraInput').click();
     }
   }
+}
+
+async function flipCamera(){
+  try{
+    if(!camDeviceIds.length) await pickRearDeviceId();
+    if(camDeviceIds.length<2){ toast('Only one camera found on this device'); return; }
+    camDeviceIdx=(camDeviceIdx+1) % camDeviceIds.length;
+    stopCamera();
+    camStream=await startStreamWithConstraints({
+      deviceId:{ exact:camDeviceIds[camDeviceIdx] },
+      width:{ ideal:1920 }, height:{ ideal:1080 }
+    });
+  }catch(e){ toast('Could not switch camera'); }
 }
 
 function closeCameraModal(clearId){
@@ -610,6 +686,7 @@ function closeCameraModal(clearId){
 }
 
 $('#camCancel').addEventListener('click', ()=>closeCameraModal());
+$('#camFlip').addEventListener('click', ()=>flipCamera());
 $('#camFile').addEventListener('click', ()=>{
   closeCameraModal(false);
   $('#photoInput').dataset.forId=camPlayerId;
