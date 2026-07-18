@@ -287,11 +287,13 @@ dialog select{width:100%;margin:10px 0 16px}
   <div class="panel-head">
     <div><h2>Assigned Teams</h2>
     <p>Balanced by team size, position mix (guards / wings / bigs), height, and grad year. Set each group's grad-year range below — <span id="grpDesc"></span>.</p></div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-dark btn-sm" id="btnPrint">Print Rosters</button>
       <button class="btn btn-dark btn-sm" id="btnCsvTeams">Export CSV</button>
+      <button class="btn btn-orange btn-sm" id="btnSyncTeams">⬆ Sync Teams to Parent Page</button>
     </div>
   </div>
+  <div class="balance-note" id="teamsSyncNote" style="margin-bottom:12px"></div>
   <div class="gen-bar">
     <div><label>Group A years</label>
       <input type="number" id="gA1" min="2020" max="2045" value="2027" style="width:84px"> –
@@ -379,9 +381,9 @@ dialog select{width:100%;margin:10px 0 16px}
 
   <div class="gen-bar" style="display:block;margin-top:16px">
     <h3 style="font-size:18px;text-transform:uppercase;margin-bottom:4px">3. Your public link</h3>
-    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Once index.html is deployed (step 4), this is the exact link to text parents — it only changes by camp code, never by file.</p>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">After you hit <b>Save &amp; Sync Now</b>, the parent link below is ready to text families. It uses your Site Base URL + Camp Code.</p>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-      <div><label>Site base URL</label><input type="text" id="siteBaseUrl" placeholder="https://yoursite.netlify.app" style="width:280px"></div>
+      <div><label>Site base URL</label><input type="text" id="siteBaseUrl" placeholder="https://selecttourcamp.netlify.app" style="width:320px"></div>
     </div>
     <div class="balance-note" id="siteLinkNote" style="margin-top:12px"></div>
   </div>
@@ -431,7 +433,8 @@ const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 const DEFAULT_CAMP_CODE = "mid-atlantic-2026";
 /* ===================================================================== */
 
-let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', syncUrl: '', syncKey: '', syncCode: '', siteBaseUrl: '' };
+const DEFAULT_SITE_BASE_URL = "https://selecttourcamp.netlify.app";
+let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', syncUrl: '', syncKey: '', syncCode: '', siteBaseUrl: '', teamsLive: false };
 const store = {
   ok: (()=>{ try{ localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return true; }catch(e){ return false; } })(),
   save(){ if(this.ok){ try{ localStorage.setItem('campTeamBuilder', JSON.stringify(S)); }catch(e){} } },
@@ -443,7 +446,7 @@ S.gA1=S.gA1||2027; S.gA2=S.gA2||2030; S.gB1=S.gB1||2031; S.gB2=S.gB2||2035;
 S.schedule=S.schedule||[]; S.pubTitle=S.pubTitle||''; S.pubSub=S.pubSub||'';
 S.appUrl=S.appUrl||'https://select360.mvt.so/'; S.shopUrl=S.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD';
 S.igUrl=S.igUrl||'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA=='; S.webUrl=S.webUrl||'https://aauselecttour.com';
-S.syncUrl=S.syncUrl||DEFAULT_SUPABASE_URL||''; S.syncKey=S.syncKey||DEFAULT_SUPABASE_ANON_KEY||''; S.syncCode=S.syncCode||DEFAULT_CAMP_CODE||''; S.siteBaseUrl=S.siteBaseUrl||'';
+S.syncUrl=S.syncUrl||DEFAULT_SUPABASE_URL||''; S.syncKey=S.syncKey||DEFAULT_SUPABASE_ANON_KEY||''; S.syncCode=S.syncCode||DEFAULT_CAMP_CODE||''; S.siteBaseUrl=S.siteBaseUrl||DEFAULT_SITE_BASE_URL||''; S.teamsLive=!!S.teamsLive;
 // Migration: teams saved by v1 used "N-Mascot" names. Detect and clear so the
 // stale display can't linger — user just presses Generate to rebuild as Team N.
 if(S.teams){
@@ -1342,23 +1345,52 @@ $('#btnSignOut').addEventListener('click', ()=>{
 // Push the current public payload to Supabase (upsert by camp code).
 // Requires a signed-in session — the anon key alone can no longer write.
 // Silent=true skips the status message (used for auto-push after edits).
-async function pushLive(silent){
+// Push public payload to Supabase.
+// opts.includeTeams — true when pushing from the Teams tab (posts rosters to parents).
+// Publish sync can run before teams exist; teams stay off the parent page until Teams sync.
+async function pushLive(silent, opts){
+  opts=opts||{};
   if(!(S.syncUrl && S.syncKey && S.syncCode)){
     if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">Fill in Project URL, anon key, and Camp Code first.</span>';
-    return;
+    return false;
   }
   if(!(authSession && authSession.access_token)){
     if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">Sign in above to push live updates.</span>';
-    return;
+    return false;
   }
-  if(!S.teams){
-    if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">Generate teams first — nothing to sync yet.</span>';
-    return;
+  if(opts.includeTeams){
+    if(!S.teams){
+      if(!silent){
+        const n=$('#teamsSyncNote');
+        if(n) n.innerHTML='<span style="color:var(--red)">Generate teams first, then sync them to the parent page.</span>';
+        else $('#syncStatus').innerHTML='<span style="color:var(--red)">Generate teams first.</span>';
+      }
+      return false;
+    }
+    S.teamsLive=true; store.save();
   }
-  const payload=buildPublicData();
-  if(!silent) $('#syncStatus').textContent='Syncing…';
+  let includeTeams=!!(opts.includeTeams || S.teamsLive);
+  const payload=buildPublicData({ includeTeams });
+  // Publish content sync shouldn't wipe teams that are already live
+  if(!includeTeams){
+    try{
+      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(S.syncCode)+'&select=data',{
+        headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+      });
+      if(cur.ok){
+        const rows=await cur.json();
+        const d=rows && rows[0] && rows[0].data;
+        if(d && d.teamsPosted && d.teams && d.teams.length){
+          payload.teams=d.teams; payload.roster=d.roster||[]; payload.teamsPosted=true;
+        }
+      }
+    }catch(e){ /* keep empty teams */ }
+  }
+  const statusEl = opts.statusEl || (opts.includeTeams ? $('#teamsSyncNote') : $('#syncStatus'));
+  if(!silent && statusEl) statusEl.textContent='Syncing…';
   try{
-    const res=await fetch(S.syncUrl+'/rest/v1/camp_live?on_conflict=code',{
+    const base=S.syncUrl.replace(/\/$/,'');
+    const res=await fetch(base+'/rest/v1/camp_live?on_conflict=code',{
       method:'POST',
       headers:{
         'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token,
@@ -1368,27 +1400,39 @@ async function pushLive(silent){
     });
     if(res.ok){
       const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-      $('#syncStatus').innerHTML='<b style="color:var(--green)">✓ Synced</b> at '+t+'. Anyone viewing the published page will see this update within ~20 seconds.';
+      renderSiteLink();
+      const link = (S.siteBaseUrl && S.syncCode) ? (S.siteBaseUrl.replace(/\/$/,'')+'/?camp='+encodeURIComponent(S.syncCode)) : '';
+      if(opts.includeTeams){
+        if(statusEl) statusEl.innerHTML='<b style="color:var(--green)">✓ Teams posted</b> at '+t+'. Parents will see them within ~20 seconds.';
+      } else if(statusEl){
+        statusEl.innerHTML='<b style="color:var(--green)">✓ Synced</b> at '+t+'.'
+          +(link?' Parent link: <a href="'+esc(link)+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600">'+esc(link)+'</a>':'')
+          +(payload.teamsPosted?'':' <span style="color:var(--mut)">Teams stay hidden until you sync them from the Teams tab.</span>');
+      }
+      return true;
     } else if(res.status===401 || res.status===403){
-      $('#syncStatus').innerHTML='<span style="color:var(--red)">Session expired or not authorized — sign in again.</span>';
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Session expired or not authorized — sign in again.</span>';
       authSession=null; try{ sessionStorage.removeItem('campAuthSession'); }catch(e){} updateAuthUI();
+      return false;
     } else {
       const body=await res.text();
-      $('#syncStatus').innerHTML='<span style="color:var(--red)">Sync failed ('+res.status+'). '+esc(body.slice(0,200))+'</span><br><span style="color:var(--mut)">Check SUPABASE_SETUP.sql ran successfully, and that the URL/key are correct.</span>';
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Sync failed ('+res.status+'). '+esc(body.slice(0,200))+'</span>';
+      return false;
     }
   }catch(e){
-    $('#syncStatus').innerHTML='<span style="color:var(--red)">Could not reach Supabase — check the Project URL and your connection.</span>';
+    if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Could not reach Supabase — check the Project URL and your connection.</span>';
+    return false;
   }
 }
-$('#btnSyncNow').addEventListener('click',()=>pushLive(false));
+$('#btnSyncNow').addEventListener('click',()=>pushLive(false, {includeTeams:false}));
+$('#btnSyncTeams').addEventListener('click',()=>pushLive(false, {includeTeams:true, statusEl:$('#teamsSyncNote')}));
 
-// Auto-push (debounced) whenever public-facing data changes, so the coach
-// never has to remember to hit sync after routine updates.
+// Auto-push (debounced) whenever public-facing data changes.
 let _syncTimer=null;
 function autoPushLive(){
-  if(!(S.syncUrl && S.syncKey && S.syncCode && S.teams && authSession && authSession.access_token)) return;
+  if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return;
   clearTimeout(_syncTimer);
-  _syncTimer=setTimeout(()=>pushLive(true), 1200);
+  _syncTimer=setTimeout(()=>pushLive(true, {includeTeams:!!S.teamsLive}), 1200);
 }
 
 /* =============================================================
@@ -1470,15 +1514,17 @@ $('#btnPushRoster').addEventListener('click', ()=>{
   pushRosterLive();
 });
 
-function buildPublicData(){
-  // Build a lookup: player -> team, from the generated teams
+function buildPublicData(opts){
+  opts=opts||{};
+  const postTeams=!!(opts.includeTeams && S.teams);
+  // Build a lookup: player -> team (only when teams have been posted live)
   const roster=[];
-  if(S.teams){
+  if(postTeams){
     [...S.teams.A,...S.teams.B].forEach(t=>t.players.map(playerById).filter(Boolean).forEach(p=>{
       roster.push({ n:(p.first+' '+p.last), j:String(p.jersey), team:t.name, yr:String(p.year), pos:p.position||'', ht:formatHeight(p.height)==='—'?'':formatHeight(p.height), sc:p.school||'', ph:p.photoUrl||'' });
     }));
   }
-  const teamsList=S.teams?[...S.teams.A,...S.teams.B].map(t=>({
+  const teamsList=postTeams?[...S.teams.A,...S.teams.B].map(t=>({
     name:t.name,
     players:t.players.map(playerById).filter(Boolean).sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>({j:String(p.jersey),n:p.first+' '+p.last,yr:String(p.year),pos:p.position||'',ht:formatHeight(p.height)==='—'?'':formatHeight(p.height),sc:p.school||'',ph:p.photoUrl||''}))
   })):[];
@@ -1506,7 +1552,7 @@ function buildPublicData(){
                  .replace(/[·|,\-\s]+$/,'').replace(/^[·|,\-\s]+/,'').trim();
     return { y:dt.getFullYear(), mo:dt.getMonth()+1, d:dt.getDate(), startMin, loc };
   })();
-  return { roster, teams:teamsList, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'' };
+  return { roster, teams:teamsList, teamsPosted:postTeams, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'' };
 }
 
 $('#siteBaseUrl').addEventListener('input', e=>{ S.siteBaseUrl=e.target.value.trim().replace(/\/$/,''); store.save(); renderSiteLink(); });
@@ -1556,7 +1602,7 @@ $('#btnCsvTeams').addEventListener('click',()=>{
 $('#btnPrint').addEventListener('click',()=>window.print());
 $('#btnReset').addEventListener('click',()=>{
   if(confirm('Clear the roster, check-ins, jerseys and teams? This cannot be undone.')){
-    S={players:[],teams:null,numA:12,numB:16,gA1:2027,gA2:2030,gB1:2031,gB2:2035,schedule:[],pubTitle:'',pubSub:'',appUrl:'https://select360.mvt.so/',shopUrl:'https://aauselecttour.totalcamps.com/shop/GOOD',syncUrl:'',syncKey:'',syncCode:'',siteBaseUrl:''}; store.save();
+    S={players:[],teams:null,numA:12,numB:16,gA1:2027,gA2:2030,gB1:2031,gB2:2035,schedule:[],pubTitle:'',pubSub:'',appUrl:'https://select360.mvt.so/',shopUrl:'https://aauselecttour.totalcamps.com/shop/GOOD',syncUrl:'',syncKey:'',syncCode:'',siteBaseUrl:DEFAULT_SITE_BASE_URL,teamsLive:false}; store.save();
     rawRows=[];rawHeaders=[];schedRows=[];schedHeaders=[];$('#mapping').hidden=true;$('#rosterLoaded').hidden=true;$('#mapSched').hidden=true;
     renderAll();
   }
