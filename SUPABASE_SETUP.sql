@@ -28,6 +28,63 @@ create policy "Authenticated write" on camp_live
 create policy "Authenticated update" on camp_live
   for update to authenticated using (true) with check (true);
 
+create policy "Authenticated delete" on camp_live
+  for delete to authenticated using (true);
+
+-- ============================================================
+-- Multi-station players table (check-in / jersey / photos)
+-- If this table already exists, you can skip CREATE and just run
+-- the DELETE policy at the bottom if Clear Stations fails.
+-- ============================================================
+
+create table if not exists players (
+  id uuid primary key,
+  camp_code text not null,
+  first text,
+  last text,
+  grad_year text,
+  height text,
+  position text,
+  school text,
+  city text,
+  state text,
+  pay_status text,
+  balance text,
+  items text,
+  email text,
+  jersey text default '',
+  checked_in boolean default false,
+  addons_manual jsonb default '[]'::jsonb,
+  addons_removed jsonb default '[]'::jsonb,
+  photo_url text default ''
+);
+
+create index if not exists players_camp_code_idx on players (camp_code);
+
+alter table players enable row level security;
+
+-- Stations + parent tools need to read the roster
+do $$ begin
+  create policy "Public read players" on players for select using (true);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create policy "Authenticated insert players" on players for insert to authenticated with check (true);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create policy "Authenticated update players" on players for update to authenticated using (true) with check (true);
+exception when duplicate_object then null;
+end $$;
+
+-- Required for Reset / Clear Stations (without this, deletes silently do nothing)
+do $$ begin
+  create policy "Authenticated delete players" on players for delete to authenticated using (true);
+exception when duplicate_object then null;
+end $$;
+
 -- ============================================================
 -- Create your coach login (one-time):
 -- 1. In Supabase, go to Authentication → Users → Add User

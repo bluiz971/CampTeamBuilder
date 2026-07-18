@@ -1533,38 +1533,52 @@ async function deletePlayerIds(ids){
 
 async function clearCampRemote(campCode){
   if(!(S.syncUrl && S.syncKey && campCode && authSession && authSession.access_token)){
-    return {ok:false, reason:'not-configured', remaining:-1};
+    return {ok:false, reason:'not-configured', remaining:-1, needSql:false};
   }
   const code=String(campCode).trim();
   const headers={
     'apikey':S.syncKey,
     'Authorization':'Bearer '+authSession.access_token,
-    'Prefer':'return=representation'
+    'Prefer':'return=representation',
+    'Content-Type':'application/json'
   };
-  // Direct delete by camp code (avoids pagination / id-list limits)
   let deleted=0;
-  for(let attempt=0; attempt<8; attempt++){
+  // 1) Try hard DELETE (needs DELETE RLS policy)
+  for(let attempt=0; attempt<3; attempt++){
     const delRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code),{
       method:'DELETE', headers
     });
     if(delRes.ok){
       try{ deleted+=(await delRes.json()).length; }catch(e){}
     }
-    // Confirm nothing left (PostgREST may cap rows per response)
     const check=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id&limit=1',{
       headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
     });
-    if(!check.ok) break;
-    const left=await check.json();
-    if(!left.length) break;
-    // Fallback: delete by id list if filter delete left rows
-    const all=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{
-      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
-    });
-    if(all.ok){
-      const ids=(await all.json()).map(r=>r.id);
-      if(!ids.length) break;
-      await deletePlayerIds(ids);
+    if(check.ok && !(await check.json()).length) break;
+  }
+  // 2) Fallback: MOVE rows off this camp_code (UPDATE usually allowed; DELETE often isn't)
+  let archived=0;
+  let needSql=false;
+  const still=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{
+    headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+  });
+  if(still.ok){
+    const left=await still.json();
+    if(left.length){
+      needSql=true; // DELETE didn't work — table is missing delete policy
+      const archiveCode=code+'__cleared_'+Date.now();
+      // Patch in chunks by id (bulk filter PATCH can hit row limits)
+      const CHUNK=80;
+      for(let i=0;i<left.length;i+=CHUNK){
+        const chunk=left.slice(i,i+CHUNK);
+        const patch=await fetch(S.syncUrl+'/rest/v1/players?id=in.('+chunk.map(r=>'"'+r.id+'"').join(',')+')',{
+          method:'PATCH', headers,
+          body:JSON.stringify({ camp_code:archiveCode, checked_in:false, jersey:'' })
+        });
+        if(patch.ok){
+          try{ archived+=(await patch.json()).length; }catch(e){ archived+=chunk.length; }
+        }
+      }
     }
   }
   await fetch(S.syncUrl+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(code),{
@@ -1574,7 +1588,7 @@ async function clearCampRemote(campCode){
     headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
   });
   const remaining=verify.ok?(await verify.json()).length:-1;
-  return {ok:remaining===0, deleted, remaining};
+  return {ok:remaining===0, deleted, archived, remaining, needSql:needSql && remaining===0};
 }
 
 async function pushRosterLive(){
@@ -1663,10 +1677,15 @@ async function runClearStations(){
     setStationWipeBanner(r.remaining||0);
     if(r.ok){
       $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code>'
-        +(r.deleted?' ('+r.deleted+' removed)':'')
-        +'. Hard-refresh the station page.';
+        +(r.archived?' ('+r.archived+' moved off camp)':(r.deleted?' ('+r.deleted+' deleted)':''))
+        +'. Hard-refresh the station page.'
+        +(r.needSql?' <span style="color:var(--mut)">Optional: add a DELETE policy in Supabase so Reset can hard-delete later — see SUPABASE_SETUP.sql.</span>':'');
     }else{
-      $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Clear incomplete — '+(r.remaining>=0?r.remaining+' still left. Click Clear Stations again.':'check Live Sync / delete policy on players table.')+'</span>';
+      $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Clear incomplete — '+(r.remaining>=0?r.remaining+' still left.':'')
+        +' Run this once in Supabase → SQL Editor, then click Clear again:</span>'
+        +'<pre style="margin-top:8px;font-size:12px;white-space:pre-wrap;background:#f0eee9;padding:10px;border-radius:8px">'
+        +esc("create policy \"Authenticated delete players\" on players\n  for delete to authenticated using (true);")
+        +'</pre>';
     }
   }catch(e){
     $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Clear failed: '+(e.message||e)+'</span>';
