@@ -785,15 +785,21 @@ function renderList(){
     </div>`).join('');
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   } else if(role==='playerdata'){
-    wrap.innerHTML=rows.map(p=>`<div class="prow photo-row">
+    wrap.innerHTML=rows.map(p=>{
+      const tags=[...(p.addons_manual||[])];
+      return `<div class="prow photo-row">
       ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
       <div class="who">
         <b>${esc(p.first)} ${esc(p.last)}</b>
         <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))||'—'} · ${esc(p.school)}</small>
+        ${tags.length?`<div style="margin-top:4px">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}</div>`:''}
       </div>
       ${p.photo_url?'<span class="badge done">Ready</span>':'<span class="badge due">Needs photo</span>'}
+      <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
       <button class="bigbtn ghost" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
-    </div>`).join('');
+    </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-pop]').forEach(b=>b.addEventListener('click', ()=>openAddonPopover(b.dataset.pop)));
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   }
 }
