@@ -659,6 +659,24 @@ function matches(p){
   if(!query) return true;
   return (`${p.first} ${p.last} ${p.school}`).toLowerCase().includes(query);
 }
+// Parse pre-purchased add-ons from registration "items" text (same rules as admin)
+function addOnsFromItems(items){
+  const s=String(items||''), out=[];
+  if(/recruiting tape/i.test(s)) out.push('Mixtape');
+  if(/player evaluation/i.test(s)) out.push('Eval');
+  if(/game breakdown/i.test(s)) out.push('Film');
+  if(/workshop/i.test(s)) out.push('Academic');
+  return out;
+}
+function allAddOns(p){
+  const set=new Set(addOnsFromItems(p.items));
+  (p.addons_manual||[]).forEach(a=>set.add(a));
+  return [...set];
+}
+function displayAddOns(p){
+  const removed=new Set(p.addons_removed||[]);
+  return allAddOns(p).filter(a=>!removed.has(a));
+}
 function toast(msg){
   const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
   document.body.appendChild(t); setTimeout(()=>t.remove(), 2200);
@@ -769,10 +787,10 @@ function renderList(){
     wrap.querySelectorAll('[data-jin]').forEach(inp=>inp.addEventListener('keydown', e=>{ if(e.key==='Enter') assign(inp.dataset.jin); }));
   } else if(role==='addons'){
     wrap.innerHTML=rows.map(p=>{
-      const tags=[...(p.addons_manual||[])];
+      const tags=displayAddOns(p);
       return `<div class="prow">
         <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)||'—'} · ${esc(p.school)}</small></div>
-        <div>${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}</div>
+        <div>${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')||'<span style="color:var(--mut);font-size:13px">None</span>'}</div>
         <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
       </div>`;
     }).join('');
@@ -786,13 +804,13 @@ function renderList(){
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   } else if(role==='playerdata'){
     wrap.innerHTML=rows.map(p=>{
-      const tags=[...(p.addons_manual||[])];
+      const tags=displayAddOns(p);
       return `<div class="prow photo-row">
       ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
       <div class="who">
         <b>${esc(p.first)} ${esc(p.last)}</b>
         <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))||'—'} · ${esc(p.school)}</small>
-        ${tags.length?`<div style="margin-top:4px">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}</div>`:''}
+        <div style="margin-top:4px">${tags.length?tags.map(a=>`<span class="tag">${esc(a)}</span>`).join(''):'<span style="color:var(--mut);font-size:12px">No add-ons</span>'}</div>
       </div>
       ${p.photo_url?'<span class="badge done">Ready</span>':'<span class="badge due">Needs photo</span>'}
       <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
@@ -808,11 +826,15 @@ const ADDON_MENU=['Mixtape','Eval','Film','Academic'];
 function openAddonPopover(id){
   document.querySelectorAll('.addon-pop,.scrim').forEach(x=>x.remove());
   const p=players.find(x=>x.id===id); if(!p) return;
-  const active=new Set(p.addons_manual||[]);
+  const active=new Set(displayAddOns(p));
+  const prepurchased=new Set(addOnsFromItems(p.items));
   const scrim=document.createElement('div'); scrim.className='scrim';
   const pop=document.createElement('div'); pop.className='addon-pop';
   pop.innerHTML=`<div class="addon-pop-head">${esc(p.first)} ${esc(p.last)}</div>`
-    + ADDON_MENU.map(a=>`<label class="addon-opt"><input type="checkbox" data-a="${esc(a)}" ${active.has(a)?'checked':''}> ${esc(a)}</label>`).join('')
+    + ADDON_MENU.map(a=>{
+        const pre=prepurchased.has(a) && active.has(a);
+        return `<label class="addon-opt"><input type="checkbox" data-a="${esc(a)}" ${active.has(a)?'checked':''}> ${esc(a)}${pre?' <small style="color:var(--mut)">(pre-purchased)</small>':''}</label>`;
+      }).join('')
     + `<div class="addon-custom"><input type="text" id="addonCustom" placeholder="Other…"><button class="bigbtn" id="addonCustomBtn">Add</button></div>`
     + `<button class="bigbtn ghost addon-close" id="addonClose">Done</button>`;
   document.body.appendChild(scrim); document.body.appendChild(pop);
@@ -820,15 +842,25 @@ function openAddonPopover(id){
   scrim.addEventListener('click', close);
   pop.querySelector('#addonClose').addEventListener('click', close);
   pop.querySelectorAll('input[data-a]').forEach(cb=>cb.addEventListener('change', async ()=>{
-    const set=new Set(p.addons_manual||[]);
-    if(cb.checked) set.add(cb.dataset.a); else set.delete(cb.dataset.a);
-    await patchPlayer(id, {addons_manual:[...set]});
+    const name=cb.dataset.a;
+    const parsed=addOnsFromItems(p.items);
+    let manual=[...(p.addons_manual||[])];
+    let removed=[...(p.addons_removed||[])];
+    if(cb.checked){
+      removed=removed.filter(a=>a!==name);
+      if(!parsed.includes(name) && !manual.includes(name)) manual.push(name);
+    }else{
+      manual=manual.filter(a=>a!==name);
+      if(parsed.includes(name) && !removed.includes(name)) removed.push(name);
+    }
+    await patchPlayer(id, {addons_manual:manual, addons_removed:removed});
     renderList();
   }));
   pop.querySelector('#addonCustomBtn').addEventListener('click', async ()=>{
     const v=pop.querySelector('#addonCustom').value.trim(); if(!v) return;
     const set=new Set(p.addons_manual||[]); set.add(v);
-    await patchPlayer(id, {addons_manual:[...set]});
+    const removed=(p.addons_removed||[]).filter(a=>a!==v);
+    await patchPlayer(id, {addons_manual:[...set], addons_removed:removed});
     close(); renderList();
   });
 }
