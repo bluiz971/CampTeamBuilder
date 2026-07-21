@@ -338,7 +338,8 @@ async function pollPlayers(){
     }
     players=dedupePlayersByName(await res.json());
     $('#livePill').textContent='🟢 Live — '+players.length+' players · updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-    renderList();
+    // Don't rebuild the list while a jersey/number field is focused — that kills the mobile keypad
+    requestListRender();
   }catch(e){ $('#livePill').textContent='⚪ Offline — retrying…'; }
 }
 
@@ -701,7 +702,7 @@ async function pollTeams(){
       if(bYears.length){ groupCfg.gB1=Math.min(...bYears); groupCfg.gB2=Math.max(...bYears); }
       groupCfg.numA=split; groupCfg.numB=Math.max(1, byNum.length-split);
     }
-    if(role==='teams') renderList();
+    if(role==='teams') requestListRender();
   }catch(e){ /* stay quiet, retry next tick */ }
 }
 
@@ -740,6 +741,30 @@ function toast(msg){
   const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
   document.body.appendChild(t); setTimeout(()=>t.remove(), 2200);
 }
+
+// Live poll rebuilds #plist every few seconds. On phones that tears down the
+// focused jersey input and dismisses the keypad — skip redraw while typing.
+let deferredListRender=false;
+function isEditingList(){
+  const a=document.activeElement;
+  if(!a) return false;
+  const wrap=$('#plist');
+  if(!wrap || !wrap.contains(a)) return false;
+  const tag=(a.tagName||'').toLowerCase();
+  return tag==='input' || tag==='select' || tag==='textarea' || !!a.isContentEditable;
+}
+function requestListRender(){
+  if(isEditingList()){ deferredListRender=true; return; }
+  deferredListRender=false;
+  renderList();
+}
+function flushDeferredListRender(){
+  if(deferredListRender && !isEditingList()){
+    deferredListRender=false;
+    renderList();
+  }
+}
+document.addEventListener('focusout', ()=>setTimeout(flushDeferredListRender, 50));
 
 async function patchPlayer(id, fields){
   fields.updated_at=new Date().toISOString();
