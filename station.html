@@ -107,6 +107,13 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .gt-detail{font-size:12px;color:var(--mut);margin-top:8px}
 .gt-detail b{color:var(--ink);font-weight:600}
 @media(max-width:640px){.grp-tally{grid-template-columns:1fr}}
+.ht-summary{margin-top:22px}
+.ht-summary h3{font-family:'Barlow Condensed';font-size:20px;text-transform:uppercase;margin:0 0 10px}
+.tbl-wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;-webkit-overflow-scrolling:touch}
+.tbl-wrap table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+.tbl-wrap th{font-family:'Barlow Condensed';font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:10px 12px;background:var(--ink);color:#fff;white-space:nowrap}
+.tbl-wrap td{padding:9px 12px;border-top:1px solid var(--line);white-space:nowrap}
+.tbl-wrap tr:nth-child(even) td{background:#faf9f6}
 .teams-toolbar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
 .teams-toolbar .gen-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:640px){.teams-toolbar .gen-row{grid-template-columns:1fr}}
@@ -371,6 +378,20 @@ function heightToInches(h){
   if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
   if(/^\d{2}(\.\d+)?$/.test(s)){ const v=+s; if(v>40&&v<90) return Math.round(v); }
   return 0;
+}
+function inchesToH(i){ if(!i) return '—'; const f=Math.floor(i/12), n=Math.round(i-f*12); return f+"'"+n; }
+function renderHeightSummary(teamList){
+  if(!teamList || !teamList.length) return '';
+  const buckets=[[76,82,"6'4–6'10"],[72,75,"6'0–6'3"],[67,71,"5'7–5'11"],[61,66,"5'1–5'6"],[48,60,"4'0–5'0"]];
+  const rows=teamList.map(t=>{
+    const hts=(t.players||[]).map(p=>heightToInches(p.ht)).filter(Boolean);
+    const avg=hts.length?hts.reduce((a,b)=>a+b,0)/hts.length:0;
+    return `<tr><td><b>${esc(t.name)}</b></td><td>${(t.players||[]).length}</td><td>${inchesToH(Math.round(avg))}</td>${buckets.map(([lo,hi])=>`<td>${hts.filter(h=>h>=lo&&h<=hi).length}</td>`).join('')}</tr>`;
+  }).join('');
+  return `<div class="ht-summary"><h3>Team Height Summary</h3><div class="tbl-wrap"><table>
+    <tr><th>Team</th><th>Total</th><th>Avg Ht</th>${buckets.map(b=>`<th>${b[2]}</th>`).join('')}</tr>
+    ${rows}
+  </table></div></div>`;
 }
 function posCat(p){
   const s=String(p||'').toLowerCase();
@@ -807,7 +828,7 @@ function renderList(){
           <button class="mv" type="button" data-from="${ti}" data-j="${esc(p.j)}" data-n="${esc(p.n)}" title="Move to another team" aria-label="Move ${esc(p.n)}">⇄</button>
         </li>`).join('')}</ul>
       </div>`;
-    }).join('')}</div>`;
+    }).join('')}</div>`+renderHeightSummary(filtered);
     bindTeamsToolbar();
     wrap.querySelectorAll('.mv').forEach(b=>b.addEventListener('click', ()=>{
       openStationMove(+b.dataset.from, b.dataset.j, b.dataset.n);
