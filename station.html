@@ -861,7 +861,7 @@ function renderList(){
   } else if(role==='jersey'){
     wrap.innerHTML=rows.map(p=>`<div class="prow">
       <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.school)}</small></div>
-      <input class="jinput" type="text" inputmode="numeric" placeholder="##" data-jin="${p.id}">
+      <input class="jinput" type="tel" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="##" data-jin="${p.id}">
       <button class="bigbtn" data-assign="${p.id}">Assign</button>
     </div>`).join('');
     const assign=async (id)=>{
@@ -869,10 +869,13 @@ function renderList(){
       const j=inp.value.trim();
       if(!j){ inp.focus(); return; }
       if(players.some(x=>x.id!==id && String(x.jersey).trim()===j)){ inp.classList.add('dupe'); toast('#'+j+' is already taken'); return; }
-      if(await patchPlayer(id, {jersey:j})){ toast('#'+j+' assigned'); renderList(); }
+      inp.blur();
+      if(await patchPlayer(id, {jersey:j})){ toast('#'+j+' assigned'); requestListRender(); }
     };
     wrap.querySelectorAll('[data-assign]').forEach(b=>b.addEventListener('click', ()=>assign(b.dataset.assign)));
-    wrap.querySelectorAll('[data-jin]').forEach(inp=>inp.addEventListener('keydown', e=>{ if(e.key==='Enter') assign(inp.dataset.jin); }));
+    wrap.querySelectorAll('[data-jin]').forEach(inp=>{
+      inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); assign(inp.dataset.jin); } });
+    });
   } else if(role==='addons'){
     wrap.innerHTML=rows.map(p=>{
       const tags=displayAddOns(p);
