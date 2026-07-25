@@ -332,7 +332,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-players">
   <div class="panel-head">
     <div><h2>Player Data</h2>
-    <p>Everyone who is checked in with a jersey number. This is the pool the team generator uses.</p></div>
+    <p>Everyone who is checked in with a jersey number. Use <b>Edit #</b> to change a number, or <b>Clear #</b> to send them back to the Jersey page.</p></div>
     <button class="btn btn-dark btn-sm" id="btnCsvPlayers">Export CSV</button>
   </div>
   <div class="tbl-wrap" style="max-height:560px;overflow:auto"><table id="pdTbl"></table></div>
@@ -1247,20 +1247,51 @@ function renderPlayers(){
       const tags=displayAddOns(p);
       return `<tr><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b>${esc(p.first)} ${esc(p.last)}</b></td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${esc(formatHeight(p.height))}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
       <td class="addon-cell">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}<button class="addon-add" data-addon="${i}" title="Add / edit add-ons">+ Add</button></td>
-      <td class="row-actions"><button class="mv" data-ej="${i}" title="Change jersey number">✎</button><button class="mv" data-cj="${i}" title="Remove jersey (back to Jersey page)">✕</button></td></tr>`;
+      <td class="row-actions"><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
     }).join('');
-  t.querySelectorAll('[data-ej]').forEach(b=>b.addEventListener('click',()=>{
+  t.querySelectorAll('[data-ej]').forEach(b=>b.addEventListener('click', async ()=>{
     const p=S.players[+b.dataset.ej];
     const j=prompt('New jersey number for '+p.first+' '+p.last+':',p.jersey);
     if(j===null) return;
     const jj=j.trim();
-    if(jj && S.players.some(x=>x!==p&&String(x.jersey).trim()===jj)){ alert('#'+jj+' is already taken.'); return; }
-    p.jersey=jj; store.save(); refresh();
+    if(!jj){ alert('Jersey number required.'); return; }
+    if(S.players.some(x=>x!==p&&String(x.jersey).trim()===jj)){ alert('#'+jj+' is already taken.'); return; }
+    const oldJ=String(p.jersey||'');
+    p.jersey=jj; store.save();
+    // Keep assigned teams in sync with the new number
+    if(S.teams){
+      [...(S.teams.A||[]),...(S.teams.B||[])].forEach(t=>{
+        // teams store local player ids — jersey display comes from player record
+      });
+    }
+    refresh();
+    if(authSession && authSession.access_token && p.uid){
+      try{
+        await fetch(S.syncUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.uid),{
+          method:'PATCH',
+          headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+          body:JSON.stringify({ jersey:jj, camp_code:S.syncCode })
+        });
+      }catch(e){}
+      autoPushLive();
+    }
+    if(oldJ!==jj){
+      const note=$('#pdNote'); if(note) note.textContent='Jersey updated to #'+jj+(S.teamsLive?' — sync teams if parent page is live.':'');
+    }
   }));
-  t.querySelectorAll('[data-cj]').forEach(b=>b.addEventListener('click',()=>{
+  t.querySelectorAll('[data-cj]').forEach(b=>b.addEventListener('click', async ()=>{
     const p=S.players[+b.dataset.cj];
     if(confirm('Remove #'+p.jersey+' from '+p.first+' '+p.last+'? They will go back to the Jersey page.')){
       p.jersey=''; store.save(); refresh();
+      if(authSession && authSession.access_token && p.uid){
+        try{
+          await fetch(S.syncUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.uid),{
+            method:'PATCH',
+            headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+            body:JSON.stringify({ jersey:'' })
+          });
+        }catch(e){}
+      }
     }
   }));
   t.querySelectorAll('[data-addon]').forEach(b=>b.addEventListener('click',e=>{

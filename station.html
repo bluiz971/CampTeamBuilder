@@ -1254,13 +1254,49 @@ function renderList(){
         <div style="margin-top:4px">${tags.length?tags.map(a=>`<span class="tag">${esc(a)}</span>`).join(''):'<span style="color:var(--mut);font-size:12px">No add-ons</span>'}</div>
       </div>
       ${p.photo_url?'<span class="badge done">Ready</span>':'<span class="badge due">Needs photo</span>'}
+      <button class="bigbtn ghost" data-editj="${p.id}">Edit #</button>
       <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
       <button class="bigbtn ghost" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
     </div>`;
     }).join('');
+    wrap.querySelectorAll('[data-editj]').forEach(b=>b.addEventListener('click', ()=>editPlayerJersey(b.dataset.editj)));
     wrap.querySelectorAll('[data-pop]').forEach(b=>b.addEventListener('click', ()=>openAddonPopover(b.dataset.pop)));
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   }
+}
+
+async function editPlayerJersey(id){
+  const p=players.find(x=>x.id===id); if(!p) return;
+  const cur=String(p.jersey||'');
+  const next=prompt('Jersey number for '+p.first+' '+p.last+':', cur);
+  if(next===null) return;
+  const j=String(next).trim();
+  if(!j){ toast('Jersey number required'); return; }
+  if(players.some(x=>x.id!==id && String(x.jersey||'').trim()===j)){
+    toast('#'+j+' is already taken'); return;
+  }
+  if(j===cur) return;
+  const oldJ=cur;
+  const oldName=(p.first||'')+' '+(p.last||'');
+  if(!(await patchPlayer(id, {jersey:j}))) return;
+  // Keep live team cards in sync if this player is already assigned
+  let teamChanged=false;
+  teams.forEach(t=>{
+    (t.players||[]).forEach(tp=>{
+      if(String(tp.j)===String(oldJ) && String(tp.n||'').trim().toLowerCase()===oldName.trim().toLowerCase()){
+        tp.j=String(j);
+        teamChanged=true;
+      }
+    });
+  });
+  if(teamChanged){
+    pendingLocalTeams=true;
+    teamsPosted=false;
+    toast('#'+j+' saved — Sync Teams to update parent page');
+  } else {
+    toast('#'+j+' saved');
+  }
+  renderList();
 }
 
 const ADDON_MENU=['Mixtape','Eval','Film','Academic'];
