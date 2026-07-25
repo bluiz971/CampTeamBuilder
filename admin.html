@@ -373,8 +373,12 @@ dialog select{width:100%;margin:10px 0 16px}
   <div class="panel-head">
     <div><h2>Game Schedules</h2>
     <p>Upload a schedule file (.xlsx / .csv). Works with the AAU grid format — Time down the left, Court columns across the top, cells like "1 v 2". Multiple games stacked in one cell (on separate lines) are all read. Team numbers map to your generated teams (1 → Team 1). Add a Date in cell A1 or the filename for multi-day camps.</p></div>
-    <button class="btn btn-ghost btn-sm" id="btnClearSched" hidden>Clear Schedule</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-orange btn-sm" id="btnSyncSched">⬆ Sync Schedule to Parent Page</button>
+      <button class="btn btn-ghost btn-sm" id="btnClearSched" hidden>Clear Schedule</button>
+    </div>
   </div>
+  <div class="balance-note" id="schedSyncNote" style="margin-bottom:12px"></div>
   <div class="drop" id="dropSched" tabindex="0" role="button" aria-label="Upload schedule file">
     <div class="ball">📅</div>
     <h3>Drop the game schedule here</h3>
@@ -1862,6 +1866,19 @@ async function pushLive(silent, opts){
 }
 $('#btnSyncNow').addEventListener('click',()=>pushLive(false, {includeTeams:false}));
 $('#btnSyncTeams').addEventListener('click',()=>pushLive(false, {includeTeams:true, statusEl:$('#teamsSyncNote')}));
+$('#btnSyncSched').addEventListener('click', async ()=>{
+  const note=$('#schedSyncNote');
+  if(!S.schedule.length){
+    if(note) note.innerHTML='<span style="color:var(--red)">Load a schedule first, then sync it to the parent page.</span>';
+    return;
+  }
+  if(note) note.textContent='Syncing schedule…';
+  const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
+  if(ok && note){
+    const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+    note.innerHTML='<b style="color:var(--green)">✓ Schedule posted</b> ('+S.schedule.length+' games) at '+t+'. Parents will see it within ~20 seconds.';
+  }
+});
 $('#btnClearTeams').addEventListener('click', async ()=>{
   if(!confirm('Clear assigned teams?\n\nRemoves local teams and posts empty rosters to the parent/station pages. Check-ins and jerseys stay.')) return;
   S.teams=null; S.teamsLive=false; store.save(); renderTeams(); updateScoreboard();
