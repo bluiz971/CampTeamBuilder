@@ -133,6 +133,23 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 #mvDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
 #mvDlg .dlg-actions .bigbtn{min-width:100px}
 
+/* ---------- Walk-up register ---------- */
+.walkup-bar{margin-bottom:14px}
+.walkup-bar .bigbtn{width:100%}
+#regDlg{border:none;border-radius:14px;padding:20px;max-width:440px;width:calc(100% - 24px);box-shadow:0 16px 40px rgba(20,26,34,.3);max-height:calc(100vh - 24px);overflow:auto}
+#regDlg::backdrop{background:rgba(20,26,34,.45)}
+#regDlg h3{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase;margin-bottom:4px}
+#regDlg .reg-sub{font-size:13px;color:var(--mut);margin-bottom:14px;line-height:1.4}
+#regDlg .reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){#regDlg .reg-grid{grid-template-columns:1fr}}
+#regDlg label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:4px}
+#regDlg input,#regDlg select{width:100%;font-size:16px;padding:11px 12px;border:1.5px solid var(--line);border-radius:9px}
+#regDlg .reg-span{grid-column:1/-1}
+#regDlg .reg-msg{font-size:13px;color:var(--red);min-height:18px;margin:8px 0 4px}
+#regDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+#regDlg .dlg-actions .bigbtn{min-width:110px}
+.badge.walk{background:var(--orange-soft);color:var(--orange)}
+
 /* ---------- Live camera modal ---------- */
 #camModal{display:none;position:fixed;inset:0;z-index:400;background:rgba(20,26,34,.92);flex-direction:column;align-items:center;justify-content:center;padding:16px}
 #camModal.on{display:flex}
@@ -170,6 +187,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
       </div>
     </div>
     <div class="livepill" id="livePill">Connecting…</div>
+    <div class="livepill" id="campMeta" style="margin-top:4px"></div>
     <div class="roletabs">
       <button data-role="checkin" class="on"><span class="ic">✅</span>Check-In</button>
       <button data-role="jersey"><span class="ic">🔢</span>Jersey</button>
@@ -220,6 +238,41 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   </div>
 </dialog>
 
+<dialog id="regDlg">
+  <h3>Register walk-up</h3>
+  <p class="reg-sub">For a player who is not on the uploaded roster. They’ll be checked in and sent to the Jersey queue.</p>
+  <div class="reg-grid">
+    <div><label>First name *</label><input type="text" id="regFirst" autocomplete="off" autocapitalize="words"></div>
+    <div><label>Last name *</label><input type="text" id="regLast" autocomplete="off" autocapitalize="words"></div>
+    <div><label>Grad year *</label><input type="tel" id="regYear" inputmode="numeric" placeholder="2030" maxlength="4"></div>
+    <div><label>Height</label><input type="text" id="regHeight" placeholder="5'10" autocomplete="off"></div>
+    <div><label>Position</label>
+      <select id="regPos">
+        <option value="">—</option>
+        <option>PG</option><option>SG</option><option>SF</option><option>PF</option><option>C</option>
+        <option>G</option><option>W</option><option>F</option><option>Big</option>
+      </select>
+    </div>
+    <div><label>School</label><input type="text" id="regSchool" autocomplete="off" autocapitalize="words"></div>
+    <div><label>City</label><input type="text" id="regCity" autocomplete="off" autocapitalize="words"></div>
+    <div><label>State</label><input type="text" id="regState" autocomplete="off" autocapitalize="characters" maxlength="2" placeholder="GA"></div>
+    <div class="reg-span"><label>Parent email</label><input type="email" id="regEmail" autocomplete="off"></div>
+    <div><label>Balance due ($)</label><input type="tel" id="regBalance" inputmode="decimal" placeholder="0"></div>
+    <div><label>Payment</label>
+      <select id="regPay">
+        <option value="Paid">Paid</option>
+        <option value="Balance Due">Balance Due</option>
+        <option value="">Unknown</option>
+      </select>
+    </div>
+  </div>
+  <div class="reg-msg" id="regMsg"></div>
+  <div class="dlg-actions">
+    <button class="bigbtn ghost" type="button" id="regCancel">Cancel</button>
+    <button class="bigbtn" type="button" id="regSave">Check In ✓</button>
+  </div>
+</dialog>
+
 <script>
 /* =====================================================================
    CONFIG — same Supabase project as index.html / admin.html. Set once
@@ -251,13 +304,62 @@ function formatHeight(h){
   return s;
 }
 
-let campCode = localStorage.getItem('stationCampCode') || DEFAULT_CAMP_CODE || '';
+const urlParams=new URLSearchParams(location.search);
+const urlStation=(urlParams.get('station')||'').trim(); // reserved for future use
+
+let campCode = (urlParams.get('camp')||'').trim().toLowerCase().replace(/[^a-z0-9-]/g,'-')
+  || localStorage.getItem('stationCampCode') || DEFAULT_CAMP_CODE || '';
+let campId=null, campSlug='', campRow=null;
+
+function formatCampDate(d){
+  if(!d) return '';
+  const dt=new Date(String(d).includes('T')?d:d+'T12:00:00');
+  if(isNaN(dt)) return String(d);
+  return dt.toLocaleDateString(undefined,{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+}
+function renderCampMeta(){
+  const el=$('#campMeta'); if(!el) return;
+  if(!campRow){ el.textContent=''; return; }
+  const bits=[campRow.name];
+  if(campRow.location) bits.push(campRow.location);
+  if(campRow.camp_date) bits.push(formatCampDate(campRow.camp_date));
+  el.textContent=bits.join(' · ');
+}
+function showCampNotFoundState(){
+  $('#livePill').textContent='Camp not found';
+  renderCampMeta();
+  $('#plist').innerHTML='<div class="empty"><b>Camp not found</b>No camp matches this slug. Check the Camp field above.</div>';
+}
+async function resolveCamp(){
+  if(!campCode){ campId=null; campRow=null; campSlug=''; renderCampMeta(); return false; }
+  campSlug=campCode;
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/camps?slug=eq.'+encodeURIComponent(campCode)+'&select=*&limit=1',{
+      headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    if(!res.ok){ campId=null; campRow=null; renderCampMeta(); return false; }
+    const rows=await res.json();
+    if(!rows || !rows[0]){ campId=null; campRow=null; renderCampMeta(); return false; }
+    campRow=rows[0]; campId=campRow.id; campSlug=campRow.slug||campCode;
+    if($('#campCodeInput')) $('#campCodeInput').value=campSlug;
+    renderCampMeta();
+    return true;
+  }catch(e){ campId=null; campRow=null; renderCampMeta(); return false; }
+}
+
 $('#campCodeInput').value = campCode;
-$('#campCodeInput').addEventListener('input', e=>{
+localStorage.setItem('stationCampCode', campCode);
+$('#campCodeInput').addEventListener('input', async e=>{
   campCode = e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-');
   localStorage.setItem('stationCampCode', campCode);
+  campId=null; campRow=null;
   players=[]; teams=[]; renderList();
-  pollPlayers(); pollTeams();
+  if(await resolveCamp()){
+    pollPlayers(); pollTeams();
+  }else{
+    toast('Camp not found');
+    showCampNotFoundState();
+  }
 });
 
 // --- Auth (kept in localStorage — these are shared, dedicated tablets
@@ -266,9 +368,14 @@ $('#campCodeInput').addEventListener('input', e=>{
 let authSession=null;
 try{ const raw=localStorage.getItem('stationAuth'); if(raw) authSession=JSON.parse(raw); }catch(e){}
 
-function showApp(){
+async function showApp(){
   $('#gate').style.display='none';
   $('#app').style.display='block';
+  if(!await resolveCamp()){
+    toast('Camp not found');
+    showCampNotFoundState();
+    return;
+  }
   pollPlayers(); pollTeams();
   setInterval(pollPlayers, 4000);
   setInterval(pollTeams, 4000);
@@ -334,8 +441,9 @@ function dedupePlayersByName(list){
 }
 async function pollPlayers(){
   if(!campCode){ $('#livePill').textContent='Enter a Camp Code above.'; return; }
+  if(!campId) return;
   try{
-    const res=await fetch(SUPABASE_URL+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(campCode)+'&select=*&order=first.asc',{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(campId)+'&select=*&order=first.asc',{
       headers:authHeaders()
     });
     if(!res.ok){
@@ -532,6 +640,7 @@ function generateStationTeams(){
 }
 async function syncStationTeams(){
   if(!teams.length){ toast('Generate teams first'); return; }
+  if(!campId){ toast('Camp not found'); return; }
   if(!(authSession && authSession.access_token)){ toast('Sign in required to sync'); return; }
   readGroupInputs();
   const note=$('#stTeamsNote');
@@ -545,10 +654,10 @@ async function syncStationTeams(){
     groups:{ gA1:groupCfg.gA1, gA2:groupCfg.gA2, gB1:groupCfg.gB1, gB2:groupCfg.gB2, numA:groupCfg.numA, numB:groupCfg.numB }
   });
   try{
-    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=code',{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=camp_id',{
       method:'POST',
       headers:authHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
-      body:JSON.stringify([{ code:campCode, data:payload, updated_at:new Date().toISOString() }])
+      body:JSON.stringify([{ camp_id:campId, code:campSlug, data:payload, updated_at:new Date().toISOString() }])
     });
     if(res.ok){
       teamsPosted=true; pendingLocalTeams=false;
@@ -623,16 +732,16 @@ async function clearStationTeams(){
   teams=[]; teamsPosted=false; pendingLocalTeams=false;
   const note=$('#stTeamsNote');
   if(note){ note.className='teams-note'; note.textContent='Clearing…'; }
-  if(authSession && authSession.access_token && campCode){
+  if(authSession && authSession.access_token && campId){
     const payload=Object.assign({}, campLiveExtra, {
       teams:[], roster:[], teamsPosted:false,
       groups:{ gA1:groupCfg.gA1, gA2:groupCfg.gA2, gB1:groupCfg.gB1, gB2:groupCfg.gB2, numA:groupCfg.numA, numB:groupCfg.numB }
     });
     try{
-      const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=code',{
+      const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=camp_id',{
         method:'POST',
         headers:authHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
-        body:JSON.stringify([{ code:campCode, data:payload, updated_at:new Date().toISOString() }])
+        body:JSON.stringify([{ camp_id:campId, code:campSlug, data:payload, updated_at:new Date().toISOString() }])
       });
       if(!res.ok){ toast('Could not clear parent page — try again'); }
       else toast('Teams cleared');
@@ -693,9 +802,9 @@ function bindTeamsToolbar(){
   if(clr) clr.addEventListener('click', ()=>clearStationTeams());
 }
 async function pollTeams(){
-  if(!campCode) return;
+  if(!campId) return;
   try{
-    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(campCode)+'&select=data,updated_at',{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(campId)+'&select=data,updated_at',{
       headers:{apikey:SUPABASE_ANON_KEY}
     });
     if(!res.ok) return;
@@ -800,6 +909,95 @@ async function patchPlayer(id, fields){
   return true;
 }
 
+function isWalkUp(p){
+  return /walk-?up/i.test(String(p.items||''));
+}
+function walkUpBarHtml(){
+  return `<div class="walkup-bar"><button type="button" class="bigbtn" id="btnWalkUp">＋ Register walk-up</button></div>`;
+}
+function bindWalkUpBar(){
+  const b=$('#btnWalkUp');
+  if(b) b.addEventListener('click', openWalkUpDialog);
+}
+function openWalkUpDialog(){
+  if(!campId){ toast('Set a valid camp first'); return; }
+  $('#regMsg').textContent='';
+  ['regFirst','regLast','regYear','regHeight','regSchool','regCity','regState','regEmail','regBalance'].forEach(id=>{ const el=$('#'+id); if(el) el.value=''; });
+  $('#regPos').value='';
+  $('#regPay').value='Paid';
+  const dlg=$('#regDlg');
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+  setTimeout(()=>$('#regFirst').focus(), 50);
+}
+function closeWalkUpDialog(){
+  const dlg=$('#regDlg');
+  if(dlg.close) dlg.close(); else dlg.removeAttribute('open');
+}
+async function saveWalkUp(){
+  if(!campId || !campSlug){ $('#regMsg').textContent='Camp not resolved — check the Camp field.'; return; }
+  const first=$('#regFirst').value.trim();
+  const last=$('#regLast').value.trim();
+  const year=$('#regYear').value.trim();
+  if(!first || !last){ $('#regMsg').textContent='First and last name are required.'; return; }
+  if(!/^(19|20)\d{2}$/.test(year)){ $('#regMsg').textContent='Enter a 4-digit grad year (e.g. 2030).'; return; }
+  const key=playerNameKey(first, last);
+  const existing=players.find(p=>playerNameKey(p.first,p.last)===key);
+  if(existing){
+    $('#regMsg').textContent='That name is already on the roster — search for them instead.';
+    return;
+  }
+  const balance=String($('#regBalance').value||'').trim();
+  const pay=$('#regPay').value;
+  const id=(crypto.randomUUID ? crypto.randomUUID() : ('walk-'+Date.now()+'-'+Math.random().toString(16).slice(2)));
+  const row={
+    id, camp_id:campId, camp_code:campSlug,
+    first, last, grad_year:year,
+    height:($('#regHeight').value||'').trim(),
+    position:($('#regPos').value||'').trim(),
+    school:($('#regSchool').value||'').trim(),
+    city:($('#regCity').value||'').trim(),
+    state:($('#regState').value||'').trim().toUpperCase(),
+    email:($('#regEmail').value||'').trim(),
+    pay_status:pay, balance,
+    items:'Walk-up',
+    jersey:'', checked_in:true,
+    addons_manual:[], addons_removed:[], photo_url:''
+  };
+  const btn=$('#regSave');
+  btn.disabled=true; btn.textContent='Saving…';
+  $('#regMsg').textContent='';
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/players',{
+      method:'POST',
+      headers:authHeaders({'Content-Type':'application/json','Prefer':'return=representation'}),
+      body:JSON.stringify(row)
+    });
+    if(!res.ok){
+      const t=await res.text();
+      $('#regMsg').textContent='Save failed ('+res.status+'). '+(t.slice(0,120)||'Try again.');
+      return;
+    }
+    const created=await res.json();
+    const p=(created && created[0]) ? created[0] : row;
+    players.push(p);
+    players=dedupePlayersByName(players);
+    closeWalkUpDialog();
+    toast(first+' '+last+' checked in — assign a jersey next');
+    // Stay on check-in so staff can register another, or switch to jersey if preferred
+    renderList();
+  }catch(e){
+    $('#regMsg').textContent='Could not reach Supabase — check connection.';
+  }finally{
+    btn.disabled=false; btn.textContent='Check In ✓';
+  }
+}
+$('#regCancel').addEventListener('click', closeWalkUpDialog);
+$('#regSave').addEventListener('click', saveWalkUp);
+['regFirst','regLast','regYear','regHeight','regSchool','regCity','regState','regEmail','regBalance'].forEach(id=>{
+  const el=$('#'+id); if(!el) return;
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); saveWalkUp(); } });
+});
+
 function renderList(){
   const wrap=$('#plist');
 
@@ -857,6 +1055,30 @@ function renderList(){
   }
   else rows=players.filter(p=>matches(p));
 
+  // Check-In: always offer walk-up register (even with empty / finished queue)
+  if(role==='checkin'){
+    let body='';
+    if(!players.length){
+      body='<div class="empty"><b>No roster yet</b>You can still register walk-ups above, or wait for admin to push the roster.</div>';
+    } else if(!rows.length){
+      body='<div class="empty"><b>Everyone is checked in</b>Need someone who wasn\'t on the list? Register them as a walk-up.</div>';
+    } else {
+      body=rows.map(p=>`<div class="prow">
+        <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+        ${hasDue(p)?`<span class="badge due">Owes${p.balance?' $'+esc(p.balance):''}</span>`:'<span class="badge paid">Paid</span>'}
+        ${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
+        <button class="bigbtn" data-checkin="${p.id}">Check In ✓</button>
+      </div>`).join('');
+    }
+    wrap.innerHTML=walkUpBarHtml()+body;
+    bindWalkUpBar();
+    wrap.querySelectorAll('[data-checkin]').forEach(b=>b.addEventListener('click', async ()=>{
+      b.disabled=true; b.textContent='…';
+      if(await patchPlayer(b.dataset.checkin, {checked_in:true})){ toast('Checked in'); renderList(); }
+    }));
+    return;
+  }
+
   if(!players.length){ wrap.innerHTML='<div class="empty"><b>No roster yet</b>Waiting for the roster to be pushed from admin.html.</div>'; return; }
   if(!rows.length){
     const msg={
@@ -869,19 +1091,10 @@ function renderList(){
     wrap.innerHTML='<div class="empty"><b>'+msg+'</b></div>'; return;
   }
 
-  if(role==='checkin'){
+  if(role==='jersey'){
     wrap.innerHTML=rows.map(p=>`<div class="prow">
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.school)}</small></div>
-      ${hasDue(p)?`<span class="badge due">Owes${p.balance?' $'+esc(p.balance):''}</span>`:'<span class="badge paid">Paid</span>'}
-      <button class="bigbtn" data-checkin="${p.id}">Check In ✓</button>
-    </div>`).join('');
-    wrap.querySelectorAll('[data-checkin]').forEach(b=>b.addEventListener('click', async ()=>{
-      b.disabled=true; b.textContent='…';
-      if(await patchPlayer(b.dataset.checkin, {checked_in:true})){ toast('Checked in'); renderList(); }
-    }));
-  } else if(role==='jersey'){
-    wrap.innerHTML=rows.map(p=>`<div class="prow">
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.school)}</small></div>
+      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+      ${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
       <input class="jinput" type="tel" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="##" data-jin="${p.id}">
       <button class="bigbtn" data-assign="${p.id}">Assign</button>
     </div>`).join('');

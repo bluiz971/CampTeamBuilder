@@ -182,40 +182,91 @@ function formatHeight(h){
 }
 
 const params=new URLSearchParams(location.search);
-const campCode=(params.get('camp')||DEFAULT_CAMP_CODE||'').trim();
+const campSlug=(params.get('camp')||DEFAULT_CAMP_CODE||'').trim();
 
+let campRow=null;
 let D={roster:[],teams:[],teamsPosted:false,sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:'',igUrl:'',webUrl:''};
 let myTeam=null, dayFilter='all', lastUpdated=null;
 
-if(!campCode || !SUPABASE_URL || SUPABASE_URL.startsWith('REPLACE_')){
+function formatCampDate(d){
+  if(!d) return '';
+  const dt=new Date(String(d).includes('T')?d:d+'T12:00:00');
+  if(isNaN(dt)) return String(d);
+  return dt.toLocaleDateString(undefined,{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+}
+function showCampNotFound(msg){
   $('#loadingState').style.display='none';
   $('#notFoundState').style.display='block';
-  $('#notFoundMsg').textContent = !campCode
-    ? 'This link is missing a camp code. Ask your coach for the correct link (it should end in ?camp=something).'
-    : 'This page needs to be connected to Supabase first — see the CONFIG section at the top of this file.';
-} else {
+  $('#notFoundState h2').textContent='Camp not found';
+  $('#notFoundMsg').textContent=msg;
+}
+function showNothingPosted(name){
+  $('#loadingState').style.display='none';
+  if($('#siteRoot').style.display==='block') return;
+  $('#notFoundState').style.display='block';
+  $('#notFoundState h2').textContent='Nothing posted yet';
+  $('#notFoundMsg').textContent='Nothing posted yet for '+(name||'this camp')+'. Check back soon.';
+}
+function renderCampHeader(){
+  if(!campRow) return;
+  const title=campRow.name||'Camp';
+  const parts=title.split(' ');
+  $('#hTitle1').innerHTML=esc(parts.slice(0,-1).join(' ')||title)+' <span>'+esc(parts.slice(-1)[0]||'')+'</span>';
+  const bits=[];
+  if(campRow.location) bits.push(campRow.location);
+  if(campRow.camp_date) bits.push(formatCampDate(campRow.camp_date));
+  const subEl=$('#hSub');
+  if(bits.length){ subEl.textContent=bits.join(' · '); subEl.style.display='block'; }
+  else { subEl.style.display='none'; }
+}
+async function fetchCamp(slug){
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/camps?slug=eq.'+encodeURIComponent(slug)+'&select=*&limit=1',{
+      headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    if(!res.ok) return null;
+    const rows=await res.json();
+    return rows && rows[0] ? rows[0] : null;
+  }catch(e){ return null; }
+}
+async function boot(){
+  campRow=await fetchCamp(campSlug);
+  if(!campRow){
+    showCampNotFound('No camp matches this link.');
+    return;
+  }
+  renderCampHeader();
   fetchLive();
   setInterval(fetchLive, 20000);
 }
 
+if(!campSlug || !SUPABASE_URL || SUPABASE_URL.startsWith('REPLACE_')){
+  $('#loadingState').style.display='none';
+  $('#notFoundState').style.display='block';
+  $('#notFoundState h2').textContent='Camp not found';
+  $('#notFoundMsg').textContent = !campSlug
+    ? 'This link is missing a camp code. Ask your coach for the correct link (it should end in ?camp=something).'
+    : 'This page needs to be connected to Supabase first — see the CONFIG section at the top of this file.';
+} else {
+  boot();
+}
+
 async function fetchLive(){
+  if(!campRow) return;
   try{
-    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(campCode)+'&select=data,updated_at',{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(campRow.id)+'&select=data,updated_at',{
       headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}
     });
     if(!res.ok){
       $('#loadingState').style.display='none';
-      $('#notFoundState').style.display= $('#siteRoot').style.display==='block' ? 'none' : 'block';
-      $('#notFoundMsg').textContent='Could not load this camp right now. Try again shortly.';
+      if($('#siteRoot').style.display!=='block'){
+        showNothingPosted(campRow.name);
+      }
       return;
     }
     const rows=await res.json();
     if(!rows || !rows[0] || !rows[0].data){
-      $('#loadingState').style.display='none';
-      if($('#siteRoot').style.display!=='block'){
-        $('#notFoundState').style.display='block';
-        $('#notFoundMsg').textContent='This camp hasn\'t been published yet. Check back soon.';
-      }
+      showNothingPosted(campRow.name);
       return;
     }
     if(rows[0].updated_at!==lastUpdated){
@@ -241,6 +292,7 @@ async function fetchLive(){
 function setBadge(txt){ const b=$('#liveBadge'); if(b) b.innerHTML=esc(txt).replace('🟢','🟢').replace('⚪','⚪'); }
 
 function renderHeader(){
+  if(campRow){ renderCampHeader(); return; }
   const title=D.title||'Camp Teams & Schedule';
   const parts=title.split(' ');
   $('#hTitle1').innerHTML=esc(parts.slice(0,-1).join(' ')||title)+' <span>'+esc(parts.slice(-1)[0]||'')+'</span>';

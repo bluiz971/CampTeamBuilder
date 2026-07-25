@@ -101,7 +101,14 @@ end $$;
 -- 3. Create your login under Authentication → Users → Add User
 --    (see note above)
 -- 4. Paste the URL + anon key into Camp Team Builder's Publish tab
---    → Live Sync, pick a Camp Code (e.g. "fall-2026"), then sign in
---    with the email/password you just created
--- 5. Click "Save & Sync Now"
+--    → Live Sync, then sign in with the email/password you created
+-- 5. Run migrations/001_multi_camp.sql (adds camps + camp_id), then
+--    use the Camps tab / Active camp selector — parent links are
+--    ?camp=your-slug
+-- ============================================================
+
+-- ============================================================
+-- MULTI-CAMP (required for Camps tab / ?camp=slug links)
+-- After this file, run: migrations/001_multi_camp.sql
+-- See migrations/README.md for the full run order.
 -- ============================================================

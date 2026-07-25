@@ -191,23 +191,72 @@ dialog select{width:100%;margin:10px 0 16px}
     <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v8 · Select 360, Instagram & website tiles</small>
   </div>
   <div class="scoreboard">
+    <div class="sb-cell" style="min-width:160px;text-align:left;padding:8px 12px">
+      <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9aa4b1;margin-bottom:4px">Active camp</span>
+      <select id="campSelect" style="width:100%;font-size:14px;padding:6px 8px;border-radius:7px;border:1px solid #2c3947;background:var(--ink-2,#1e2733);color:#fff"></select>
+    </div>
     <div class="sb-cell"><b id="sbReg">0</b><span>Registered</span></div>
     <div class="sb-cell"><b id="sbIn">0</b><span>Checked In</span></div>
     <div class="sb-cell alert"><b id="sbDue">0</b><span>Balance Due</span></div>
     <div class="sb-cell"><b id="sbTeams">0</b><span>Teams Set</span></div>
   </div>
   <nav>
-    <button data-p="publish" class="on"><span class="step">1</span>Publish</button>
-    <button data-p="roster"><span class="step">2</span>Roster</button>
-    <button data-p="checkin"><span class="step">3</span>Check-In</button>
-    <button data-p="jersey"><span class="step">4</span>Jersey</button>
-    <button data-p="players"><span class="step">5</span>Player Data</button>
-    <button data-p="teams"><span class="step">6</span>Teams</button>
-    <button data-p="schedule"><span class="step">7</span>Schedule</button>
+    <button data-p="camps" class="on"><span class="step">1</span>Camps</button>
+    <button data-p="publish"><span class="step">2</span>Publish</button>
+    <button data-p="roster"><span class="step">3</span>Roster</button>
+    <button data-p="checkin"><span class="step">4</span>Check-In</button>
+    <button data-p="jersey"><span class="step">5</span>Jersey</button>
+    <button data-p="players"><span class="step">6</span>Player Data</button>
+    <button data-p="teams"><span class="step">7</span>Teams</button>
+    <button data-p="schedule"><span class="step">8</span>Schedule</button>
   </nav>
 </header>
 
 <main>
+
+<!-- ============ 1. CAMPS ============ -->
+<section class="panel on" id="panel-camps">
+  <div class="panel-head">
+    <div><h2>Camps</h2>
+    <p>Create and manage camps. Public links use the slug: <code>?camp=your-slug</code>. All roster/team work below applies only to the <b>Active camp</b> in the header.</p></div>
+  </div>
+  <div class="mapping" style="margin-bottom:16px">
+    <h3 style="margin-bottom:10px">Create camp</h3>
+    <div class="map-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
+      <div><label>Name</label><input type="text" id="campName" placeholder="Florida 2026"></div>
+      <div><label>Location</label><input type="text" id="campLocation" placeholder="Orlando, FL"></div>
+      <div><label>Date</label><input type="date" id="campDate"></div>
+      <div><label>Slug</label><input type="text" id="campSlug" placeholder="florida-2026"></div>
+      <div><label>Status</label>
+        <select id="campStatus"><option value="active">active</option><option value="draft">draft</option><option value="archived">archived</option></select>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-orange" type="button" id="btnCreateCamp">Create Camp</button>
+      <span id="campFormNote" style="font-size:13px;color:var(--mut)"></span>
+    </div>
+  </div>
+  <div class="tbl-wrap"><table id="campsTbl">
+    <tr><th>Name</th><th>Slug</th><th>Date</th><th>Status</th><th>Links</th><th>Actions</th></tr>
+  </table></div>
+  <div id="campEditBox" class="mapping" style="margin-top:16px" hidden>
+    <h3>Edit camp</h3>
+    <input type="hidden" id="editCampId">
+    <div class="map-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
+      <div><label>Name</label><input type="text" id="editCampName"></div>
+      <div><label>Location</label><input type="text" id="editCampLocation"></div>
+      <div><label>Date</label><input type="date" id="editCampDate"></div>
+      <div><label>Slug</label><input type="text" id="editCampSlug"></div>
+      <div><label>Status</label>
+        <select id="editCampStatus"><option value="active">active</option><option value="draft">draft</option><option value="archived">archived</option></select>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-orange btn-sm" type="button" id="btnSaveCamp">Save</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="btnCancelEditCamp">Cancel</button>
+    </div>
+  </div>
+</section>
 
 <!-- ============ 2. ROSTER ============ -->
 <section class="panel" id="panel-roster">
@@ -342,7 +391,7 @@ dialog select{width:100%;margin:10px 0 16px}
 </section>
 
 <!-- ============ 1. PUBLISH ============ -->
-<section class="panel on" id="panel-publish">
+<section class="panel" id="panel-publish">
   <div class="panel-head">
     <div><h2>Publish</h2>
     <p>Two pages, one site: <b>admin.html</b> (this tool, private) and <b>index.html</b> (the parent page). Deploy both together once. After that, everything below happens without touching a file again — updates push straight to Supabase and show up live for parents.</p></div>
@@ -370,7 +419,7 @@ dialog select{width:100%;margin:10px 0 16px}
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
       <div><label>Supabase Project URL</label><input type="text" id="syncUrl" placeholder="https://xxxx.supabase.co" style="width:280px"></div>
       <div><label>Supabase anon public key</label><input type="text" id="syncKey" placeholder="eyJhbGciOi..." style="width:320px"></div>
-      <div><label>Camp Code</label><input type="text" id="syncCode" placeholder="fall-2026" style="width:140px"></div>
+      <div><label>Camp slug (from Active camp)</label><input type="text" id="syncCode" placeholder="select a camp" style="width:160px;background:#faf9f6" readonly></div>
     </div>
     <div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>
     <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Sign in to enable pushing live updates. Parents don't need an account — only you (and any co-coach) need to sign in here.</p>
@@ -442,30 +491,294 @@ const DEFAULT_CAMP_CODE = "mid-atlantic-2026";
 /* ===================================================================== */
 
 const DEFAULT_SITE_BASE_URL = "https://selecttourcamp.netlify.app";
-let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', syncUrl: '', syncKey: '', syncCode: '', siteBaseUrl: '', teamsLive: false };
+let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', syncUrl: '', syncKey: '', syncCode: '', campId: '', siteBaseUrl: '', teamsLive: false };
+let campsList=[];
+const GLOBAL_KEY='campTeamBuilder_global_v2';
+const campStoreKey=id=>'campTeamBuilder_camp_'+id;
 const store = {
   ok: (()=>{ try{ localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return true; }catch(e){ return false; } })(),
-  save(){ if(this.ok){ try{ localStorage.setItem('campTeamBuilder', JSON.stringify(S)); }catch(e){} } },
-  load(){ if(this.ok){ try{ const d = localStorage.getItem('campTeamBuilder'); if(d) S = JSON.parse(d); }catch(e){} } }
+  saveGlobal(){
+    if(!this.ok) return;
+    try{
+      localStorage.setItem(GLOBAL_KEY, JSON.stringify({
+        syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, campId:S.campId, syncCode:S.syncCode
+      }));
+    }catch(e){}
+  },
+  save(){
+    if(!this.ok) return;
+    this.saveGlobal();
+    if(!S.campId) return;
+    try{
+      const copy=Object.assign({}, S);
+      localStorage.setItem(campStoreKey(S.campId), JSON.stringify(copy));
+    }catch(e){}
+  },
+  loadGlobal(){
+    if(!this.ok) return {};
+    try{ return JSON.parse(localStorage.getItem(GLOBAL_KEY)||'{}')||{}; }catch(e){ return {}; }
+  },
+  loadCamp(campId){
+    if(!this.ok || !campId) return null;
+    try{ return JSON.parse(localStorage.getItem(campStoreKey(campId))||'null'); }catch(e){ return null; }
+  },
+  // Legacy single-blob migration
+  loadLegacy(){
+    if(!this.ok) return null;
+    try{ return JSON.parse(localStorage.getItem('campTeamBuilder')||'null'); }catch(e){ return null; }
+  }
 };
-store.load();
+(function bootStore(){
+  const g=store.loadGlobal();
+  const legacy=store.loadLegacy();
+  if(g.syncUrl||g.syncKey){ S.syncUrl=g.syncUrl||''; S.syncKey=g.syncKey||''; S.siteBaseUrl=g.siteBaseUrl||''; S.campId=g.campId||''; S.syncCode=g.syncCode||''; }
+  else if(legacy){
+    Object.assign(S, legacy);
+    store.saveGlobal();
+    if(S.campId||S.syncCode){ /* will re-key after camps load */ }
+  }
+})();
 // Defaults for data saved by older versions
 S.gA1=S.gA1||2027; S.gA2=S.gA2||2030; S.gB1=S.gB1||2031; S.gB2=S.gB2||2035;
 S.schedule=S.schedule||[]; S.pubTitle=S.pubTitle||''; S.pubSub=S.pubSub||'';
 S.appUrl=S.appUrl||'https://select360.mvt.so/'; S.shopUrl=S.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD';
 S.igUrl=S.igUrl||'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA=='; S.webUrl=S.webUrl||'https://aauselecttour.com';
 S.syncUrl=S.syncUrl||DEFAULT_SUPABASE_URL||''; S.syncKey=S.syncKey||DEFAULT_SUPABASE_ANON_KEY||''; S.syncCode=S.syncCode||DEFAULT_CAMP_CODE||''; S.siteBaseUrl=S.siteBaseUrl||DEFAULT_SITE_BASE_URL||''; S.teamsLive=!!S.teamsLive;
-// Migration: teams saved by v1 used "N-Mascot" names. Detect and clear so the
-// stale display can't linger — user just presses Generate to rebuild as Team N.
+S.campId=S.campId||'';
 if(S.teams){
   const all=[...(S.teams.A||[]),...(S.teams.B||[])];
   const oldFormat=all.some(t=>t.num===undefined || /^\d+-\D/.test(String(t.name)));
   if(oldFormat){ S.teams=null; store.save(); }
 }
 
+// Auth session (sessionStorage — clears when the browser closes)
+let authSession=null;
+try{ const raw=sessionStorage.getItem('campAuthSession'); if(raw) authSession=JSON.parse(raw); }catch(e){}
 
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function slugifyCamp(name, dateStr){
+  let year='';
+  if(dateStr){ const y=String(dateStr).slice(0,4); if(/^\d{4}$/.test(y)) year=y; }
+  if(!year){ const m=String(name||'').match(/(20\d{2})/); if(m) year=m[1]; }
+  let base=String(name||'').toLowerCase().replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-');
+  if(year && !base.includes(year)) base=(base?base+'-':'')+year;
+  return base.replace(/^-|-$/g,'') || 'camp';
+}
+function authHeaders(extra){
+  const h={ 'apikey':S.syncKey, 'Authorization':'Bearer '+(authSession&&authSession.access_token?authSession.access_token:S.syncKey) };
+  return Object.assign(h, extra||{});
+}
+function requireCamp(){
+  if(!S.campId){ alert('Select or create a camp first (Camps tab).'); return false; }
+  return true;
+}
+
+/* =============================================================
+   CAMPS (multi-camp)
+============================================================= */
+async function fetchCampsList(){
+  if(!(S.syncUrl && S.syncKey)) return [];
+  const headers=authHeaders();
+  // Prefer authenticated listing (all statuses); fall back to anon active-only
+  let res=await fetch(S.syncUrl+'/rest/v1/camps?select=*&order=camp_date.desc.nullslast,name.asc',{ headers });
+  if(!res.ok && !(authSession&&authSession.access_token)){
+    res=await fetch(S.syncUrl+'/rest/v1/camps?status=eq.active&select=*&order=name.asc',{ headers:{apikey:S.syncKey, Authorization:'Bearer '+S.syncKey} });
+  }
+  if(!res.ok) return [];
+  return await res.json();
+}
+function renderCampSelect(){
+  const sel=$('#campSelect'); if(!sel) return;
+  const cur=S.campId;
+  sel.innerHTML=(campsList.length?campsList:[{id:'',slug:'',name:'— no camps —'}]).map(c=>
+    `<option value="${esc(c.id)}" ${c.id===cur?'selected':''}>${esc(c.name||c.slug)}${c.status&&c.status!=='active'?' ('+esc(c.status)+')':''}</option>`
+  ).join('');
+}
+function renderCampsTable(){
+  const t=$('#campsTbl'); if(!t) return;
+  const base=(S.siteBaseUrl||DEFAULT_SITE_BASE_URL).replace(/\/$/,'');
+  if(!campsList.length){
+    t.innerHTML='<tr><th>Name</th><th>Slug</th><th>Date</th><th>Status</th><th>Links</th><th>Actions</th></tr><tr><td colspan="6" style="padding:24px;text-align:center;color:var(--mut)">No camps yet — create one above. Sign in on Publish if the list stays empty.</td></tr>';
+    return;
+  }
+  t.innerHTML='<tr><th>Name</th><th>Slug</th><th>Date</th><th>Status</th><th>Links</th><th>Actions</th></tr>'+
+    campsList.map(c=>{
+      const parent=base+'/?camp='+encodeURIComponent(c.slug);
+      const station=base+'/station.html?camp='+encodeURIComponent(c.slug);
+      return `<tr>
+        <td><b>${esc(c.name)}</b>${c.location?'<br><small style="color:var(--mut)">'+esc(c.location)+'</small>':''}</td>
+        <td><code>${esc(c.slug)}</code></td>
+        <td>${c.camp_date?esc(c.camp_date):'—'}</td>
+        <td>${esc(c.status)}</td>
+        <td style="font-size:12px;line-height:1.6">
+          <a href="${esc(parent)}" target="_blank" rel="noopener">Parent</a> ·
+          <a href="${esc(station)}" target="_blank" rel="noopener">Station</a>
+        </td>
+        <td class="row-actions">
+          <button class="btn btn-ghost btn-sm" data-use="${esc(c.id)}">Use</button>
+          <button class="btn btn-ghost btn-sm" data-edit="${esc(c.id)}">Edit</button>
+          <button class="btn btn-ghost btn-sm" data-arch="${esc(c.id)}">${c.status==='archived'?'Activate':'Archive'}</button>
+          <button class="btn btn-ghost btn-sm" data-del="${esc(c.id)}" style="color:var(--red)">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  t.querySelectorAll('[data-use]').forEach(b=>b.addEventListener('click',()=>selectCamp(b.dataset.use)));
+  t.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openEditCamp(b.dataset.edit)));
+  t.querySelectorAll('[data-arch]').forEach(b=>b.addEventListener('click',()=>toggleArchiveCamp(b.dataset.arch)));
+  t.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteCamp(b.dataset.del)));
+}
+async function refreshCampsUI(){
+  campsList=(await fetchCampsList()).filter(c=>c.slug!=='admin-cleared');
+  // Resolve campId from slug if missing (legacy)
+  if(!S.campId && S.syncCode){
+    const hit=campsList.find(c=>c.slug===S.syncCode);
+    if(hit) S.campId=hit.id;
+  }
+  if(S.campId && !campsList.some(c=>c.id===S.campId) && campsList.length){
+    S.campId=campsList[0].id;
+  }
+  if(!S.campId && campsList.length) S.campId=campsList[0].id;
+  const active=campsList.find(c=>c.id===S.campId);
+  if(active){ S.syncCode=active.slug; }
+  store.saveGlobal();
+  renderCampSelect();
+  renderCampsTable();
+  if($('#syncCode')) $('#syncCode').value=S.syncCode||'';
+  renderSiteLink();
+}
+function emptyCampState(){
+  return { players:[], teams:null, numA:12, numB:16, gA1:2027, gA2:2030, gB1:2031, gB2:2035, schedule:[],
+    pubTitle:'', pubSub:'', appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl,
+    syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, campId:S.campId, siteBaseUrl:S.siteBaseUrl, teamsLive:false };
+}
+async function selectCamp(campId){
+  if(!campId || campId===S.campId){ renderCampSelect(); return; }
+  store.save(); // save outgoing camp
+  const next=campsList.find(c=>c.id===campId);
+  if(!next) return;
+  const saved=store.loadCamp(campId);
+  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl };
+  if(saved){ S=Object.assign(emptyCampState(), saved, keep, { campId:next.id, syncCode:next.slug }); }
+  else {
+    // Migrate legacy blob once into this camp if slug matches
+    const legacy=store.loadLegacy();
+    if(legacy && (!legacy.campId || legacy.syncCode===next.slug) && legacy.players && legacy.players.length){
+      S=Object.assign(emptyCampState(), legacy, keep, { campId:next.id, syncCode:next.slug });
+    } else {
+      S=Object.assign(emptyCampState(), keep, { campId:next.id, syncCode:next.slug });
+    }
+  }
+  store.save();
+  renderCampSelect();
+  if($('#syncCode')) $('#syncCode').value=S.syncCode;
+  renderAll();
+  renderSiteLink();
+  pollPlayersLive();
+}
+function openEditCamp(id){
+  const c=campsList.find(x=>x.id===id); if(!c) return;
+  $('#campEditBox').hidden=false;
+  $('#editCampId').value=c.id;
+  $('#editCampName').value=c.name||'';
+  $('#editCampLocation').value=c.location||'';
+  $('#editCampDate').value=c.camp_date||'';
+  $('#editCampSlug').value=c.slug||'';
+  $('#editCampStatus').value=c.status||'active';
+  $('#campEditBox').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function toggleArchiveCamp(id){
+  const c=campsList.find(x=>x.id===id); if(!c) return;
+  if(!(authSession&&authSession.access_token)){ alert('Sign in on the Publish tab first.'); return; }
+  const status=c.status==='archived'?'active':'archived';
+  const res=await fetch(S.syncUrl+'/rest/v1/camps?id=eq.'+encodeURIComponent(id),{
+    method:'PATCH', headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+    body:JSON.stringify({ status })
+  });
+  if(!res.ok){ alert('Could not update status ('+res.status+')'); return; }
+  await refreshCampsUI();
+}
+async function deleteCamp(id){
+  const c=campsList.find(x=>x.id===id); if(!c) return;
+  if(!(authSession&&authSession.access_token)){ alert('Sign in on the Publish tab first.'); return; }
+  if(!confirm('Delete camp "'+c.name+'" ('+c.slug+')?\n\nThis permanently removes ALL players and parent/station live data for this camp. This cannot be undone.')) return;
+  if(!confirm('Really delete '+c.slug+' and all of its data?')) return;
+  const res=await fetch(S.syncUrl+'/rest/v1/camps?id=eq.'+encodeURIComponent(id),{
+    method:'DELETE', headers:authHeaders()
+  });
+  if(!res.ok){ alert('Delete failed ('+res.status+'). Check DELETE policy on camps.'); return; }
+  if(S.campId===id){
+    S.campId=''; S.syncCode=''; S.players=[]; S.teams=null; S.schedule=[]; store.saveGlobal();
+  }
+  $('#campEditBox').hidden=true;
+  await refreshCampsUI();
+  if(S.campId) await selectCamp(S.campId);
+  else renderAll();
+}
+
+$('#campName').addEventListener('input', ()=>{
+  if($('#campSlug').dataset.manual==='1') return;
+  $('#campSlug').value=slugifyCamp($('#campName').value, $('#campDate').value);
+});
+$('#campDate').addEventListener('change', ()=>{
+  if($('#campSlug').dataset.manual==='1') return;
+  $('#campSlug').value=slugifyCamp($('#campName').value, $('#campDate').value);
+});
+$('#campSlug').addEventListener('input', ()=>{ $('#campSlug').dataset.manual='1'; });
+$('#campSelect').addEventListener('change', e=>selectCamp(e.target.value));
+$('#btnCreateCamp').addEventListener('click', async ()=>{
+  if(!(authSession&&authSession.access_token)){ $('#campFormNote').innerHTML='<span style="color:var(--red)">Sign in on Publish first.</span>'; return; }
+  const name=$('#campName').value.trim();
+  let slug=($('#campSlug').value.trim()||slugifyCamp(name, $('#campDate').value)).toLowerCase().replace(/[^a-z0-9-]/g,'').replace(/-+/g,'-');
+  if(!name||!slug){ $('#campFormNote').innerHTML='<span style="color:var(--red)">Name and slug are required.</span>'; return; }
+  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)){ $('#campFormNote').innerHTML='<span style="color:var(--red)">Slug must be lowercase letters, numbers, hyphens.</span>'; return; }
+  $('#campFormNote').textContent='Creating…';
+  const body={ name, slug, location:$('#campLocation').value.trim()||null, camp_date:$('#campDate').value||null, status:$('#campStatus').value||'active' };
+  const res=await fetch(S.syncUrl+'/rest/v1/camps',{
+    method:'POST', headers:authHeaders({'Content-Type':'application/json','Prefer':'return=representation'}),
+    body:JSON.stringify(body)
+  });
+  if(res.status===409 || (res.status===400 && /duplicate|unique/i.test(await res.clone().text()))){
+    $('#campFormNote').innerHTML='<span style="color:var(--red)">Slug "'+esc(slug)+'" is already taken. Pick another.</span>'; return;
+  }
+  if(!res.ok){ const t=await res.text(); $('#campFormNote').innerHTML='<span style="color:var(--red)">Create failed ('+res.status+'): '+esc(t.slice(0,120))+'</span>'; return; }
+  const rows=await res.json();
+  $('#campName').value=''; $('#campLocation').value=''; $('#campDate').value=''; $('#campSlug').value=''; $('#campSlug').dataset.manual='';
+  $('#campFormNote').innerHTML='<b style="color:var(--green)">✓ Created</b>';
+  await refreshCampsUI();
+  if(rows[0]&&rows[0].id) await selectCamp(rows[0].id);
+});
+$('#btnCancelEditCamp').addEventListener('click', ()=>{ $('#campEditBox').hidden=true; });
+$('#btnSaveCamp').addEventListener('click', async ()=>{
+  if(!(authSession&&authSession.access_token)){ alert('Sign in first'); return; }
+  const id=$('#editCampId').value;
+  const slug=$('#editCampSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'').replace(/-+/g,'-');
+  const body={
+    name:$('#editCampName').value.trim(),
+    location:$('#editCampLocation').value.trim()||null,
+    camp_date:$('#editCampDate').value||null,
+    slug, status:$('#editCampStatus').value
+  };
+  if(!body.name||!slug){ alert('Name and slug required'); return; }
+  const res=await fetch(S.syncUrl+'/rest/v1/camps?id=eq.'+encodeURIComponent(id),{
+    method:'PATCH', headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+    body:JSON.stringify(body)
+  });
+  if(res.status===409){ alert('That slug is already taken.'); return; }
+  if(!res.ok){ alert('Save failed ('+res.status+')'); return; }
+  // Keep denormalized slug mirrors in sync
+  await fetch(S.syncUrl+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(id),{
+    method:'PATCH', headers:authHeaders({'Content-Type':'application/json'}), body:JSON.stringify({ camp_code:slug })
+  });
+  await fetch(S.syncUrl+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(id),{
+    method:'PATCH', headers:authHeaders({'Content-Type':'application/json'}), body:JSON.stringify({ code:slug })
+  });
+  if(S.campId===id){ S.syncCode=slug; store.save(); }
+  $('#campEditBox').hidden=true;
+  await refreshCampsUI();
+  renderAll();
+});
 
 /* =============================================================
    HELPERS
@@ -660,11 +973,18 @@ function preferPlayerRow(a, b){
   return score(b)>score(a)?b:a;
 }
 
+function playersCampFilter(){
+  if(S.campId) return 'camp_id=eq.'+encodeURIComponent(S.campId);
+  if(S.syncCode) return 'camp_code=eq.'+encodeURIComponent(S.syncCode);
+  return '';
+}
+
 async function fetchRemotePlayersByName(){
   const out={};
-  if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return out;
+  if(!(S.syncUrl && S.syncKey && (S.campId||S.syncCode) && authSession && authSession.access_token)) return out;
+  const filt=playersCampFilter(); if(!filt) return out;
   try{
-    const res=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(S.syncCode)+'&select=*',{
+    const res=await fetch(S.syncUrl+'/rest/v1/players?'+filt+'&select=*',{
       headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
     });
     if(!res.ok) return out;
@@ -679,6 +999,7 @@ async function fetchRemotePlayersByName(){
 }
 
 $('#btnLoad').addEventListener('click', async ()=>{
+  if(!requireCamp()) return;
   const map={};
   $$('#mapGrid select').forEach(s=>map[s.dataset.k]=+s.value);
   if(map.first<0||map.last<0){ alert('First Name and Last Name are required.'); return; }
@@ -1353,13 +1674,9 @@ $('#pubIgUrl').addEventListener('input',e=>{ S.igUrl=e.target.value.trim(); stor
 $('#pubWebUrl').addEventListener('input',e=>{ S.webUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#syncUrl').addEventListener('input',e=>{ S.syncUrl=e.target.value.trim().replace(/\/$/,''); store.save(); });
 $('#syncKey').addEventListener('input',e=>{ S.syncKey=e.target.value.trim(); store.save(); });
-$('#syncCode').addEventListener('input',e=>{ S.syncCode=e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-'); store.save(); renderSiteLink(); });
+// syncCode is readonly — set via Active camp selector / Camps tab
 
-// --- Supabase Auth session (kept out of S / localStorage on purpose;
-// lives in sessionStorage so it clears when the browser closes) ---
-let authSession=null;
-try{ const raw=sessionStorage.getItem('campAuthSession'); if(raw) authSession=JSON.parse(raw); }catch(e){}
-
+// --- Supabase Auth UI ---
 function updateAuthUI(){
   const signedIn = authSession && authSession.access_token;
   $('#signedOutRow').style.display = signedIn ? 'none' : 'flex';
@@ -1386,6 +1703,7 @@ $('#btnSignIn').addEventListener('click', async ()=>{
       $('#authPass').value='';
       updateAuthUI();
       $('#syncStatus').innerHTML='<b style="color:var(--green)">✓ Signed in</b> as '+esc(email)+'.';
+      refreshCampsUI();
     } else {
       $('#syncStatus').innerHTML='<span style="color:var(--red)">Sign-in failed: '+esc(body.error_description||body.msg||'check email/password')+'</span>';
     }
@@ -1408,8 +1726,8 @@ $('#btnSignOut').addEventListener('click', ()=>{
 // Publish sync can run before teams exist; teams stay off the parent page until Teams sync.
 async function pushLive(silent, opts){
   opts=opts||{};
-  if(!(S.syncUrl && S.syncKey && S.syncCode)){
-    if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">Fill in Project URL, anon key, and Camp Code first.</span>';
+  if(!(S.syncUrl && S.syncKey && S.campId && S.syncCode)){
+    if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">Select an Active camp (and fill Project URL / anon key) first.</span>';
     return false;
   }
   if(!(authSession && authSession.access_token)){
@@ -1435,7 +1753,7 @@ async function pushLive(silent, opts){
   // Publish content sync shouldn't wipe teams that are already live
   if(!includeTeams){
     try{
-      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(S.syncCode)+'&select=data',{
+      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(S.campId)+'&select=data',{
         headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
       });
       if(cur.ok){
@@ -1453,13 +1771,13 @@ async function pushLive(silent, opts){
   if(!silent && statusEl) statusEl.textContent='Syncing…';
   try{
     const base=S.syncUrl.replace(/\/$/,'');
-    const res=await fetch(base+'/rest/v1/camp_live?on_conflict=code',{
+    const res=await fetch(base+'/rest/v1/camp_live?on_conflict=camp_id',{
       method:'POST',
       headers:{
         'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token,
         'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates'
       },
-      body:JSON.stringify([{ code:S.syncCode, data:payload, updated_at:new Date().toISOString() }])
+      body:JSON.stringify([{ camp_id:S.campId, code:S.syncCode, data:payload, updated_at:new Date().toISOString() }])
     });
     if(res.ok){
       const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
@@ -1493,7 +1811,7 @@ $('#btnClearTeams').addEventListener('click', async ()=>{
   if(!confirm('Clear assigned teams?\n\nRemoves local teams and posts empty rosters to the parent/station pages. Check-ins and jerseys stay.')) return;
   S.teams=null; S.teamsLive=false; store.save(); renderTeams(); updateScoreboard();
   const note=$('#teamsSyncNote');
-  if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)){
+  if(!(S.syncUrl && S.syncKey && S.campId && S.syncCode && authSession && authSession.access_token)){
     if(note) note.innerHTML='Local teams cleared. Sign in on Publish to clear the parent page too.';
     return;
   }
@@ -1502,7 +1820,7 @@ $('#btnClearTeams').addEventListener('click', async ()=>{
     // Preserve schedule/title/etc, wipe teams
     let baseData={};
     try{
-      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(S.syncCode)+'&select=data',{
+      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(S.campId)+'&select=data',{
         headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
       });
       if(cur.ok){ const rows=await cur.json(); baseData=(rows&&rows[0]&&rows[0].data)||{}; }
@@ -1511,13 +1829,13 @@ $('#btnClearTeams').addEventListener('click', async ()=>{
       teams:[], roster:[], teamsPosted:false,
       groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }
     });
-    const res=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?on_conflict=code',{
+    const res=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?on_conflict=camp_id',{
       method:'POST',
       headers:{
         'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token,
         'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates'
       },
-      body:JSON.stringify([{ code:S.syncCode, data:payload, updated_at:new Date().toISOString() }])
+      body:JSON.stringify([{ camp_id:S.campId, code:S.syncCode, data:payload, updated_at:new Date().toISOString() }])
     });
     if(note){
       note.innerHTML=res.ok
@@ -1532,7 +1850,7 @@ $('#btnClearTeams').addEventListener('click', async ()=>{
 // Auto-push (debounced) whenever public-facing data changes.
 let _syncTimer=null;
 function autoPushLive(){
-  if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return;
+  if(!(S.syncUrl && S.syncKey && S.campId && S.syncCode && authSession && authSession.access_token)) return;
   clearTimeout(_syncTimer);
   _syncTimer=setTimeout(()=>pushLive(true, {includeTeams:!!S.teamsLive}), 1200);
 }
@@ -1545,7 +1863,7 @@ function autoPushLive(){
 ============================================================= */
 function playerRow(p){
   return {
-    id:p.uid, camp_code:S.syncCode, first:p.first, last:p.last, grad_year:String(p.year||''),
+    id:p.uid, camp_id:S.campId, camp_code:S.syncCode, first:p.first, last:p.last, grad_year:String(p.year||''),
     height:p.height||'', position:p.position||'', school:p.school||'', city:p.city||'', state:p.state||'',
     pay_status:p.payStatus||'', balance:String(p.balance||''), items:p.items||'', email:p.email||'',
     jersey:String(p.jersey||''), checked_in:!!p.checkedIn,
@@ -1571,11 +1889,34 @@ async function deletePlayerIds(ids){
   return {ok:true, deleted};
 }
 
-async function clearCampRemote(campCode){
-  if(!(S.syncUrl && S.syncKey && campCode && authSession && authSession.access_token)){
+/** Dump camp for soft-clear when DELETE RLS is missing — status archived so anon can't see rows. */
+async function ensureClearedDumpCamp(){
+  const slug='admin-cleared';
+  let res=await fetch(S.syncUrl+'/rest/v1/camps?slug=eq.'+encodeURIComponent(slug)+'&select=id',{
+    headers:authHeaders()
+  });
+  if(res.ok){
+    const rows=await res.json();
+    if(rows[0]&&rows[0].id) return rows[0].id;
+  }
+  res=await fetch(S.syncUrl+'/rest/v1/camps',{
+    method:'POST', headers:authHeaders({'Content-Type':'application/json','Prefer':'return=representation'}),
+    body:JSON.stringify({ slug, name:'Admin Cleared (internal)', status:'archived' })
+  });
+  if(res.ok){
+    const rows=await res.json();
+    if(rows[0]&&rows[0].id) return rows[0].id;
+  }
+  return null;
+}
+
+async function clearCampRemote(){
+  if(!(S.syncUrl && S.syncKey && S.campId && authSession && authSession.access_token)){
     return {ok:false, reason:'not-configured', remaining:-1, needSql:false};
   }
-  const code=String(campCode).trim();
+  const campId=S.campId;
+  const code=S.syncCode||'';
+  const filt='camp_id=eq.'+encodeURIComponent(campId);
   const headers={
     'apikey':S.syncKey,
     'Authorization':'Bearer '+authSession.access_token,
@@ -1585,58 +1926,59 @@ async function clearCampRemote(campCode){
   let deleted=0;
   // 1) Try hard DELETE (needs DELETE RLS policy)
   for(let attempt=0; attempt<3; attempt++){
-    const delRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code),{
+    const delRes=await fetch(S.syncUrl+'/rest/v1/players?'+filt,{
       method:'DELETE', headers
     });
     if(delRes.ok){
       try{ deleted+=(await delRes.json()).length; }catch(e){}
     }
-    const check=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id&limit=1',{
+    const check=await fetch(S.syncUrl+'/rest/v1/players?'+filt+'&select=id&limit=1',{
       headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
     });
     if(check.ok && !(await check.json()).length) break;
   }
-  // 2) Fallback: MOVE rows off this camp_code (UPDATE usually allowed; DELETE often isn't)
+  // 2) Fallback: MOVE rows to archived dump camp (UPDATE usually allowed; DELETE often isn't)
   let archived=0;
   let needSql=false;
-  const still=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{
+  const still=await fetch(S.syncUrl+'/rest/v1/players?'+filt+'&select=id',{
     headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
   });
   if(still.ok){
     const left=await still.json();
     if(left.length){
-      needSql=true; // DELETE didn't work — table is missing delete policy
-      const archiveCode=code+'__cleared_'+Date.now();
-      // Patch in chunks by id (bulk filter PATCH can hit row limits)
-      const CHUNK=80;
-      for(let i=0;i<left.length;i+=CHUNK){
-        const chunk=left.slice(i,i+CHUNK);
-        const patch=await fetch(S.syncUrl+'/rest/v1/players?id=in.('+chunk.map(r=>'"'+r.id+'"').join(',')+')',{
-          method:'PATCH', headers,
-          body:JSON.stringify({ camp_code:archiveCode, checked_in:false, jersey:'' })
-        });
-        if(patch.ok){
-          try{ archived+=(await patch.json()).length; }catch(e){ archived+=chunk.length; }
+      needSql=true;
+      const dumpId=await ensureClearedDumpCamp();
+      if(dumpId){
+        const CHUNK=80;
+        for(let i=0;i<left.length;i+=CHUNK){
+          const chunk=left.slice(i,i+CHUNK);
+          const patch=await fetch(S.syncUrl+'/rest/v1/players?id=in.('+chunk.map(r=>'"'+r.id+'"').join(',')+')',{
+            method:'PATCH', headers,
+            body:JSON.stringify({ camp_id:dumpId, camp_code:'admin-cleared', checked_in:false, jersey:'' })
+          });
+          if(patch.ok){
+            try{ archived+=(await patch.json()).length; }catch(e){ archived+=chunk.length; }
+          }
         }
       }
     }
   }
-  await fetch(S.syncUrl+'/rest/v1/camp_live?code=eq.'+encodeURIComponent(code),{
+  await fetch(S.syncUrl+'/rest/v1/camp_live?'+filt,{
     method:'DELETE', headers
   });
   // If DELETE is blocked by RLS, overwrite with empty public payload instead
   try{
-    await fetch(S.syncUrl+'/rest/v1/camp_live?on_conflict=code',{
+    await fetch(S.syncUrl+'/rest/v1/camp_live?on_conflict=camp_id',{
       method:'POST',
       headers:Object.assign({}, headers, {'Content-Type':'application/json'}),
       body:JSON.stringify([{
-        code,
+        camp_id:campId, code,
         data:{ teams:[], roster:[], teamsPosted:false, sched:[], title:'', sub:'', groups:{} },
         updated_at:new Date().toISOString()
       }])
     });
   }catch(e){}
-  const verify=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(code)+'&select=id',{
+  const verify=await fetch(S.syncUrl+'/rest/v1/players?'+filt+'&select=id',{
     headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
   });
   const remaining=verify.ok?(await verify.json()).length:-1;
@@ -1644,10 +1986,10 @@ async function clearCampRemote(campCode){
 }
 
 async function pushRosterLive(){
-  if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return;
+  if(!(S.syncUrl && S.syncKey && S.campId && S.syncCode && authSession && authSession.access_token)) return;
   if(!S.players.length){
     // Empty local roster → wipe stations for this camp (used after Reset)
-    const r=await clearCampRemote(S.syncCode);
+    const r=await clearCampRemote();
     if(r.ok){
       $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code> at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
     }
@@ -1669,7 +2011,7 @@ async function pushRosterLive(){
     // Remove orphan/duplicate rows left behind by older pushes (new UUIDs).
     let removed=0;
     const keep=new Set(rows.map(r=>r.id));
-    const existingRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(S.syncCode)+'&select=id,first,last,jersey,checked_in,photo_url,addons_manual',{
+    const existingRes=await fetch(S.syncUrl+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(S.campId)+'&select=id,first,last,jersey,checked_in,photo_url,addons_manual',{
       headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
     });
     if(existingRes.ok){
@@ -1718,12 +2060,12 @@ function setStationWipeBanner(remoteCount){
   }
 }
 async function runClearStations(){
-  if(!(S.syncUrl && S.syncKey && S.syncCode)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Set Camp Code + Live Sync on the Publish tab first.</span>'; return; }
+  if(!(S.syncUrl && S.syncKey && S.campId)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Select an Active camp + Live Sync on the Publish tab first.</span>'; return; }
   if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
   if(!confirm('Delete ALL station players and parent-page data for camp "'+S.syncCode+'"?\n\nTablets will go empty within a few seconds.')) return;
   $('#rosterSyncNote').textContent='Clearing stations…';
   try{
-    const r=await clearCampRemote(S.syncCode);
+    const r=await clearCampRemote();
     S.teamsLive=false; store.save();
     try{ sessionStorage.removeItem('wipeCamp'); }catch(e){}
     setStationWipeBanner(r.remaining||0);
@@ -1744,20 +2086,21 @@ async function runClearStations(){
   }
 }
 async function pollPlayersLive(){
-  if(!(S.syncUrl && S.syncKey && S.syncCode && authSession && authSession.access_token)) return;
+  if(!(S.syncUrl && S.syncKey && S.campId && authSession && authSession.access_token)) return;
+  const filt='camp_id=eq.'+encodeURIComponent(S.campId);
   try{
     // After Reset, finish wiping remote until empty
     let pendingWipe=false;
-    try{ pendingWipe=sessionStorage.getItem('wipeCamp')===S.syncCode; }catch(e){}
+    try{ pendingWipe=sessionStorage.getItem('wipeCamp')===S.campId; }catch(e){}
     if(pendingWipe || !S.players.length){
-      const countRes=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(S.syncCode)+'&select=id',{
+      const countRes=await fetch(S.syncUrl+'/rest/v1/players?'+filt+'&select=id',{
         headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
       });
       if(countRes.ok){
         const remote=await countRes.json();
         setStationWipeBanner(remote.length);
         if(pendingWipe && remote.length){
-          const r=await clearCampRemote(S.syncCode);
+          const r=await clearCampRemote();
           setStationWipeBanner(r.remaining||0);
           if(r.ok){
             try{ sessionStorage.removeItem('wipeCamp'); }catch(e){}
@@ -1779,7 +2122,7 @@ async function pollPlayersLive(){
       }
     }
 
-    const res=await fetch(S.syncUrl+'/rest/v1/players?camp_code=eq.'+encodeURIComponent(S.syncCode)+'&select=*',{
+    const res=await fetch(S.syncUrl+'/rest/v1/players?'+filt+'&select=*',{
       headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
     });
     if(!res.ok) return;
@@ -1802,27 +2145,58 @@ async function pollPlayersLive(){
     const liveRows=rows.filter(r=>!dupeIds.includes(r.id));
     const byUid={}; S.players.forEach(p=>{ if(p.uid) byUid[p.uid]=p; });
     let changed=!!dupeIds.length;
+    let walkIns=0;
     liveRows.forEach(r=>{
       const p=byUid[r.id];
-      if(!p) return; // a station can't add brand-new players, only edit existing ones
+      if(!p){
+        // Station walk-up (or any remote-only row) — pull into admin roster
+        S.players.push({
+          id:S.players.length, uid:r.id,
+          first:r.first||'', last:r.last||'', year:r.grad_year||'',
+          height:r.height||'', hin:heightToInches(r.height||''),
+          position:r.position||'', school:r.school||'',
+          city:r.city||'', state:r.state||'',
+          payStatus:r.pay_status||'', balance:r.balance||'',
+          items:r.items||'', email:r.email||'',
+          checkedIn:!!r.checked_in, jersey:r.jersey||'',
+          addonsManual:r.addons_manual||[], addonsRemoved:r.addons_removed||[],
+          photoUrl:r.photo_url||''
+        });
+        walkIns++; changed=true;
+        return;
+      }
       if(p.checkedIn!==r.checked_in || String(p.jersey||'')!==String(r.jersey||'')
          || JSON.stringify(p.addonsManual||[])!==JSON.stringify(r.addons_manual||[])
-         || (p.photoUrl||'')!==(r.photo_url||'')){
+         || (p.photoUrl||'')!==(r.photo_url||'')
+         || (p.first||'')!==(r.first||'') || (p.last||'')!==(r.last||'')
+         || String(p.year||'')!==String(r.grad_year||'')
+         || (p.height||'')!==(r.height||'') || (p.position||'')!==(r.position||'')
+         || (p.school||'')!==(r.school||'') || (p.items||'')!==(r.items||'')){
         p.checkedIn=r.checked_in; p.jersey=r.jersey||''; p.addonsManual=r.addons_manual||[];
         p.addonsRemoved=r.addons_removed||[]; p.photoUrl=r.photo_url||'';
+        p.first=r.first||p.first; p.last=r.last||p.last; p.year=r.grad_year||p.year;
+        p.height=r.height||''; p.hin=heightToInches(p.height);
+        p.position=r.position||''; p.school=r.school||'';
+        p.city=r.city||p.city; p.state=r.state||p.state;
+        p.payStatus=r.pay_status||p.payStatus; p.balance=r.balance||p.balance;
+        p.items=r.items||p.items; p.email=r.email||p.email;
         changed=true;
       }
     });
-    if(changed){ store.save(); renderCheckin(); renderJersey(); renderPlayers(); updateScoreboard(); }
+    if(changed){
+      S.players.forEach((p,i)=>p.id=i);
+      store.save(); renderCheckin(); renderJersey(); renderPlayers(); renderRosterTbl(); updateScoreboard();
+    }
     _lastStationPull=new Date();
     $('#rosterSyncNote').innerHTML='Stations last checked: '+_lastStationPull.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})
       +(dupeIds.length?' <b style="color:var(--green)">— removed '+dupeIds.length+' duplicate'+(dupeIds.length===1?'':'s')+'</b>':'')
-      +(changed && !dupeIds.length?' <b style="color:var(--green)">— updates pulled in</b>':'');
+      +(walkIns?' <b style="color:var(--green)">— '+walkIns+' walk-up'+(walkIns===1?'':'s')+' added</b>':'')
+      +(changed && !dupeIds.length && !walkIns?' <b style="color:var(--green)">— updates pulled in</b>':'');
   }catch(e){ /* stay quiet, retry on next tick */ }
 }
 setInterval(pollPlayersLive, 5000);
 $('#btnPushRoster').addEventListener('click', async ()=>{
-  if(!(S.syncUrl && S.syncKey && S.syncCode)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Set up Live Sync on the Publish tab first.</span>'; return; }
+  if(!(S.syncUrl && S.syncKey && S.campId)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Select an Active camp and set up Live Sync on the Publish tab first.</span>'; return; }
   if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
   if(!S.players.length){
     // Empty admin + Push = wipe stations (what people expect after Reset)
@@ -1881,7 +2255,7 @@ $('#siteBaseUrl').addEventListener('input', e=>{ S.siteBaseUrl=e.target.value.tr
 function renderSiteLink(){
   const note=$('#siteLinkNote');
   if(!S.siteBaseUrl){ note.innerHTML='<span style="color:var(--mut)">Enter your site\'s base URL above once it\'s deployed to see the exact parent link.</span>'; return; }
-  if(!S.syncCode){ note.innerHTML='<span style="color:var(--mut)">Set a Camp Code in Live Sync above to complete the link.</span>'; return; }
+  if(!S.syncCode){ note.innerHTML='<span style="color:var(--mut)">Select an Active camp to complete the parent link.</span>'; return; }
   const link=S.siteBaseUrl+'/?camp='+encodeURIComponent(S.syncCode);
   note.innerHTML='<b>Parent link:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(link)+'</code> '
     +'<button class="btn btn-dark btn-sm" id="btnCopyLink" style="margin-left:8px">Copy</button> '
@@ -1923,29 +2297,30 @@ $('#btnCsvTeams').addEventListener('click',()=>{
 $('#btnPrint').addEventListener('click',()=>window.print());
 $('#btnReset').addEventListener('click', async ()=>{
   const camp=S.syncCode||'';
-  const msg=camp
+  const campId=S.campId||'';
+  const msg=campId
     ? 'Clear local roster, check-ins, jerseys, teams AND wipe stations for camp "'+camp+'"?\n\nThis cannot be undone. Live Sync settings are kept.'
-    : 'Clear the roster, check-ins, jerseys and teams?\n\nNo Camp Code is set, so station tablets will NOT be cleared — set Live Sync first or use Clear Stations for Camp after.';
+    : 'Clear the roster, check-ins, jerseys and teams?\n\nNo Active camp is selected, so station tablets will NOT be cleared — pick a camp first or use Clear Stations after.';
   if(!confirm(msg)) return;
   // Wipe remote first (while we still have credentials)
   let remoteNote='';
-  if(camp && S.syncUrl && S.syncKey && authSession && authSession.access_token){
+  if(campId && S.syncUrl && S.syncKey && authSession && authSession.access_token){
     try{
-      try{ sessionStorage.setItem('wipeCamp', camp); }catch(e){}
-      const r=await clearCampRemote(camp);
+      try{ sessionStorage.setItem('wipeCamp', campId); }catch(e){}
+      const r=await clearCampRemote();
       remoteNote=r.ok?' Stations for "'+camp+'" were cleared.':' Still wiping stations in background — leave this tab open a few seconds, or click Clear Stations Now.';
       setStationWipeBanner(r.remaining||0);
     }catch(e){ remoteNote=' Station clear failed — click Clear Stations Now.'; }
-  }else if(camp){
+  }else if(campId){
     remoteNote=' Sign in on Publish, then click Clear Stations for Camp to wipe tablets.';
   }
   // Keep Live Sync config so you can reload a roster without re-pasting keys
-  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, siteBaseUrl:S.siteBaseUrl||DEFAULT_SITE_BASE_URL,
+  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, campId:S.campId, siteBaseUrl:S.siteBaseUrl||DEFAULT_SITE_BASE_URL,
     appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl };
   S={players:[],teams:null,numA:12,numB:16,gA1:2027,gA2:2030,gB1:2031,gB2:2035,schedule:[],pubTitle:'',pubSub:'',
     appUrl:keep.appUrl||'https://select360.mvt.so/', shopUrl:keep.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD',
     igUrl:keep.igUrl||'', webUrl:keep.webUrl||'',
-    syncUrl:keep.syncUrl||'', syncKey:keep.syncKey||'', syncCode:keep.syncCode||'',
+    syncUrl:keep.syncUrl||'', syncKey:keep.syncKey||'', syncCode:keep.syncCode||'', campId:keep.campId||'',
     siteBaseUrl:keep.siteBaseUrl, teamsLive:false};
   store.save();
   rawRows=[];rawHeaders=[];schedRows=[];schedHeaders=[];$('#mapping').hidden=true;$('#rosterLoaded').hidden=true;$('#mapSched').hidden=true;
@@ -1967,6 +2342,27 @@ function updateScoreboard(){
 function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
 ['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); autoPushLive(); }));
 renderAll();
+updateAuthUI();
+(async function bootCamps(){
+  await refreshCampsUI();
+  // Load per-camp localStorage for the resolved Active camp
+  if(S.campId){
+    const saved=store.loadCamp(S.campId);
+    const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, campId:S.campId, syncCode:S.syncCode,
+      appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl };
+    if(saved){
+      S=Object.assign(emptyCampState(), saved, keep);
+    } else {
+      const legacy=store.loadLegacy();
+      if(legacy && (!legacy.campId || legacy.syncCode===S.syncCode) && legacy.players && legacy.players.length){
+        S=Object.assign(emptyCampState(), legacy, keep);
+        store.save();
+      }
+    }
+  }
+  renderAll();
+  pollPlayersLive();
+})();
 </script>
 </body>
 </html>
