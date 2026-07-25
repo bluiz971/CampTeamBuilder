@@ -487,7 +487,7 @@ dialog select{width:100%;margin:10px 0 16px}
 ===================================================================== */
 const DEFAULT_SUPABASE_URL = "https://nxncasbkrcermftbviuw.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54bmNhc2JrcmNlcm1mdGJ2aXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY3NjYsImV4cCI6MjA5OTc5Mjc2Nn0.XdcpcrTLhWeJWf6DXS2PPkXOGjYy8m9nFtagbFoqt9I";
-const DEFAULT_CAMP_CODE = "mid-atlantic-2026";
+const DEFAULT_CAMP_CODE = "georgia-2026";
 /* ===================================================================== */
 
 const DEFAULT_SITE_BASE_URL = "https://selecttourcamp.netlify.app";
@@ -571,8 +571,42 @@ function authHeaders(extra){
   return Object.assign(h, extra||{});
 }
 function requireCamp(){
-  if(!S.campId){ alert('Select or create a camp first (Camps tab).'); return false; }
+  if(!S.campId || !isCampUuid(S.campId)){ alert('Select or create a camp first (Camps tab / Active camp).'); return false; }
   return true;
+}
+function isCampUuid(id){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id||''));
+}
+/** Resolve Active camp to a real camps.id before any write. Returns {ok, campId, slug, error}. */
+async function ensureActiveCamp(){
+  if(!(S.syncUrl && S.syncKey)) return { ok:false, error:'Set Project URL and anon key first.' };
+  if(!campsList.length){
+    try{ campsList=(await fetchCampsList()).filter(c=>c.slug!=='admin-cleared'); }catch(e){}
+  }
+  let slug=String(S.syncCode||'').trim().toLowerCase().replace(/[^a-z0-9-]/g,'-');
+  let camp=null;
+  if(isCampUuid(S.campId)) camp=campsList.find(c=>c.id===S.campId)||null;
+  if(!camp && slug) camp=campsList.find(c=>c.slug===slug)||null;
+  if(!camp && (slug || isCampUuid(S.campId))){
+    try{
+      const q=isCampUuid(S.campId) && !slug
+        ? 'id=eq.'+encodeURIComponent(S.campId)
+        : 'slug=eq.'+encodeURIComponent(slug||'__none__');
+      const res=await fetch(S.syncUrl+'/rest/v1/camps?'+q+'&select=*&limit=1',{ headers:authHeaders() });
+      if(res.ok){ const rows=await res.json(); if(rows&&rows[0]) camp=rows[0]; }
+    }catch(e){}
+  }
+  if(!camp && campsList.length){
+    // Prefer the camp that already has players when defaults are wrong
+    camp=campsList.find(c=>c.slug==='georgia-2026') || campsList[0];
+  }
+  if(!camp) return { ok:false, error:'No camp selected. Open the Camps tab, create/select a camp, then use Active camp in the header.' };
+  S.campId=camp.id;
+  S.syncCode=camp.slug;
+  store.saveGlobal();
+  if($('#syncCode')) $('#syncCode').value=S.syncCode;
+  renderCampSelect();
+  return { ok:true, campId:camp.id, slug:camp.slug, camp };
 }
 
 /* =============================================================
@@ -1703,7 +1737,8 @@ $('#btnSignIn').addEventListener('click', async ()=>{
       $('#authPass').value='';
       updateAuthUI();
       $('#syncStatus').innerHTML='<b style="color:var(--green)">✓ Signed in</b> as '+esc(email)+'.';
-      refreshCampsUI();
+      await refreshCampsUI();
+      await ensureActiveCamp();
     } else {
       $('#syncStatus').innerHTML='<span style="color:var(--red)">Sign-in failed: '+esc(body.error_description||body.msg||'check email/password')+'</span>';
     }
@@ -1726,14 +1761,20 @@ $('#btnSignOut').addEventListener('click', ()=>{
 // Publish sync can run before teams exist; teams stay off the parent page until Teams sync.
 async function pushLive(silent, opts){
   opts=opts||{};
-  if(!(S.syncUrl && S.syncKey && S.campId && S.syncCode)){
-    if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">Select an Active camp (and fill Project URL / anon key) first.</span>';
+  if(!(S.syncUrl && S.syncKey)){
+    if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">Fill in Project URL and anon key first.</span>';
     return false;
   }
   if(!(authSession && authSession.access_token)){
     if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">Sign in above to push live updates.</span>';
     return false;
   }
+  const active=await ensureActiveCamp();
+  if(!active.ok){
+    if(!silent) $('#syncStatus').innerHTML='<span style="color:var(--red)">'+esc(active.error)+'</span>';
+    return false;
+  }
+  const campId=active.campId, code=active.slug;
   if(opts.includeTeams){
     if(!S.teams){
       if(!silent){
@@ -1753,7 +1794,7 @@ async function pushLive(silent, opts){
   // Publish content sync shouldn't wipe teams that are already live
   if(!includeTeams){
     try{
-      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(S.campId)+'&select=data',{
+      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(campId)+'&select=data',{
         headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
       });
       if(cur.ok){
@@ -1771,18 +1812,23 @@ async function pushLive(silent, opts){
   if(!silent && statusEl) statusEl.textContent='Syncing…';
   try{
     const base=S.syncUrl.replace(/\/$/,'');
+    const row={ camp_id:campId, code:code, data:payload, updated_at:new Date().toISOString() };
+    if(!isCampUuid(row.camp_id)){
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Internal error: missing camp id. Pick Active camp and try again.</span>';
+      return false;
+    }
     const res=await fetch(base+'/rest/v1/camp_live?on_conflict=camp_id',{
       method:'POST',
       headers:{
         'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token,
-        'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates'
+        'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates,return=minimal'
       },
-      body:JSON.stringify([{ camp_id:S.campId, code:S.syncCode, data:payload, updated_at:new Date().toISOString() }])
+      body:JSON.stringify([row])
     });
     if(res.ok){
       const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
       renderSiteLink();
-      const link = (S.siteBaseUrl && S.syncCode) ? (S.siteBaseUrl.replace(/\/$/,'')+'/?camp='+encodeURIComponent(S.syncCode)) : '';
+      const link = (S.siteBaseUrl && code) ? (S.siteBaseUrl.replace(/\/$/,'')+'/?camp='+encodeURIComponent(code)) : '';
       if(opts.includeTeams){
         if(statusEl) statusEl.innerHTML='<b style="color:var(--green)">✓ Teams posted</b> at '+t+'. Parents will see them within ~20 seconds.';
       } else if(statusEl){
@@ -1791,15 +1837,24 @@ async function pushLive(silent, opts){
           +(payload.teamsPosted?'':' <span style="color:var(--mut)">Teams stay hidden until you sync them from the Teams tab.</span>');
       }
       return true;
-    } else if(res.status===401 || res.status===403){
-      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Session expired or not authorized — sign in again.</span>';
+    }
+    const body=await res.text();
+    // PostgREST often returns HTTP 401 for RLS failures (42501), which is NOT an expired login
+    if(res.status===401 && /jwt|expired|invalid token|not authenticated/i.test(body) && !/row-level security|42501/i.test(body)){
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Session expired — sign in again.</span>';
       authSession=null; try{ sessionStorage.removeItem('campAuthSession'); }catch(e){} updateAuthUI();
       return false;
-    } else {
-      const body=await res.text();
-      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Sync failed ('+res.status+'). '+esc(body.slice(0,200))+'</span>';
+    }
+    if(/camp_id|23502|not-null/i.test(body)){
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Sync failed: camp id missing. Select an Active camp in the header, hard-refresh, then try again.</span>';
       return false;
     }
+    if(res.status===401 || res.status===403 || /row-level security|42501/i.test(body)){
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Sync blocked by database permissions. Run <code>migrations/002_fix_write_rls.sql</code> in Supabase → SQL Editor, then try again.</span>';
+      return false;
+    }
+    if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Sync failed ('+res.status+'). '+esc(body.slice(0,200))+'</span>';
+    return false;
   }catch(e){
     if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Could not reach Supabase — check the Project URL and your connection.</span>';
     return false;
@@ -1811,16 +1866,19 @@ $('#btnClearTeams').addEventListener('click', async ()=>{
   if(!confirm('Clear assigned teams?\n\nRemoves local teams and posts empty rosters to the parent/station pages. Check-ins and jerseys stay.')) return;
   S.teams=null; S.teamsLive=false; store.save(); renderTeams(); updateScoreboard();
   const note=$('#teamsSyncNote');
-  if(!(S.syncUrl && S.syncKey && S.campId && S.syncCode && authSession && authSession.access_token)){
+  if(!(S.syncUrl && S.syncKey && authSession && authSession.access_token)){
     if(note) note.innerHTML='Local teams cleared. Sign in on Publish to clear the parent page too.';
     return;
   }
+  const active=await ensureActiveCamp();
+  if(!active.ok){ if(note) note.innerHTML='Local cleared. '+esc(active.error); return; }
+  const campId=active.campId, code=active.slug;
   if(note) note.textContent='Clearing…';
   try{
     // Preserve schedule/title/etc, wipe teams
     let baseData={};
     try{
-      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(S.campId)+'&select=data',{
+      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(campId)+'&select=data',{
         headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
       });
       if(cur.ok){ const rows=await cur.json(); baseData=(rows&&rows[0]&&rows[0].data)||{}; }
@@ -1833,9 +1891,9 @@ $('#btnClearTeams').addEventListener('click', async ()=>{
       method:'POST',
       headers:{
         'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token,
-        'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates'
+        'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates,return=minimal'
       },
-      body:JSON.stringify([{ camp_id:S.campId, code:S.syncCode, data:payload, updated_at:new Date().toISOString() }])
+      body:JSON.stringify([{ camp_id:campId, code:code, data:payload, updated_at:new Date().toISOString() }])
     });
     if(note){
       note.innerHTML=res.ok
@@ -1850,7 +1908,7 @@ $('#btnClearTeams').addEventListener('click', async ()=>{
 // Auto-push (debounced) whenever public-facing data changes.
 let _syncTimer=null;
 function autoPushLive(){
-  if(!(S.syncUrl && S.syncKey && S.campId && S.syncCode && authSession && authSession.access_token)) return;
+  if(!(S.syncUrl && S.syncKey && isCampUuid(S.campId) && S.syncCode && authSession && authSession.access_token)) return;
   clearTimeout(_syncTimer);
   _syncTimer=setTimeout(()=>pushLive(true, {includeTeams:!!S.teamsLive}), 1200);
 }
@@ -1986,32 +2044,61 @@ async function clearCampRemote(){
 }
 
 async function pushRosterLive(){
-  if(!(S.syncUrl && S.syncKey && S.campId && S.syncCode && authSession && authSession.access_token)) return;
+  if(!(S.syncUrl && S.syncKey && authSession && authSession.access_token)) return;
+  const active=await ensureActiveCamp();
+  if(!active.ok){
+    $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">'+esc(active.error)+'</span>';
+    return;
+  }
+  const campId=active.campId, code=active.slug;
   if(!S.players.length){
     // Empty local roster → wipe stations for this camp (used after Reset)
     const r=await clearCampRemote();
     if(r.ok){
-      $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code> at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
+      $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(code)+'</code> at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
     }
     return;
   }
   try{
-    const rows=S.players.filter(p=>p.uid).map(playerRow);
+    const rows=S.players.filter(p=>p.uid).map(p=>{
+      const row=playerRow(p);
+      row.camp_id=campId; row.camp_code=code;
+      return row;
+    });
+    if(!rows.length){
+      $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Roster has no player ids — re-load the spreadsheet on the Roster tab.</span>';
+      return;
+    }
+    if(rows.some(r=>!isCampUuid(r.camp_id))){
+      $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Missing camp id — select Active camp, then Push again.</span>';
+      return;
+    }
     // Supabase/PostgREST handles reasonable batch sizes fine; chunk just in case
     const CHUNK=200;
+    let wrote=0;
     for(let i=0;i<rows.length;i+=CHUNK){
       const chunk=rows.slice(i,i+CHUNK);
-      await fetch(S.syncUrl+'/rest/v1/players?on_conflict=id',{
+      const res=await fetch(S.syncUrl+'/rest/v1/players?on_conflict=id',{
         method:'POST',
         headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token,
-                  'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates' },
+                  'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates,return=minimal' },
         body:JSON.stringify(chunk)
       });
+      if(!res.ok){
+        const body=await res.text();
+        if(res.status===401 || res.status===403 || /row-level security|42501/i.test(body)){
+          $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Roster push blocked by database permissions. Run <code>migrations/002_fix_write_rls.sql</code> in Supabase → SQL Editor, sign in again, then Push Roster.</span>';
+        } else {
+          $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Roster push failed ('+res.status+'): '+esc(body.slice(0,180))+'</span>';
+        }
+        return;
+      }
+      wrote+=chunk.length;
     }
     // Remove orphan/duplicate rows left behind by older pushes (new UUIDs).
     let removed=0;
     const keep=new Set(rows.map(r=>r.id));
-    const existingRes=await fetch(S.syncUrl+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(S.campId)+'&select=id,first,last,jersey,checked_in,photo_url,addons_manual',{
+    const existingRes=await fetch(S.syncUrl+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(campId)+'&select=id,first,last,jersey,checked_in,photo_url,addons_manual',{
       headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
     });
     if(existingRes.ok){
@@ -2038,9 +2125,19 @@ async function pushRosterLive(){
       const toDelete=[...new Set([...orphans, ...nameDupes])];
       if(toDelete.length){ await deletePlayerIds(toDelete); removed=toDelete.length; }
     }
-    $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Roster pushed to stations</b> ('+rows.length+' players'
+    // Verify rows are actually readable for this camp
+    const verify=await fetch(S.syncUrl+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(campId)+'&select=id',{
+      headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+    });
+    const remoteCount=verify.ok?(await verify.json()).length:-1;
+    if(remoteCount===0){
+      $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Push sent '+wrote+' rows but none are stored for <code>'+esc(code)+'</code>. Run <code>migrations/002_fix_write_rls.sql</code>, then try again.</span>';
+      return;
+    }
+    $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Roster pushed to stations</b> ('+remoteCount+' on <code>'+esc(code)+'</code>'
       +(removed?' · removed '+removed+' duplicate/orphan'+(removed===1?'':'s'):'')
-      +') at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
+      +') at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.'
+      +' Open station with <code>?camp='+esc(code)+'</code>';
   }catch(e){
     $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Could not push roster to stations — check Live Sync is configured and you\'re signed in.</span>';
   }
@@ -2345,17 +2442,19 @@ renderAll();
 updateAuthUI();
 (async function bootCamps(){
   await refreshCampsUI();
-  // Load per-camp localStorage for the resolved Active camp
+  await ensureActiveCamp();
+  // Load per-camp localStorage for the resolved Active camp (never let saved blob wipe campId)
   if(S.campId){
     const saved=store.loadCamp(S.campId);
-    const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, campId:S.campId, syncCode:S.syncCode,
+    const id=S.campId, slug=S.syncCode;
+    const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, campId:id, syncCode:slug,
       appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl };
     if(saved){
-      S=Object.assign(emptyCampState(), saved, keep);
+      S=Object.assign(emptyCampState(), saved, keep, { campId:id, syncCode:slug });
     } else {
       const legacy=store.loadLegacy();
-      if(legacy && (!legacy.campId || legacy.syncCode===S.syncCode) && legacy.players && legacy.players.length){
-        S=Object.assign(emptyCampState(), legacy, keep);
+      if(legacy && (!legacy.campId || legacy.syncCode===slug) && legacy.players && legacy.players.length){
+        S=Object.assign(emptyCampState(), legacy, keep, { campId:id, syncCode:slug });
         store.save();
       }
     }

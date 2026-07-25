@@ -283,7 +283,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 ===================================================================== */
 const SUPABASE_URL = "https://nxncasbkrcermftbviuw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54bmNhc2JrcmNlcm1mdGJ2aXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY3NjYsImV4cCI6MjA5OTc5Mjc2Nn0.XdcpcrTLhWeJWf6DXS2PPkXOGjYy8m9nFtagbFoqt9I";
-const DEFAULT_CAMP_CODE = "mid-atlantic-2026";
+const DEFAULT_CAMP_CODE = "georgia-2026";
 /* ===================================================================== */
 
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
@@ -325,27 +325,46 @@ function renderCampMeta(){
   if(campRow.camp_date) bits.push(formatCampDate(campRow.camp_date));
   el.textContent=bits.join(' · ');
 }
-function showCampNotFoundState(){
+function showCampNotFoundState(detail){
   $('#livePill').textContent='Camp not found';
   renderCampMeta();
-  $('#plist').innerHTML='<div class="empty"><b>Camp not found</b>No camp matches this slug. Check the Camp field above.</div>';
+  const extra=detail?('<br><small style="color:var(--mut)">'+esc(detail)+'</small>'):'';
+  $('#plist').innerHTML='<div class="empty"><b>Camp not found</b>No camp matches this slug. Check the Camp field above.'+extra+'</div>';
 }
 async function resolveCamp(){
   if(!campCode){ campId=null; campRow=null; campSlug=''; renderCampMeta(); return false; }
   campSlug=campCode;
   try{
+    const headers=authSession&&authSession.access_token
+      ? authHeaders()
+      : {apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY};
     const res=await fetch(SUPABASE_URL+'/rest/v1/camps?slug=eq.'+encodeURIComponent(campCode)+'&select=*&limit=1',{
-      headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}
+      headers
     });
-    if(!res.ok){ campId=null; campRow=null; renderCampMeta(); return false; }
+    if(res.status===404 || res.status===406){
+      campId=null; campRow=null; renderCampMeta();
+      lastCampErr='The camps table is missing in Supabase. Run migrations/001_multi_camp.sql in the SQL Editor, then refresh.';
+      return false;
+    }
+    if(!res.ok){
+      campId=null; campRow=null; renderCampMeta();
+      lastCampErr='Could not look up camps (HTTP '+res.status+').';
+      return false;
+    }
     const rows=await res.json();
-    if(!rows || !rows[0]){ campId=null; campRow=null; renderCampMeta(); return false; }
+    if(!rows || !rows[0]){
+      campId=null; campRow=null; renderCampMeta();
+      lastCampErr='No row with slug "'+campCode+'". Create it on the admin Camps tab, or pick an existing slug.';
+      return false;
+    }
     campRow=rows[0]; campId=campRow.id; campSlug=campRow.slug||campCode;
+    lastCampErr='';
     if($('#campCodeInput')) $('#campCodeInput').value=campSlug;
     renderCampMeta();
     return true;
-  }catch(e){ campId=null; campRow=null; renderCampMeta(); return false; }
+  }catch(e){ campId=null; campRow=null; renderCampMeta(); lastCampErr='Network error looking up camp.'; return false; }
 }
+let lastCampErr='';
 
 $('#campCodeInput').value = campCode;
 localStorage.setItem('stationCampCode', campCode);
@@ -358,7 +377,7 @@ $('#campCodeInput').addEventListener('input', async e=>{
     pollPlayers(); pollTeams();
   }else{
     toast('Camp not found');
-    showCampNotFoundState();
+    showCampNotFoundState(lastCampErr);
   }
 });
 
@@ -373,7 +392,7 @@ async function showApp(){
   $('#app').style.display='block';
   if(!await resolveCamp()){
     toast('Camp not found');
-    showCampNotFoundState();
+    showCampNotFoundState(lastCampErr);
     return;
   }
   pollPlayers(); pollTeams();
