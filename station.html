@@ -1078,7 +1078,7 @@ function renderList(){
   if(role==='checkin'){
     let body='';
     if(!players.length){
-      body='<div class="empty"><b>No roster yet</b>You can still register walk-ups above, or wait for admin to push the roster.</div>';
+      body='<div class="empty"><b>No roster yet</b>Camp <code>'+esc(campSlug||campCode)+'</code> has 0 players in Supabase.<br>In admin: set Active camp to this same slug, then <b>Push Roster to Stations</b>. Or register a walk-up above.</div>';
     } else if(!rows.length){
       body='<div class="empty"><b>Everyone is checked in</b>Need someone who wasn\'t on the list? Register them as a walk-up.</div>';
     } else {
