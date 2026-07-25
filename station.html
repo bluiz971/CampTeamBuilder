@@ -99,8 +99,10 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 #noteDlg{border:none;border-radius:14px;padding:20px;max-width:440px;width:calc(100% - 32px);box-shadow:0 16px 40px rgba(20,26,34,.3)}
 #noteDlg::backdrop{background:rgba(20,26,34,.45)}
 #noteDlg h3{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase;margin-bottom:4px}
-#noteDlg textarea{width:100%;min-height:110px;font-size:15px;padding:12px;border:1.5px solid var(--line);border-radius:9px;resize:vertical;font-family:inherit;margin:10px 0 8px}
+#noteDlg textarea{width:100%;min-height:140px;font-size:16px;line-height:1.55;padding:12px 14px;border:1.5px solid var(--line);border-radius:9px;resize:vertical;font-family:inherit;margin:10px 0 8px}
 #noteDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.writeup-box .wu-head{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase;margin:0 0 4px;letter-spacing:.02em}
+.writeup-box .wu-meta{font-size:14px;color:var(--mut);margin:0 0 14px;line-height:1.45}
 .team-card footer{padding:8px 14px;background:#faf9f6;border-top:1px solid var(--line);font-size:12px;color:var(--mut);display:flex;gap:12px;flex-wrap:wrap}
 .team-sec{font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;margin:8px 0 12px}
 .grp-tally{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
@@ -252,8 +254,8 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 <dialog id="noteDlg">
   <h3>Scout note</h3>
   <p id="noteWho" class="reg-sub" style="margin-bottom:0"></p>
-  <textarea id="noteText" placeholder="e.g. good shooter, sees the floor well, solid point guard…"></textarea>
-  <p style="font-size:12px;color:var(--mut);margin:0 0 4px;line-height:1.4">Short phrases are fine — the camp write-up turns them into full sentences with height, year, and hometown.</p>
+  <textarea id="noteText" placeholder="• good shooter"></textarea>
+  <p style="font-size:12px;color:var(--mut);margin:0 0 4px;line-height:1.4">Bullet list — press Enter for a new point. The Camp Write-Up turns these into full sentences.</p>
   <div class="dlg-actions">
     <button class="bigbtn ghost" type="button" id="noteClear">Clear</button>
     <button class="bigbtn ghost" type="button" id="noteCancel">Cancel</button>
@@ -840,7 +842,7 @@ function renderTeamsToolbar(){
       <button class="bigbtn" type="button" id="stBtnGen">🏀 Generate Balanced Teams</button>
       <button class="bigbtn ghost" type="button" id="stBtnAddLate">＋ Add Late Player to a Team</button>
       <button class="bigbtn ghost" type="button" id="stBtnSync">⬆ Sync Teams to Parent Page</button>
-      <button class="bigbtn ghost" type="button" id="stBtnWriteUp">✍ Camp Write-Up${noted?' ('+noted+')':''}</button>
+      <button class="bigbtn" type="button" id="stBtnWriteUp">✍ Camp Write-Up${noted?' ('+noted+')':''}</button>
       <button class="bigbtn ghost" type="button" id="stBtnClearTeams">🗑 Clear Teams</button>
     </div>
     <div class="teams-note" id="stTeamsNote">${
@@ -1251,10 +1253,25 @@ function scoutNoteFor(j, n){
   const p=findPlayerForTeamSlot(j, n);
   return p ? String(p.scout_notes||'').trim() : '';
 }
-/** Turn bio + freeform notes into a camp write-up sentence. */
+/** Split stored notes into bullet traits (newlines / bullets / semicolons). */
+function noteTraits(raw){
+  return String(raw||'')
+    .split(/\r?\n/)
+    .flatMap(line=>line.split(/[;]+/))
+    .map(l=>l.replace(/^[•\-\*\u2022]\s*/,'').trim())
+    .filter(Boolean);
+}
+function notesToBulletEditor(raw){
+  const traits=noteTraits(raw);
+  return traits.length ? traits.map(t=>'• '+t).join('\n') : '• ';
+}
+function bulletEditorToNotes(raw){
+  return noteTraits(raw).join('\n');
+}
+/** Turn bio + bullet notes into a camp write-up sentence. */
 function writeUpSentence(p){
-  const note=String(p.scout_notes||'').trim();
-  if(!note) return '';
+  const traits=noteTraits(p.scout_notes);
+  if(!traits.length) return '';
   const name=((p.first||'')+' '+(p.last||'')).trim();
   const ht=formatHeight(p.height);
   const htDisp=ht && ht!=='—' ? ht : '';
@@ -1265,40 +1282,50 @@ function writeUpSentence(p){
   if(htDisp) head+=', '+htDisp;
   if(yr || pos) head+=', '+[yr, pos].filter(Boolean).join(' ');
   if(place) head+=' from '+place;
-  let n=note.replace(/^[,.\s]+/,'').replace(/[.\s]+$/,'');
-  // "good shooter; sees the floor" or "good shooter, sees the floor well"
-  if(/[;]/.test(n) || (n.includes(',') && !/^(is|has|can|plays|shows|brings|does|was|will|a |an )/i.test(n))){
-    const parts=n.split(/[;,]+/).map(s=>s.trim()).filter(Boolean);
-    if(parts.length>1){
-      const last=parts.pop();
-      n='who is '+parts.join(', ')+', and '+last;
-    } else if(!/^(is|has|can|plays|shows|brings|does|was|will|a |an |who )/i.test(n)){
-      n='who is known for being '+n;
+  if(traits.length===1){
+    let n=traits[0].replace(/^[,.\s]+/,'').replace(/[.\s]+$/,'');
+    if(/^(is|has|can|plays|shows|brings|does|was|will|a |an |who )/i.test(n)){
+      if(/^(is|has|can|plays|shows|brings|does|was|will|a |an )/i.test(n) && !/^who /i.test(n))
+        return head+', '+n.charAt(0).toLowerCase()+n.slice(1)+'.';
+      return head+', '+n+'.';
     }
-  } else if(!/^(is|has|can|plays|shows|brings|does|was|will|a |an |who )/i.test(n)){
-    n='who is '+n;
+    return head+', who is '+n+'.';
   }
-  if(/^(is|has|can|plays|shows|brings|does|was|will|a |an )/i.test(n) && !/^who /i.test(n)){
-    // "is a solid PG…" → attach with comma
-    return head+', '+n.charAt(0).toLowerCase()+n.slice(1)+'.';
-  }
-  return head+', '+n+'.';
+  const parts=traits.map(t=>t.replace(/^[,.\s]+/,'').replace(/[.\s]+$/,''));
+  const last=parts.pop();
+  return head+', who is '+parts.join(', ')+', and '+last+'.';
+}
+function campWriteUpHeader(){
+  const name=(campRow && campRow.name) || campSlug || campCode || 'Camp';
+  const loc=(campRow && campRow.location) || '';
+  const date=(campRow && campRow.camp_date) ? formatCampDate(campRow.camp_date) : '';
+  return { name, loc, date };
 }
 function buildCampWriteUp(){
-  const noted=players.filter(p=>String(p.scout_notes||'').trim())
+  const noted=players.filter(p=>noteTraits(p.scout_notes).length)
     .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0) || String(a.last).localeCompare(String(b.last)));
   if(!noted.length) return '';
-  const campLabel=campSlug || campCode || 'this camp';
-  const intro='Standouts from '+campLabel.replace(/-/g,' ')+':';
-  return intro+'\n\n'+noted.map(writeUpSentence).filter(Boolean).join('\n\n');
+  const {name, loc, date}=campWriteUpHeader();
+  const lines=[name];
+  if(loc) lines.push(loc);
+  if(date) lines.push(date);
+  lines.push('');
+  lines.push('Standouts:');
+  lines.push('');
+  noted.map(writeUpSentence).filter(Boolean).forEach(s=>{ lines.push(s); lines.push(''); });
+  return lines.join('\n').trim();
 }
 function renderWriteUpPanel(){
   if(!showWriteUp) return '';
   const body=buildCampWriteUp();
+  const {name, loc, date}=campWriteUpHeader();
+  const meta=[loc, date].filter(Boolean).join(' · ');
   return `<div class="writeup-box" id="writeUpBox">
-    <h3>Camp write-up</h3>
-    <p class="wu-sub">Built from scout notes on the Teams page. Edit any player’s 📝 note to refresh this.</p>
-    <div class="wu-body">${body?esc(body):'No scout notes yet — tap 📝 on a player to add highlights like “good shooter” or “sees the floor well”.'}</div>
+    <h3>Camp Write-Up</h3>
+    <div class="wu-head">${esc(name)}</div>
+    ${meta?`<p class="wu-meta">${esc(meta)}</p>`:''}
+    <p class="wu-sub">Built from scout note bullets on each player. Tap 📝 to edit, then open this again to refresh.</p>
+    <div class="wu-body">${body?esc(body):'No scout notes yet — tap 📝 on a player and add bullet points (Enter for a new line).'}</div>
     <div class="wu-actions">
       <button class="bigbtn" type="button" id="stBtnCopyWriteUp" ${body?'':'disabled'}>Copy write-up</button>
       <button class="bigbtn ghost" type="button" id="stBtnHideWriteUp">Hide</button>
@@ -1312,14 +1339,19 @@ function openScoutNote(j, n){
   noteTargetId=p.id;
   $('#noteWho').textContent='#'+normJersey(p.jersey)+' '+p.first+' '+p.last
     +(p.position?' · '+p.position:'')+(p.grad_year?' · '+p.grad_year:'');
-  $('#noteText').value=String(p.scout_notes||'');
+  const ta=$('#noteText');
+  ta.value=notesToBulletEditor(p.scout_notes);
   const dlg=$('#noteDlg');
   if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
-  setTimeout(()=>$('#noteText').focus(), 50);
+  setTimeout(()=>{
+    ta.focus();
+    const len=ta.value.length;
+    ta.setSelectionRange(len, len);
+  }, 50);
 }
 async function saveScoutNote(clear){
   if(!noteTargetId) return;
-  const text=clear ? '' : String($('#noteText').value||'').trim();
+  const text=clear ? '' : bulletEditorToNotes($('#noteText').value);
   if(!(await patchPlayer(noteTargetId, {scout_notes:text}))) return;
   $('#noteDlg').close();
   noteTargetId=null;
@@ -1327,8 +1359,26 @@ async function saveScoutNote(clear){
   if(role==='teams') renderList();
 }
 $('#noteCancel').addEventListener('click', ()=>{ noteTargetId=null; $('#noteDlg').close(); });
-$('#noteClear').addEventListener('click', ()=>saveScoutNote(true));
+$('#noteClear').addEventListener('click', ()=>{
+  $('#noteText').value='• ';
+  $('#noteText').focus();
+});
 $('#noteSave').addEventListener('click', ()=>saveScoutNote(false));
+$('#noteText').addEventListener('keydown', e=>{
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  const ta=e.target;
+  const start=ta.selectionStart, end=ta.selectionEnd;
+  const v=ta.value;
+  const insert='\n• ';
+  ta.value=v.slice(0, start)+insert+v.slice(end);
+  const pos=start+insert.length;
+  ta.setSelectionRange(pos, pos);
+});
+$('#noteText').addEventListener('input', ()=>{
+  const ta=$('#noteText');
+  if(!ta.value.trim()){ ta.value='• '; ta.setSelectionRange(2,2); }
+});
 
 function renderList(){
   const wrap=$('#plist');
