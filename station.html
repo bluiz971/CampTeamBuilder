@@ -238,6 +238,20 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   </div>
 </dialog>
 
+<dialog id="addDlg">
+  <h3>Add late player</h3>
+  <p class="reg-sub" style="margin-bottom:12px">Place a walk-up (or anyone with a jersey who isn’t on a team yet) onto an existing team — no regenerate needed.</p>
+  <label style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">Player</label>
+  <select id="addPlayerSel" style="width:100%;font-size:16px;padding:12px;border:1.5px solid var(--line);border-radius:9px;margin:6px 0 14px"></select>
+  <label style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">Team</label>
+  <select id="addTeamSel" style="width:100%;font-size:16px;padding:12px;border:1.5px solid var(--line);border-radius:9px;margin:6px 0 16px"></select>
+  <p id="addDlgMsg" style="font-size:13px;color:var(--red);min-height:18px;margin:0 0 8px"></p>
+  <div class="dlg-actions">
+    <button class="bigbtn ghost" type="button" id="addCancel">Cancel</button>
+    <button class="bigbtn" type="button" id="addOk">Add to Team</button>
+  </div>
+</dialog>
+
 <dialog id="regDlg">
   <h3>Register walk-up</h3>
   <p class="reg-sub">For a player who is not on the uploaded roster. They’ll be checked in and sent to the Jersey queue.</p>
@@ -735,12 +749,13 @@ function renderTeamsToolbar(){
     </div>
     <div class="actions">
       <button class="bigbtn" type="button" id="stBtnGen">🏀 Generate Balanced Teams</button>
+      <button class="bigbtn ghost" type="button" id="stBtnAddLate">＋ Add Late Player to a Team</button>
       <button class="bigbtn ghost" type="button" id="stBtnSync">⬆ Sync Teams to Parent Page</button>
       <button class="bigbtn ghost" type="button" id="stBtnClearTeams">🗑 Clear Teams</button>
     </div>
     <div class="teams-note" id="stTeamsNote">${
       pendingLocalTeams ? 'Teams generated or edited on this tablet — Sync to post them for parents.'
-      : (teamsPosted && teams.length ? 'Teams are live for parents. Tap ⇄ on a player to move them.'
+      : (teamsPosted && teams.length ? 'Teams are live for parents. Tap ⇄ to move, or Add Late Player for walk-ups.'
       : (teams.length ? 'Old teams still loaded — Clear Teams, then Generate when ready.'
       : 'Generate when jersey assignment is far enough along, then Sync.'))
     }</div>
@@ -809,14 +824,96 @@ $('#mvOk').addEventListener('click', ()=>{
   renderList();
 });
 
+/* ---------- Add late / unassigned player to an existing team ---------- */
+function teamPlayerKey(j, n){
+  return String(j||'').trim()+'|'+String(n||'').trim().toLowerCase();
+}
+function playersAlreadyOnTeams(){
+  const on=new Set();
+  teams.forEach(t=>(t.players||[]).forEach(p=>on.add(teamPlayerKey(p.j, p.n))));
+  return on;
+}
+function unassignedJerseyPlayers(){
+  const on=playersAlreadyOnTeams();
+  return players.filter(p=>{
+    if(!p.checked_in || !String(p.jersey||'').trim()) return false;
+    const key=teamPlayerKey(p.jersey, (p.first||'')+' '+(p.last||''));
+    return !on.has(key);
+  }).sort((a,b)=>(+a.jersey||0)-(+b.jersey||0) || String(a.last).localeCompare(String(b.last)));
+}
+function openAddToTeamDialog(){
+  if(!teams.length){ toast('Generate teams first'); return; }
+  const free=unassignedJerseyPlayers();
+  const msg=$('#addDlgMsg'); if(msg) msg.textContent='';
+  if(!free.length){
+    toast('No unassigned players with jerseys — register a walk-up and assign a number first');
+    return;
+  }
+  $('#addPlayerSel').innerHTML=free.map(p=>{
+    const label='#'+p.jersey+' '+p.first+' '+p.last
+      +(p.grad_year?' · '+p.grad_year:'')
+      +(isWalkUp(p)?' · Walk-up':'');
+    return `<option value="${esc(p.id)}">${esc(label)}</option>`;
+  }).join('');
+  const fillTeams=()=>{
+    const id=$('#addPlayerSel').value;
+    const p=players.find(x=>x.id===id);
+    const g=p?stationGroupOf(p.grad_year):null;
+    let opts=teams.map((t,i)=>({t,i}));
+    if(g==='A'||g==='B'){
+      const filtered=opts.filter(({t})=>stationTeamBucket(t)===g);
+      if(filtered.length) opts=filtered;
+    }
+    $('#addTeamSel').innerHTML=opts.map(({t,i})=>
+      `<option value="${i}">${esc(t.name)} (${t.players.length})</option>`
+    ).join('');
+  };
+  fillTeams();
+  $('#addPlayerSel').onchange=fillTeams;
+  const dlg=$('#addDlg');
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+}
+async function confirmAddToTeam(){
+  const msg=$('#addDlgMsg');
+  const id=$('#addPlayerSel').value;
+  const toIdx=+$('#addTeamSel').value;
+  const p=players.find(x=>x.id===id);
+  const to=teams[toIdx];
+  if(!p||!to){ if(msg) msg.textContent='Pick a player and a team.'; return; }
+  const name=(p.first||'')+' '+(p.last||'');
+  const key=teamPlayerKey(p.jersey, name);
+  if(playersAlreadyOnTeams().has(key)){ if(msg) msg.textContent='That player is already on a team.'; return; }
+  const entry={
+    j:String(p.jersey), n:name.trim(), yr:String(p.grad_year||''),
+    pos:p.position||'', ht:formatHeight(p.height)==='—'?'':formatHeight(p.height),
+    sc:p.school||'', ph:p.photo_url||''
+  };
+  to.players.push(entry);
+  to.players.sort((a,b)=>(+a.j||0)-(+b.j||0));
+  const wasLive=teamsPosted;
+  pendingLocalTeams=true;
+  teamsPosted=false;
+  $('#addDlg').close();
+  renderList();
+  if(wasLive){
+    toast('Added to '+to.name+' — syncing…');
+    await syncStationTeams();
+  } else {
+    toast('Added to '+to.name+' — Sync Teams to update parents');
+  }
+}
+$('#addCancel').addEventListener('click', ()=>$('#addDlg').close());
+$('#addOk').addEventListener('click', ()=>confirmAddToTeam());
+
 function bindTeamsToolbar(){
   ['stGA1','stGA2','stGB1','stGB2'].forEach(id=>{
     const el=$('#'+id); if(!el) return;
     el.addEventListener('change', ()=>{ readGroupInputs(); renderList(); });
     el.addEventListener('input', ()=>{ readGroupInputs(); });
   });
-  const gen=$('#stBtnGen'), sync=$('#stBtnSync'), clr=$('#stBtnClearTeams');
+  const gen=$('#stBtnGen'), sync=$('#stBtnSync'), clr=$('#stBtnClearTeams'), add=$('#stBtnAddLate');
   if(gen) gen.addEventListener('click', ()=>generateStationTeams());
+  if(add) add.addEventListener('click', ()=>openAddToTeamDialog());
   if(sync) sync.addEventListener('click', ()=>syncStationTeams());
   if(clr) clr.addEventListener('click', ()=>clearStationTeams());
 }

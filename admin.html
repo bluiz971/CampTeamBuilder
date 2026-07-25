@@ -346,6 +346,7 @@ dialog select{width:100%;margin:10px 0 16px}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-dark btn-sm" id="btnPrint">Print Rosters</button>
       <button class="btn btn-dark btn-sm" id="btnCsvTeams">Export CSV</button>
+      <button class="btn btn-dark btn-sm" id="btnAddLateTeam">＋ Add Late Player</button>
       <button class="btn btn-orange btn-sm" id="btnSyncTeams">⬆ Sync Teams to Parent Page</button>
       <button class="btn btn-ghost btn-sm" id="btnClearTeams">🗑 Clear Teams</button>
     </div>
@@ -475,6 +476,19 @@ dialog select{width:100%;margin:10px 0 16px}
   <div class="dlg-actions">
     <button class="btn btn-ghost btn-sm" id="mvCancel">Cancel</button>
     <button class="btn btn-orange btn-sm" id="mvOk">Move</button>
+  </div>
+</dialog>
+
+<dialog id="addLateDlg">
+  <h3>Add late player to a team</h3>
+  <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Assign a walk-up (or any jerseyed player not on a team) without regenerating.</p>
+  <label style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">Player</label>
+  <select id="addLatePlayer" style="width:100%;margin:6px 0 12px"></select>
+  <label style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">Team</label>
+  <select id="addLateTeam" style="width:100%;margin:6px 0 16px"></select>
+  <div class="dlg-actions">
+    <button class="btn btn-ghost btn-sm" id="addLateCancel">Cancel</button>
+    <button class="btn btn-orange btn-sm" id="addLateOk">Add to Team</button>
   </div>
 </dialog>
 
@@ -1480,7 +1494,77 @@ $('#mvOk').addEventListener('click',()=>{
   const p=playerById(mvId), g=groupOf(p.year), teams=g==='B'?S.teams.B:S.teams.A;
   teams.forEach(t=>t.players=t.players.filter(x=>x!==mvId));
   teams[+$('#mvSel').value].players.push(mvId);
-  store.save(); dlg.close(); renderTeams();
+  store.save(); dlg.close(); renderTeams(); autoPushLive();
+});
+
+function idsOnTeams(){
+  const on=new Set();
+  if(!S.teams) return on;
+  [...(S.teams.A||[]),...(S.teams.B||[])].forEach(t=>(t.players||[]).forEach(id=>on.add(id)));
+  return on;
+}
+function openAddLateAdmin(){
+  if(!S.teams || (!(S.teams.A||[]).length && !(S.teams.B||[]).length)){
+    alert('Generate teams first, then add late players.');
+    return;
+  }
+  const on=idsOnTeams();
+  const free=S.players.filter(p=>p.checkedIn && String(p.jersey||'').trim() && !on.has(p.id))
+    .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0));
+  if(!free.length){
+    alert('No unassigned players with jerseys. Register/check them in and assign a jersey first.');
+    return;
+  }
+  $('#addLatePlayer').innerHTML=free.map(p=>
+    `<option value="${p.id}">#${esc(p.jersey)} ${esc(p.first)} ${esc(p.last)}${p.year?' · '+esc(p.year):''}${/walk-?up/i.test(p.items||'')?' · Walk-up':''}</option>`
+  ).join('');
+  const fillTeams=()=>{
+    const p=playerById(+$('#addLatePlayer').value);
+    if(!p) return;
+    const g=groupOf(p.year);
+    let opts=[];
+    if(g==='A') opts=S.teams.A.map((t,i)=>({label:t.name, count:t.players.length, val:'A:'+i}));
+    else if(g==='B') opts=S.teams.B.map((t,i)=>({label:t.name, count:t.players.length, val:'B:'+i}));
+    else {
+      opts=[
+        ...S.teams.A.map((t,i)=>({label:t.name+' (A)', count:t.players.length, val:'A:'+i})),
+        ...S.teams.B.map((t,i)=>({label:t.name+' (B)', count:t.players.length, val:'B:'+i}))
+      ];
+    }
+    if(!opts.length){
+      opts=[
+        ...S.teams.A.map((t,i)=>({label:t.name, count:t.players.length, val:'A:'+i})),
+        ...S.teams.B.map((t,i)=>({label:t.name, count:t.players.length, val:'B:'+i}))
+      ];
+    }
+    $('#addLateTeam').innerHTML=opts.map(o=>
+      `<option value="${esc(o.val)}">${esc(o.label)} (${o.count})</option>`
+    ).join('');
+  };
+  fillTeams();
+  $('#addLatePlayer').onchange=fillTeams;
+  $('#addLateDlg').showModal();
+}
+$('#btnAddLateTeam').addEventListener('click', openAddLateAdmin);
+$('#addLateCancel').addEventListener('click', ()=>$('#addLateDlg').close());
+$('#addLateOk').addEventListener('click', ()=>{
+  const pid=+$('#addLatePlayer').value;
+  const raw=$('#addLateTeam').value; // A:0 or B:1
+  const p=playerById(pid);
+  if(!p||!raw){ alert('Pick a player and team'); return; }
+  const [bucket, idxStr]=raw.split(':');
+  const idx=+idxStr;
+  const list=bucket==='B'?S.teams.B:S.teams.A;
+  const team=list[idx];
+  if(!team){ alert('Team not found'); return; }
+  if(idsOnTeams().has(pid)){ alert('Already on a team'); return; }
+  team.players.push(pid);
+  store.save();
+  $('#addLateDlg').close();
+  renderTeams();
+  autoPushLive();
+  const note=$('#teamsSyncNote');
+  if(note) note.innerHTML='<b style="color:var(--green)">✓ Added</b> #'+esc(p.jersey)+' '+esc(p.first)+' '+esc(p.last)+' to '+esc(team.name)+'. Click <b>Sync Teams to Parent Page</b> if parents need it right away.';
 });
 
 /* =============================================================
