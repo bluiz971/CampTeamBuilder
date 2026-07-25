@@ -1011,13 +1011,25 @@ function buildMapping(){
 function playerNameKey(first, last){
   return (String(first||'').trim()+'|'+String(last||'').trim()).toLowerCase();
 }
+/** Normalize jersey for compare/display. Never treat null as the string "null". */
+function normJersey(v){
+  if(v==null) return '';
+  const j=String(v).trim();
+  if(!j || j==='null' || j==='undefined') return '';
+  return j;
+}
+function jerseyOwnerAdmin(j, exceptPlayer){
+  const want=normJersey(j);
+  if(!want) return null;
+  return S.players.find(x=>x!==exceptPlayer && normJersey(x.jersey)===want) || null;
+}
 // When two rows are the same person, keep the one with the most station progress.
 function preferPlayerRow(a, b){
   if(!a) return b; if(!b) return a;
   const score=p=>{
     let s=0;
     if(p.photo_url||p.photoUrl) s+=8;
-    if(String(p.jersey||'').trim()) s+=4;
+    if(normJersey(p.jersey)) s+=4;
     if(p.checked_in||p.checkedIn) s+=2;
     if((p.addons_manual||p.addonsManual||[]).length) s+=1;
     return s;
@@ -1119,12 +1131,6 @@ $$('.pill').forEach(b=>b.addEventListener('click',()=>{
   ciFilter=b.dataset.f; renderCheckin();
 }));
 
-function jerseyCounts(){
-  const c={};
-  S.players.forEach(p=>{ const j=String(p.jersey).trim(); if(j) c[j]=(c[j]||0)+1; });
-  return c;
-}
-
 function renderCheckin(){
   const q=$('#ciSearch').value.toLowerCase().trim();
   const list=$('#ciList');
@@ -1163,9 +1169,8 @@ function renderCheckin(){
 function renderJersey(){
   const q=$('#jSearch').value.toLowerCase().trim();
   const list=$('#jList');
-  const dupes=jerseyCounts();
   const rows=S.players.map((p,i)=>({p,i}))
-    .filter(({p})=>p.checkedIn && String(p.jersey).trim()==='')
+    .filter(({p})=>p.checkedIn && !normJersey(p.jersey))
     .filter(({p})=>!q || `${p.first} ${p.last} ${p.school}`.toLowerCase().includes(q));
   if(!rows.length){
     const anyIn=S.players.some(p=>p.checkedIn);
@@ -1182,9 +1187,19 @@ function renderJersey(){
 
   const assign=i=>{
     const inp=list.querySelector(`.jersey-in[data-i="${i}"]`);
-    const j=inp.value.trim();
+    const j=normJersey(inp.value);
     if(!j){ inp.focus(); return; }
-    if(dupes[j]){ inp.classList.add('dupe'); alert('#'+j+' is already taken by another player.'); return; }
+    const self=S.players[i];
+    const owner=jerseyOwnerAdmin(j, self);
+    if(owner){
+      const sameName=playerNameKey(self.first,self.last)===playerNameKey(owner.first,owner.last);
+      if(sameName){ owner.jersey=''; }
+      else {
+        inp.classList.add('dupe');
+        alert('#'+j+' is already taken by '+owner.first+' '+owner.last+(owner.checkedIn?'':' (not checked in)')+'. Clear their # on Player Data first, or pick another number.');
+        return;
+      }
+    }
     S.players[i].jersey=j;
     store.save(); refresh();
   };
@@ -1201,7 +1216,7 @@ function renderJersey(){
 /* =============================================================
    3. PLAYER DATA
 ============================================================= */
-function eligible(){ return S.players.filter(p=>p.checkedIn && String(p.jersey).trim()!==''); }
+function eligible(){ return S.players.filter(p=>p.checkedIn && normJersey(p.jersey)); }
 function refresh(){ renderCheckin(); renderJersey(); renderPlayers(); renderTally(); updateScoreboard(); }
 
 // Live count of numbered players per group + auto team counts
@@ -1253,10 +1268,15 @@ function renderPlayers(){
     const p=S.players[+b.dataset.ej];
     const j=prompt('New jersey number for '+p.first+' '+p.last+':',p.jersey);
     if(j===null) return;
-    const jj=j.trim();
+    const jj=normJersey(j);
     if(!jj){ alert('Jersey number required.'); return; }
-    if(S.players.some(x=>x!==p&&String(x.jersey).trim()===jj)){ alert('#'+jj+' is already taken.'); return; }
-    const oldJ=String(p.jersey||'');
+    const owner=jerseyOwnerAdmin(jj, p);
+    if(owner){
+      const sameName=playerNameKey(p.first,p.last)===playerNameKey(owner.first,owner.last);
+      if(sameName){ owner.jersey=''; }
+      else { alert('#'+jj+' is already taken by '+owner.first+' '+owner.last+'.'); return; }
+    }
+    const oldJ=normJersey(p.jersey);
     p.jersey=jj; store.save();
     // Keep assigned teams in sync with the new number
     if(S.teams){

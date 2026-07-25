@@ -450,12 +450,19 @@ let role='checkin', query='';
 function playerNameKey(first, last){
   return (String(first||'').trim()+'|'+String(last||'').trim()).toLowerCase();
 }
+/** Normalize jersey for compare/display. Never treat null as the string "null". */
+function normJersey(v){
+  if(v==null) return '';
+  const j=String(v).trim();
+  if(!j || j==='null' || j==='undefined') return '';
+  return j;
+}
 function preferPlayer(a, b){
   if(!a) return b; if(!b) return a;
   const score=p=>{
     let s=0;
     if(p.photo_url) s+=8;
-    if(String(p.jersey||'').trim()) s+=4;
+    if(normJersey(p.jersey)) s+=4;
     if(p.checked_in) s+=2;
     if((p.addons_manual||[]).length) s+=1;
     return s;
@@ -471,6 +478,12 @@ function dedupePlayersByName(list){
     byName.set(key, preferPlayer(byName.get(key), p));
   });
   return [...byName.values()];
+}
+/** Who already has this number? exceptId is skipped (string-safe). */
+function jerseyOwner(j, exceptId){
+  const want=normJersey(j);
+  if(!want) return null;
+  return players.find(x=>String(x.id)!==String(exceptId) && normJersey(x.jersey)===want) || null;
 }
 async function pollPlayers(){
   if(!campCode){ $('#livePill').textContent='Enter a Camp Code above.'; return; }
@@ -1153,21 +1166,21 @@ function renderList(){
 
   let rows;
   if(role==='checkin') rows=players.filter(p=>!p.checked_in && matches(p));
-  else if(role==='jersey') rows=players.filter(p=>p.checked_in && !String(p.jersey).trim() && matches(p));
+  else if(role==='jersey') rows=players.filter(p=>p.checked_in && !normJersey(p.jersey) && matches(p));
   else if(role==='addons') rows=players.filter(p=>p.checked_in && matches(p));
   else if(role==='photos'){
     // Photos queue: jersey holders only (no names until a number is assigned)
-    rows=players.filter(p=>String(p.jersey||'').trim() && matches(p))
+    rows=players.filter(p=>normJersey(p.jersey) && matches(p))
       .sort((a,b)=>{
         const an=a.photo_url?1:0, bn=b.photo_url?1:0;
         if(an!==bn) return an-bn; // need photo first
-        return (+a.jersey||0)-(+b.jersey||0);
+        return (+normJersey(a.jersey)||0)-(+normJersey(b.jersey)||0);
       });
   }
   else if(role==='playerdata'){
     // Jersey assigned → Player Data (photo optional)
-    rows=players.filter(p=>String(p.jersey||'').trim() && matches(p))
-      .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0));
+    rows=players.filter(p=>normJersey(p.jersey) && matches(p))
+      .sort((a,b)=>(+normJersey(a.jersey)||0)-(+normJersey(b.jersey)||0));
   }
   else rows=players.filter(p=>matches(p));
 
@@ -1215,10 +1228,23 @@ function renderList(){
       <button class="bigbtn" data-assign="${p.id}">Assign</button>
     </div>`).join('');
     const assign=async (id)=>{
-      const inp=wrap.querySelector(`[data-jin="${id}"]`);
-      const j=inp.value.trim();
+      const inp=wrap.querySelector(`[data-jin="${CSS.escape?CSS.escape(id):id}"]`) || wrap.querySelector(`[data-jin="${id}"]`);
+      if(!inp){ toast('Could not find jersey field — refresh and try again'); return; }
+      const j=normJersey(inp.value);
       if(!j){ inp.focus(); return; }
-      if(players.some(x=>x.id!==id && String(x.jersey).trim()===j)){ inp.classList.add('dupe'); toast('#'+j+' is already taken'); return; }
+      const owner=jerseyOwner(j, id);
+      if(owner){
+        const self=players.find(x=>String(x.id)===String(id));
+        const sameName=self && playerNameKey(self.first,self.last)===playerNameKey(owner.first,owner.last);
+        if(sameName){
+          // Ghost duplicate row (same name, other id) still holding the number — free it
+          await patchPlayer(owner.id, {jersey:''});
+        } else {
+          inp.classList.add('dupe');
+          toast('#'+j+' is already taken by '+owner.first+' '+owner.last);
+          return;
+        }
+      }
       inp.blur();
       if(await patchPlayer(id, {jersey:j})){ toast('#'+j+' assigned'); requestListRender(); }
     };
@@ -1266,14 +1292,17 @@ function renderList(){
 }
 
 async function editPlayerJersey(id){
-  const p=players.find(x=>x.id===id); if(!p) return;
-  const cur=String(p.jersey||'');
+  const p=players.find(x=>String(x.id)===String(id)); if(!p) return;
+  const cur=normJersey(p.jersey);
   const next=prompt('Jersey number for '+p.first+' '+p.last+':', cur);
   if(next===null) return;
-  const j=String(next).trim();
+  const j=normJersey(next);
   if(!j){ toast('Jersey number required'); return; }
-  if(players.some(x=>x.id!==id && String(x.jersey||'').trim()===j)){
-    toast('#'+j+' is already taken'); return;
+  const owner=jerseyOwner(j, id);
+  if(owner){
+    const sameName=playerNameKey(p.first,p.last)===playerNameKey(owner.first,owner.last);
+    if(sameName) await patchPlayer(owner.id, {jersey:''});
+    else { toast('#'+j+' is already taken by '+owner.first+' '+owner.last); return; }
   }
   if(j===cur) return;
   const oldJ=cur;
