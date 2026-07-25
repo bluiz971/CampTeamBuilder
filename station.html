@@ -84,12 +84,23 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .team-card header h3{font-size:18px;text-transform:uppercase;margin:0}
 .team-card header small{font-family:'Barlow Condensed';color:var(--amber);font-size:13px;font-weight:600;white-space:nowrap}
 .team-card ul{list-style:none;margin:0;padding:0}
-.team-card li{display:grid;grid-template-columns:42px 1fr auto auto;gap:8px;align-items:center;padding:8px 14px;border-top:1px solid var(--line);font-size:14px}
+.team-card li{display:grid;grid-template-columns:42px 1fr auto auto auto;gap:6px;align-items:center;padding:8px 14px;border-top:1px solid var(--line);font-size:14px}
 .team-card li:first-child{border-top:none}
 .team-card .jnum{font-family:'Barlow Condensed';font-weight:700;font-size:16px;color:var(--orange)}
 .team-card .pmeta{color:var(--mut);font-size:12px;text-align:right;line-height:1.3}
-.team-card .mv{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1}
-.team-card .mv:active{background:var(--orange-soft)}
+.team-card .mv,.team-card .note-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1}
+.team-card .mv:active,.team-card .note-btn:active{background:var(--orange-soft)}
+.team-card .note-btn.has-note{border-color:var(--orange);background:var(--orange-soft)}
+.writeup-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:16px 0 8px}
+.writeup-box h3{font-family:'Barlow Condensed';font-size:20px;text-transform:uppercase;margin:0 0 8px}
+.writeup-box .wu-sub{font-size:13px;color:var(--mut);margin:0 0 12px;line-height:1.4}
+.writeup-box .wu-body{font-size:15px;line-height:1.65;white-space:pre-wrap}
+.writeup-box .wu-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+#noteDlg{border:none;border-radius:14px;padding:20px;max-width:440px;width:calc(100% - 32px);box-shadow:0 16px 40px rgba(20,26,34,.3)}
+#noteDlg::backdrop{background:rgba(20,26,34,.45)}
+#noteDlg h3{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase;margin-bottom:4px}
+#noteDlg textarea{width:100%;min-height:110px;font-size:15px;padding:12px;border:1.5px solid var(--line);border-radius:9px;resize:vertical;font-family:inherit;margin:10px 0 8px}
+#noteDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
 .team-card footer{padding:8px 14px;background:#faf9f6;border-top:1px solid var(--line);font-size:12px;color:var(--mut);display:flex;gap:12px;flex-wrap:wrap}
 .team-sec{font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;margin:8px 0 12px}
 .grp-tally{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
@@ -235,6 +246,18 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   <div class="dlg-actions">
     <button class="bigbtn ghost" type="button" id="mvCancel">Cancel</button>
     <button class="bigbtn" type="button" id="mvOk">Move</button>
+  </div>
+</dialog>
+
+<dialog id="noteDlg">
+  <h3>Scout note</h3>
+  <p id="noteWho" class="reg-sub" style="margin-bottom:0"></p>
+  <textarea id="noteText" placeholder="e.g. good shooter, sees the floor well, solid point guard…"></textarea>
+  <p style="font-size:12px;color:var(--mut);margin:0 0 4px;line-height:1.4">Short phrases are fine — the camp write-up turns them into full sentences with height, year, and hometown.</p>
+  <div class="dlg-actions">
+    <button class="bigbtn ghost" type="button" id="noteClear">Clear</button>
+    <button class="bigbtn ghost" type="button" id="noteCancel">Cancel</button>
+    <button class="bigbtn" type="button" id="noteSave">Save</button>
   </div>
 </dialog>
 
@@ -395,11 +418,53 @@ $('#campCodeInput').addEventListener('input', async e=>{
   }
 });
 
-// --- Auth (kept in localStorage — these are shared, dedicated tablets
-// that sit at a table all day, so we favor staying signed in over
-// re-entering a password between every single player) ---
+// --- Auth (localStorage + refresh_token so tablets stay signed in all day) ---
 let authSession=null;
 try{ const raw=localStorage.getItem('stationAuth'); if(raw) authSession=JSON.parse(raw); }catch(e){}
+
+function persistAuth(){
+  if(authSession && authSession.access_token){
+    try{ localStorage.setItem('stationAuth', JSON.stringify(authSession)); }catch(e){}
+  } else {
+    try{ localStorage.removeItem('stationAuth'); }catch(e){}
+  }
+}
+
+async function refreshAuthSession(){
+  if(!(authSession && authSession.refresh_token)) return false;
+  try{
+    const res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({ refresh_token: authSession.refresh_token })
+    });
+    const body=await res.json();
+    if(res.ok && body.access_token){
+      authSession={
+        access_token: body.access_token,
+        refresh_token: body.refresh_token || authSession.refresh_token,
+        email: authSession.email || body.user?.email || ''
+      };
+      persistAuth();
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+/** Run a fetch with auth headers; on 401 try one token refresh and retry. */
+async function authFetch(url, opts){
+  opts=opts||{};
+  const baseExtra=Object.assign({}, opts.headers||{});
+  delete baseExtra.apikey; delete baseExtra.Authorization;
+  opts.headers=authHeaders(baseExtra);
+  let res=await fetch(url, opts);
+  if(res.status===401 && authSession && authSession.refresh_token && await refreshAuthSession()){
+    opts.headers=authHeaders(baseExtra);
+    res=await fetch(url, opts);
+  }
+  return res;
+}
 
 async function showApp(){
   $('#gate').style.display='none';
@@ -409,9 +474,12 @@ async function showApp(){
     showCampNotFoundState(lastCampErr);
     return;
   }
+  // Keep JWT fresh in the background (Supabase access tokens often expire ~1h)
+  await refreshAuthSession();
   pollPlayers(); pollTeams();
   setInterval(pollPlayers, 4000);
   setInterval(pollTeams, 4000);
+  setInterval(()=>{ refreshAuthSession(); }, 10*60*1000);
 }
 if(authSession && authSession.access_token) showApp();
 
@@ -427,7 +495,7 @@ $('#gBtn').addEventListener('click', async ()=>{
     const body=await res.json();
     if(res.ok && body.access_token){
       authSession={access_token:body.access_token, refresh_token:body.refresh_token, email};
-      localStorage.setItem('stationAuth', JSON.stringify(authSession));
+      persistAuth();
       showApp();
     } else {
       $('#gMsg').style.color='var(--red)';
@@ -436,7 +504,7 @@ $('#gBtn').addEventListener('click', async ()=>{
   }catch(e){ $('#gMsg').style.color='var(--red)'; $('#gMsg').textContent='Could not reach Supabase.'; }
 });
 $('#btnSignOut').addEventListener('click', ()=>{
-  authSession=null; localStorage.removeItem('stationAuth');
+  authSession=null; persistAuth();
   location.reload();
 });
 
@@ -489,11 +557,13 @@ async function pollPlayers(){
   if(!campCode){ $('#livePill').textContent='Enter a Camp Code above.'; return; }
   if(!campId) return;
   try{
-    const res=await fetch(SUPABASE_URL+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(campId)+'&select=*&order=first.asc',{
-      headers:authHeaders()
+    const res=await authFetch(SUPABASE_URL+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(campId)+'&select=*&order=first.asc',{
+      headers:{}
     });
     if(!res.ok){
-      if(res.status===401||res.status===403){ $('#livePill').textContent='Session expired — sign out and back in.'; }
+      if(res.status===401||res.status===403){
+        $('#livePill').textContent='Session expired — sign out and back in.';
+      }
       else $('#livePill').textContent='Could not load — retrying…';
       return;
     }
@@ -508,6 +578,8 @@ async function pollPlayers(){
 let teams=[];
 let teamsPosted=false;
 let pendingLocalTeams=false; // true after Generate until Sync succeeds
+let lastTeamsUpdatedAt=''; // camp_live.updated_at — used to pull remote changes across accounts
+let showWriteUp=false;
 let campLiveExtra={}; // preserve title/sched/etc when we push teams
 let groupCfg={ gA1:2027, gA2:2030, gB1:2031, gB2:2035, numA:3, numB:3 };
 const TEAM_BRACKETS=[[0,27,3],[28,40,4],[41,54,6],[55,69,8],[70,84,10],[85,98,12],[99,112,14]];
@@ -681,8 +753,10 @@ function generateStationTeams(){
   teamsPosted=false;
   pendingLocalTeams=true;
   if(skipped>0) toast(skipped+' player(s) outside year ranges — adjust Group A/B years');
-  else toast(teams.length+' teams generated — Sync to post for parents');
+  else toast(teams.length+' teams generated — syncing for all stations…');
   renderList();
+  // Auto-sync so every signed-in tablet / account sees the same rosters
+  syncStationTeams();
 }
 async function syncStationTeams(){
   if(!teams.length){ toast('Generate teams first'); return; }
@@ -700,15 +774,16 @@ async function syncStationTeams(){
     groups:{ gA1:groupCfg.gA1, gA2:groupCfg.gA2, gB1:groupCfg.gB1, gB2:groupCfg.gB2, numA:groupCfg.numA, numB:groupCfg.numB }
   });
   try{
-    const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=camp_id',{
+    const res=await authFetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=camp_id',{
       method:'POST',
-      headers:authHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+      headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
       body:JSON.stringify([{ camp_id:campId, code:campSlug, data:payload, updated_at:new Date().toISOString() }])
     });
     if(res.ok){
       teamsPosted=true; pendingLocalTeams=false;
-      if(note){ note.className='teams-note ok'; note.innerHTML='<b>✓ Teams posted</b> — parents & tablets will see them shortly.'; }
-      toast('Teams synced');
+      lastTeamsUpdatedAt=new Date().toISOString();
+      if(note){ note.className='teams-note ok'; note.innerHTML='<b>✓ Teams live</b> — parents & every station on this camp will see them within a few seconds.'; }
+      toast('Teams synced to all stations');
       renderList();
     }else{
       if(note){ note.className='teams-note err'; note.textContent='Sync failed ('+res.status+') — try again.'; }
@@ -743,6 +818,7 @@ function renderGroupTally(){
     + `</div>`;
 }
 function renderTeamsToolbar(){
+  const noted=players.filter(p=>String(p.scout_notes||'').trim()).length;
   return `<div class="teams-toolbar">
     <div class="gen-row">
       <div><label>Group A years</label><div class="yr">
@@ -764,13 +840,14 @@ function renderTeamsToolbar(){
       <button class="bigbtn" type="button" id="stBtnGen">🏀 Generate Balanced Teams</button>
       <button class="bigbtn ghost" type="button" id="stBtnAddLate">＋ Add Late Player to a Team</button>
       <button class="bigbtn ghost" type="button" id="stBtnSync">⬆ Sync Teams to Parent Page</button>
+      <button class="bigbtn ghost" type="button" id="stBtnWriteUp">✍ Camp Write-Up${noted?' ('+noted+')':''}</button>
       <button class="bigbtn ghost" type="button" id="stBtnClearTeams">🗑 Clear Teams</button>
     </div>
     <div class="teams-note" id="stTeamsNote">${
-      pendingLocalTeams ? 'Teams generated or edited on this tablet — Sync to post them for parents.'
-      : (teamsPosted && teams.length ? 'Teams are live for parents. Tap ⇄ to move, or Add Late Player for walk-ups.'
-      : (teams.length ? 'Old teams still loaded — Clear Teams, then Generate when ready.'
-      : 'Generate when jersey assignment is far enough along, then Sync.'))
+      pendingLocalTeams ? 'Local edits pending — syncing so every station stays in sync…'
+      : (teamsPosted && teams.length ? 'Teams are live across all signed-in stations. Tap 📝 for scout notes, ⇄ to move.'
+      : (teams.length ? 'Teams loaded from live sync. Generate again only if you need a fresh balance.'
+      : 'Generate when jersey assignment is far enough along — it auto-syncs to other stations.'))
     }</div>
   </div>`;
 }
@@ -785,13 +862,13 @@ async function clearStationTeams(){
       groups:{ gA1:groupCfg.gA1, gA2:groupCfg.gA2, gB1:groupCfg.gB1, gB2:groupCfg.gB2, numA:groupCfg.numA, numB:groupCfg.numB }
     });
     try{
-      const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=camp_id',{
+      const res=await authFetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=camp_id',{
         method:'POST',
-        headers:authHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+        headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
         body:JSON.stringify([{ camp_id:campId, code:campSlug, data:payload, updated_at:new Date().toISOString() }])
       });
       if(!res.ok){ toast('Could not clear parent page — try again'); }
-      else toast('Teams cleared');
+      else { lastTeamsUpdatedAt=new Date().toISOString(); toast('Teams cleared'); }
     }catch(e){ toast('Could not clear parent page'); }
   } else {
     toast('Teams cleared locally');
@@ -821,7 +898,7 @@ function openStationMove(fromIdx, jersey, name){
   $('#mvDlg').showModal();
 }
 $('#mvCancel').addEventListener('click', ()=>$('#mvDlg').close());
-$('#mvOk').addEventListener('click', ()=>{
+$('#mvOk').addEventListener('click', async ()=>{
   if(mvPlayer==null || mvFromIdx==null){ $('#mvDlg').close(); return; }
   const toIdx=+$('#mvSel').value;
   if(toIdx===mvFromIdx){ $('#mvDlg').close(); return; }
@@ -833,8 +910,9 @@ $('#mvOk').addEventListener('click', ()=>{
   teamsPosted=false;
   mvPlayer=null; mvFromIdx=null;
   $('#mvDlg').close();
-  toast('Moved — Sync Teams to update parents');
   renderList();
+  toast('Moved — syncing…');
+  await syncStationTeams();
 });
 
 /* ---------- Add late / unassigned player to an existing team ---------- */
@@ -924,26 +1002,35 @@ function bindTeamsToolbar(){
     el.addEventListener('change', ()=>{ readGroupInputs(); renderList(); });
     el.addEventListener('input', ()=>{ readGroupInputs(); });
   });
-  const gen=$('#stBtnGen'), sync=$('#stBtnSync'), clr=$('#stBtnClearTeams'), add=$('#stBtnAddLate');
+  const gen=$('#stBtnGen'), sync=$('#stBtnSync'), clr=$('#stBtnClearTeams'), add=$('#stBtnAddLate'), wu=$('#stBtnWriteUp');
   if(gen) gen.addEventListener('click', ()=>generateStationTeams());
   if(add) add.addEventListener('click', ()=>openAddToTeamDialog());
   if(sync) sync.addEventListener('click', ()=>syncStationTeams());
   if(clr) clr.addEventListener('click', ()=>clearStationTeams());
+  if(wu) wu.addEventListener('click', ()=>{ showWriteUp=!showWriteUp; renderList(); });
 }
 async function pollTeams(){
   if(!campId) return;
   try{
     const res=await fetch(SUPABASE_URL+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(campId)+'&select=data,updated_at',{
-      headers:{apikey:SUPABASE_ANON_KEY}
+      headers:authHeaders()
     });
     if(!res.ok) return;
     const rows=await res.json();
-    const data=(rows && rows[0] && rows[0].data) || {};
+    const row=rows && rows[0];
+    const data=(row && row.data) || {};
+    const updatedAt=row && row.updated_at ? String(row.updated_at) : '';
     campLiveExtra=Object.assign({}, data);
     delete campLiveExtra.teams; delete campLiveExtra.roster; delete campLiveExtra.teamsPosted; delete campLiveExtra.groups;
-    if(!pendingLocalTeams){
-      teams=data.teams || [];
+    // Pull remote teams unless this tablet has unsynced local edits.
+    // Empty local always accepts remote so a second account sees the first's generate.
+    const remoteTeams=Array.isArray(data.teams) ? data.teams : [];
+    const shouldPull=!pendingLocalTeams || !teams.length;
+    if(shouldPull && (updatedAt!==lastTeamsUpdatedAt || (!teams.length && remoteTeams.length))){
+      teams=remoteTeams;
       teamsPosted = teams.length ? (data.teamsPosted!==false) : false;
+      lastTeamsUpdatedAt=updatedAt;
+      if(teams.length) pendingLocalTeams=false;
     }
     if(data.groups){
       groupCfg={
@@ -1027,14 +1114,20 @@ document.addEventListener('focusout', ()=>setTimeout(flushDeferredListRender, 50
 
 async function patchPlayer(id, fields){
   fields.updated_at=new Date().toISOString();
-  const res=await fetch(SUPABASE_URL+'/rest/v1/players?id=eq.'+id,{
+  const res=await authFetch(SUPABASE_URL+'/rest/v1/players?id=eq.'+id,{
     method:'PATCH',
-    headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+    headers:{'Content-Type':'application/json','Prefer':'return=minimal'},
     body:JSON.stringify(fields)
   });
-  if(!res.ok){ toast('⚠ Save failed — check connection'); return false; }
+  if(!res.ok){
+    let detail='';
+    try{ const t=await res.text(); detail=t; }catch(e){}
+    if(/scout_notes/i.test(detail)) toast('⚠ Run migration 004 (scout_notes) in Supabase SQL Editor');
+    else toast('⚠ Save failed — check connection');
+    return false;
+  }
   // optimistic local update so the UI feels instant; next poll reconciles
-  const p=players.find(x=>x.id===id); if(p) Object.assign(p, fields);
+  const p=players.find(x=>String(x.id)===String(id)); if(p) Object.assign(p, fields);
   return true;
 }
 
@@ -1127,38 +1220,156 @@ $('#regSave').addEventListener('click', saveWalkUp);
   el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); saveWalkUp(); } });
 });
 
+function bindWriteUpActions(){
+  const copy=$('#stBtnCopyWriteUp'), hide=$('#stBtnHideWriteUp');
+  if(hide) hide.addEventListener('click', ()=>{ showWriteUp=false; renderList(); });
+  if(copy) copy.addEventListener('click', async ()=>{
+    const text=buildCampWriteUp();
+    if(!text){ toast('No notes to copy'); return; }
+    try{
+      await navigator.clipboard.writeText(text);
+      toast('Write-up copied');
+    }catch(e){
+      // Fallback for older tablets
+      const ta=document.createElement('textarea');
+      ta.value=text; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); toast('Write-up copied'); }catch(err){ toast('Copy failed — select the text manually'); }
+      ta.remove();
+    }
+  });
+}
+
+function findPlayerForTeamSlot(j, n){
+  const name=String(n||'').trim().toLowerCase();
+  const jersey=String(j||'').trim();
+  return players.find(p=>{
+    const pn=((p.first||'')+' '+(p.last||'')).trim().toLowerCase();
+    return String(p.jersey||'').trim()===jersey && pn===name;
+  }) || null;
+}
+function scoutNoteFor(j, n){
+  const p=findPlayerForTeamSlot(j, n);
+  return p ? String(p.scout_notes||'').trim() : '';
+}
+/** Turn bio + freeform notes into a camp write-up sentence. */
+function writeUpSentence(p){
+  const note=String(p.scout_notes||'').trim();
+  if(!note) return '';
+  const name=((p.first||'')+' '+(p.last||'')).trim();
+  const ht=formatHeight(p.height);
+  const htDisp=ht && ht!=='—' ? ht : '';
+  const yr=String(p.grad_year||'').trim();
+  const pos=String(p.position||'').trim() || 'player';
+  const place=String(p.city||'').trim() || String(p.school||'').trim();
+  let head=name;
+  if(htDisp) head+=', '+htDisp;
+  if(yr || pos) head+=', '+[yr, pos].filter(Boolean).join(' ');
+  if(place) head+=' from '+place;
+  let n=note.replace(/^[,.\s]+/,'').replace(/[.\s]+$/,'');
+  // "good shooter; sees the floor" or "good shooter, sees the floor well"
+  if(/[;]/.test(n) || (n.includes(',') && !/^(is|has|can|plays|shows|brings|does|was|will|a |an )/i.test(n))){
+    const parts=n.split(/[;,]+/).map(s=>s.trim()).filter(Boolean);
+    if(parts.length>1){
+      const last=parts.pop();
+      n='who is '+parts.join(', ')+', and '+last;
+    } else if(!/^(is|has|can|plays|shows|brings|does|was|will|a |an |who )/i.test(n)){
+      n='who is known for being '+n;
+    }
+  } else if(!/^(is|has|can|plays|shows|brings|does|was|will|a |an |who )/i.test(n)){
+    n='who is '+n;
+  }
+  if(/^(is|has|can|plays|shows|brings|does|was|will|a |an )/i.test(n) && !/^who /i.test(n)){
+    // "is a solid PG…" → attach with comma
+    return head+', '+n.charAt(0).toLowerCase()+n.slice(1)+'.';
+  }
+  return head+', '+n+'.';
+}
+function buildCampWriteUp(){
+  const noted=players.filter(p=>String(p.scout_notes||'').trim())
+    .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0) || String(a.last).localeCompare(String(b.last)));
+  if(!noted.length) return '';
+  const campLabel=campSlug || campCode || 'this camp';
+  const intro='Standouts from '+campLabel.replace(/-/g,' ')+':';
+  return intro+'\n\n'+noted.map(writeUpSentence).filter(Boolean).join('\n\n');
+}
+function renderWriteUpPanel(){
+  if(!showWriteUp) return '';
+  const body=buildCampWriteUp();
+  return `<div class="writeup-box" id="writeUpBox">
+    <h3>Camp write-up</h3>
+    <p class="wu-sub">Built from scout notes on the Teams page. Edit any player’s 📝 note to refresh this.</p>
+    <div class="wu-body">${body?esc(body):'No scout notes yet — tap 📝 on a player to add highlights like “good shooter” or “sees the floor well”.'}</div>
+    <div class="wu-actions">
+      <button class="bigbtn" type="button" id="stBtnCopyWriteUp" ${body?'':'disabled'}>Copy write-up</button>
+      <button class="bigbtn ghost" type="button" id="stBtnHideWriteUp">Hide</button>
+    </div>
+  </div>`;
+}
+let noteTargetId=null;
+function openScoutNote(j, n){
+  const p=findPlayerForTeamSlot(j, n);
+  if(!p){ toast('Player not found in roster — check jersey/name'); return; }
+  noteTargetId=p.id;
+  $('#noteWho').textContent='#'+normJersey(p.jersey)+' '+p.first+' '+p.last
+    +(p.position?' · '+p.position:'')+(p.grad_year?' · '+p.grad_year:'');
+  $('#noteText').value=String(p.scout_notes||'');
+  const dlg=$('#noteDlg');
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+  setTimeout(()=>$('#noteText').focus(), 50);
+}
+async function saveScoutNote(clear){
+  if(!noteTargetId) return;
+  const text=clear ? '' : String($('#noteText').value||'').trim();
+  if(!(await patchPlayer(noteTargetId, {scout_notes:text}))) return;
+  $('#noteDlg').close();
+  noteTargetId=null;
+  toast(text?'Scout note saved':'Scout note cleared');
+  if(role==='teams') renderList();
+}
+$('#noteCancel').addEventListener('click', ()=>{ noteTargetId=null; $('#noteDlg').close(); });
+$('#noteClear').addEventListener('click', ()=>saveScoutNote(true));
+$('#noteSave').addEventListener('click', ()=>saveScoutNote(false));
+
 function renderList(){
   const wrap=$('#plist');
 
   if(role==='teams'){
     // Hide search on teams — generation + roster cards
     const search=$('.searchbar'); if(search) search.style.display='none';
-    let html=renderTeamsToolbar()+renderGroupTally();
+    let html=renderTeamsToolbar()+renderGroupTally()+renderWriteUpPanel();
     if(!teams.length){
-      html+='<div class="empty"><b>No teams yet</b>Assign jerseys, then tap Generate Balanced Teams.</div>';
-      wrap.innerHTML=html; bindTeamsToolbar(); return;
+      html+='<div class="empty"><b>No teams yet</b>Assign jerseys, then tap Generate Balanced Teams — it syncs to every station on this camp.</div>';
+      wrap.innerHTML=html; bindTeamsToolbar(); bindWriteUpActions(); return;
     }
     const q=query;
     const filtered=teams.map(t=>({
       name:t.name,
       players:t.players.filter(p=>!q || (p.n||'').toLowerCase().includes(q) || (p.sc||'').toLowerCase().includes(q) || String(p.j||'')===q)
     })).filter(t=>!q || t.players.length || (t.name||'').toLowerCase().includes(q));
-    if(!filtered.length){ wrap.innerHTML=html+'<div class="empty"><b>No matches</b></div>'; bindTeamsToolbar(); return; }
+    if(!filtered.length){ wrap.innerHTML=html+'<div class="empty"><b>No matches</b></div>'; bindTeamsToolbar(); bindWriteUpActions(); return; }
     wrap.innerHTML=html+`<div class="team-grid">${filtered.map((t,ti)=>{
       const ps=t.players.slice().sort((a,b)=>(+b.j||0)-(+a.j||0));
       return `<div class="team-card">
         <header><h3>${esc(t.name)}</h3><small>${ps.length} players</small></header>
-        <ul>${ps.map(p=>`<li>
+        <ul>${ps.map(p=>{
+          const hasNote=!!scoutNoteFor(p.j, p.n);
+          return `<li>
           <span class="jnum">#${esc(p.j)}</span>
-          <span><b>${esc(p.n)}</b><br><span style="color:var(--mut);font-size:12px">${esc(p.sc||'')}</span></span>
+          <span><b>${esc(p.n)}</b><br><span style="color:var(--mut);font-size:12px">${esc(p.sc||'')}${hasNote?' · <span style="color:var(--orange)">noted</span>':''}</span></span>
           <span class="pmeta">${esc(formatHeight(p.ht))||'—'}<br>${esc(p.pos||'—')} · ${esc(p.yr||'')}</span>
+          <button class="note-btn${hasNote?' has-note':''}" type="button" data-note-j="${esc(p.j)}" data-note-n="${esc(p.n)}" title="Scout note" aria-label="Note ${esc(p.n)}">📝</button>
           <button class="mv" type="button" data-from="${ti}" data-j="${esc(p.j)}" data-n="${esc(p.n)}" title="Move to another team" aria-label="Move ${esc(p.n)}">⇄</button>
-        </li>`).join('')}</ul>
+        </li>`;
+        }).join('')}</ul>
       </div>`;
     }).join('')}</div>`+renderHeightSummary(filtered);
     bindTeamsToolbar();
+    bindWriteUpActions();
     wrap.querySelectorAll('.mv').forEach(b=>b.addEventListener('click', ()=>{
       openStationMove(+b.dataset.from, b.dataset.j, b.dataset.n);
+    }));
+    wrap.querySelectorAll('[data-note-j]').forEach(b=>b.addEventListener('click', ()=>{
+      openScoutNote(b.dataset.noteJ, b.dataset.noteN);
     }));
     return;
   }

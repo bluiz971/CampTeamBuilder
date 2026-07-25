@@ -347,6 +347,7 @@ dialog select{width:100%;margin:10px 0 16px}
       <button class="btn btn-dark btn-sm" id="btnPrint">Print Rosters</button>
       <button class="btn btn-dark btn-sm" id="btnCsvTeams">Export CSV</button>
       <button class="btn btn-dark btn-sm" id="btnAddLateTeam">＋ Add Late Player</button>
+      <button class="btn btn-ghost btn-sm" id="btnPullLiveTeams">⬇ Pull Teams from Live</button>
       <button class="btn btn-orange btn-sm" id="btnSyncTeams">⬆ Sync Teams to Parent Page</button>
       <button class="btn btn-ghost btn-sm" id="btnClearTeams">🗑 Clear Teams</button>
     </div>
@@ -569,9 +570,57 @@ if(S.teams){
   if(oldFormat){ S.teams=null; store.save(); }
 }
 
-// Auth session (sessionStorage — clears when the browser closes)
+// Auth session — localStorage so coaches stay signed in across tabs/reloads.
+// Migrate any leftover sessionStorage session once.
 let authSession=null;
-try{ const raw=sessionStorage.getItem('campAuthSession'); if(raw) authSession=JSON.parse(raw); }catch(e){}
+try{
+  const raw=localStorage.getItem('campAuthSession') || sessionStorage.getItem('campAuthSession');
+  if(raw){
+    authSession=JSON.parse(raw);
+    try{ localStorage.setItem('campAuthSession', raw); sessionStorage.removeItem('campAuthSession'); }catch(e){}
+  }
+}catch(e){}
+
+function persistAdminAuth(){
+  if(authSession && authSession.access_token){
+    try{ localStorage.setItem('campAuthSession', JSON.stringify(authSession)); }catch(e){}
+  } else {
+    try{ localStorage.removeItem('campAuthSession'); sessionStorage.removeItem('campAuthSession'); }catch(e){}
+  }
+}
+async function refreshAdminSession(){
+  if(!(authSession && authSession.refresh_token && S.syncUrl && S.syncKey)) return false;
+  try{
+    const res=await fetch(S.syncUrl+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',
+      headers:{ 'apikey':S.syncKey, 'Content-Type':'application/json' },
+      body:JSON.stringify({ refresh_token: authSession.refresh_token })
+    });
+    const body=await res.json();
+    if(res.ok && body.access_token){
+      authSession={
+        access_token: body.access_token,
+        refresh_token: body.refresh_token || authSession.refresh_token,
+        email: authSession.email || body.user?.email || ''
+      };
+      persistAdminAuth();
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+async function adminAuthFetch(url, opts){
+  opts=opts||{};
+  const baseExtra=Object.assign({}, opts.headers||{});
+  delete baseExtra.apikey; delete baseExtra.Authorization;
+  opts.headers=authHeaders(baseExtra);
+  let res=await fetch(url, opts);
+  if(res.status===401 && authSession && authSession.refresh_token && await refreshAdminSession()){
+    opts.headers=authHeaders(baseExtra);
+    res=await fetch(url, opts);
+  }
+  return res;
+}
 
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1872,12 +1921,13 @@ $('#btnSignIn').addEventListener('click', async ()=>{
     const body=await res.json();
     if(res.ok && body.access_token){
       authSession={ access_token:body.access_token, refresh_token:body.refresh_token, email };
-      try{ sessionStorage.setItem('campAuthSession', JSON.stringify(authSession)); }catch(e){}
+      persistAdminAuth();
       $('#authPass').value='';
       updateAuthUI();
       $('#syncStatus').innerHTML='<b style="color:var(--green)">✓ Signed in</b> as '+esc(email)+'.';
       await refreshCampsUI();
       await ensureActiveCamp();
+      pullLiveTeams(true);
     } else {
       $('#syncStatus').innerHTML='<span style="color:var(--red)">Sign-in failed: '+esc(body.error_description||body.msg||'check email/password')+'</span>';
     }
@@ -1887,7 +1937,7 @@ $('#btnSignIn').addEventListener('click', async ()=>{
 });
 $('#btnSignOut').addEventListener('click', ()=>{
   authSession=null;
-  try{ sessionStorage.removeItem('campAuthSession'); }catch(e){}
+  persistAdminAuth();
   updateAuthUI();
   $('#syncStatus').textContent='Signed out.';
 });
@@ -1956,10 +2006,9 @@ async function pushLive(silent, opts){
       if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Internal error: missing camp id. Pick Active camp and try again.</span>';
       return false;
     }
-    const res=await fetch(base+'/rest/v1/camp_live?on_conflict=camp_id',{
+    const res=await adminAuthFetch(base+'/rest/v1/camp_live?on_conflict=camp_id',{
       method:'POST',
       headers:{
-        'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token,
         'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates,return=minimal'
       },
       body:JSON.stringify([row])
@@ -1981,7 +2030,7 @@ async function pushLive(silent, opts){
     // PostgREST often returns HTTP 401 for RLS failures (42501), which is NOT an expired login
     if(res.status===401 && /jwt|expired|invalid token|not authenticated/i.test(body) && !/row-level security|42501/i.test(body)){
       if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Session expired — sign in again.</span>';
-      authSession=null; try{ sessionStorage.removeItem('campAuthSession'); }catch(e){} updateAuthUI();
+      authSession=null; persistAdminAuth(); updateAuthUI();
       return false;
     }
     if(/camp_id|23502|not-null/i.test(body)){
@@ -2001,6 +2050,77 @@ async function pushLive(silent, opts){
 }
 $('#btnSyncNow').addEventListener('click',()=>pushLive(false, {includeTeams:false}));
 $('#btnSyncTeams').addEventListener('click',()=>pushLive(false, {includeTeams:true, statusEl:$('#teamsSyncNote')}));
+$('#btnPullLiveTeams').addEventListener('click',()=>pullLiveTeams(false));
+
+/** Import teams posted by a station (or another admin) from camp_live into this browser. */
+async function pullLiveTeams(silent){
+  const note=$('#teamsSyncNote');
+  if(!(S.syncUrl && S.syncKey)){
+    if(!silent && note) note.innerHTML='<span style="color:var(--red)">Set Project URL and anon key first.</span>';
+    return false;
+  }
+  if(!(authSession && authSession.access_token)){
+    if(!silent && note) note.innerHTML='<span style="color:var(--red)">Sign in to pull live teams.</span>';
+    return false;
+  }
+  const active=await ensureActiveCamp();
+  if(!active.ok){
+    if(!silent && note) note.innerHTML='<span style="color:var(--red)">'+esc(active.error)+'</span>';
+    return false;
+  }
+  try{
+    const res=await adminAuthFetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(active.campId)+'&select=data,updated_at',{ headers:{} });
+    if(!res.ok){
+      if(!silent && note) note.innerHTML='<span style="color:var(--red)">Pull failed ('+res.status+').</span>';
+      return false;
+    }
+    const rows=await res.json();
+    const data=rows && rows[0] && rows[0].data;
+    if(!data || !Array.isArray(data.teams) || !data.teams.length){
+      if(!silent && note) note.innerHTML='<span style="color:var(--mut)">No live teams posted yet for this camp. Generate & sync from a station or this admin.</span>';
+      return false;
+    }
+    const matchPlayer=(j,n)=>{
+      const name=String(n||'').trim().toLowerCase();
+      const jersey=String(j||'').trim();
+      let p=S.players.find(x=>String(x.jersey||'').trim()===jersey && (x.first+' '+x.last).trim().toLowerCase()===name);
+      if(!p) p=S.players.find(x=>(x.first+' '+x.last).trim().toLowerCase()===name);
+      return p||null;
+    };
+    const numA=data.groups && data.groups.numA!=null ? Number(data.groups.numA) : (S.numA||3);
+    const A=[], B=[];
+    let unmatched=0;
+    data.teams.forEach(t=>{
+      const n=+(String(t.name).match(/\d+/)||[0])[0];
+      const ids=[];
+      (t.players||[]).forEach(tp=>{
+        const p=matchPlayer(tp.j, tp.n);
+        if(p) ids.push(p.id);
+        else unmatched++;
+      });
+      const team={ name:t.name, num:n||(A.length+B.length+1), players:ids };
+      if(n && n<=numA) A.push(team); else B.push(team);
+    });
+    if(data.groups){
+      S.gA1=Number(data.groups.gA1)||S.gA1; S.gA2=Number(data.groups.gA2)||S.gA2;
+      S.gB1=Number(data.groups.gB1)||S.gB1; S.gB2=Number(data.groups.gB2)||S.gB2;
+      S.numA=numA; S.numB=Number(data.groups.numB)||Math.max(1,B.length);
+    }
+    S.teams={ A, B };
+    S.teamsLive=data.teamsPosted!==false;
+    store.save();
+    renderTeams();
+    if(!silent && note){
+      note.innerHTML='<b style="color:var(--green)">✓ Pulled live teams</b> ('+(A.length+B.length)+' teams)'
+        +(unmatched?' — '+unmatched+' player(s) on live roster not found in this admin list.':'')
+        +'.';
+    }
+    return true;
+  }catch(e){
+    if(!silent && note) note.innerHTML='<span style="color:var(--red)">Could not pull live teams.</span>';
+    return false;
+  }
+}
 $('#btnSyncSched').addEventListener('click', async ()=>{
   const note=$('#schedSyncNote');
   if(!S.schedule.length){
@@ -2444,6 +2564,16 @@ async function pollPlayersLive(){
   }catch(e){ /* stay quiet, retry on next tick */ }
 }
 setInterval(pollPlayersLive, 5000);
+setInterval(()=>{ refreshAdminSession(); }, 10*60*1000);
+// Keep Teams tab in sync with station generates when this browser has no local teams yet
+setInterval(()=>{
+  if(!(authSession && authSession.access_token && S.campId)) return;
+  if(S.teams && ((S.teams.A||[]).length+(S.teams.B||[]).length)>0) return;
+  pullLiveTeams(true);
+}, 8000);
+if(authSession && authSession.access_token){
+  refreshAdminSession().then(()=>pullLiveTeams(true));
+}
 $('#btnPushRoster').addEventListener('click', async ()=>{
   if(!(S.syncUrl && S.syncKey && S.campId)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Select an Active camp and set up Live Sync on the Publish tab first.</span>'; return; }
   if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
