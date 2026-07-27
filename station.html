@@ -94,7 +94,14 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .writeup-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:16px 0 8px}
 .writeup-box h3{font-family:'Barlow Condensed';font-size:20px;text-transform:uppercase;margin:0 0 8px}
 .writeup-box .wu-sub{font-size:13px;color:var(--mut);margin:0 0 12px;line-height:1.4}
-.writeup-box .wu-body{font-size:15px;line-height:1.65;white-space:pre-wrap}
+.writeup-box .wu-body{font-size:15px;line-height:1.65}
+.writeup-box .wu-plain{white-space:pre-wrap;display:none}
+.writeup-box .wu-list{display:flex;flex-direction:column;gap:14px;margin-top:4px}
+.writeup-box .wu-card{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:12px;background:#faf9f6}
+.writeup-box .wu-photo{width:72px;height:72px;border-radius:10px;object-fit:cover;object-position:center 22%;background:#e8e4dc}
+.writeup-box .wu-photo.ph{display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:28px}
+.writeup-box .wu-card .wu-text{font-size:15px;line-height:1.55;margin:0}
+.writeup-box .wu-card .wu-name{font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;margin:0 0 4px}
 .writeup-box .wu-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 #noteDlg{border:none;border-radius:14px;padding:20px;max-width:440px;width:calc(100% - 32px);box-shadow:0 16px 40px rgba(20,26,34,.3)}
 #noteDlg::backdrop{background:rgba(20,26,34,.45)}
@@ -1279,7 +1286,9 @@ function writeUpSentence(p){
   const htDisp=ht && ht!=='—' ? ht : '';
   const yr=String(p.grad_year||'').trim();
   const pos=String(p.position||'').trim() || 'player';
-  const place=String(p.city||'').trim() || String(p.school||'').trim();
+  const city=String(p.city||'').trim();
+  const state=String(p.state||'').trim().toUpperCase();
+  const place=[city, state].filter(Boolean).join(', ') || String(p.school||'').trim();
   let head=name;
   if(htDisp) head+=', '+htDisp;
   if(yr || pos) head+=', '+[yr, pos].filter(Boolean).join(' ');
@@ -1303,9 +1312,12 @@ function campWriteUpHeader(){
   const date=(campRow && campRow.camp_date) ? formatCampDate(campRow.camp_date) : '';
   return { name, loc, date };
 }
-function buildCampWriteUp(){
-  const noted=players.filter(p=>noteTraits(p.scout_notes).length)
+function notedWriteUpPlayers(){
+  return players.filter(p=>noteTraits(p.scout_notes).length)
     .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0) || String(a.last).localeCompare(String(b.last)));
+}
+function buildCampWriteUp(){
+  const noted=notedWriteUpPlayers();
   if(!noted.length) return '';
   const {name, loc, date}=campWriteUpHeader();
   const lines=[name];
@@ -1314,20 +1326,42 @@ function buildCampWriteUp(){
   lines.push('');
   lines.push('Standouts:');
   lines.push('');
-  noted.map(writeUpSentence).filter(Boolean).forEach(s=>{ lines.push(s); lines.push(''); });
+  noted.forEach(p=>{
+    const s=writeUpSentence(p);
+    if(s){ lines.push(s); lines.push(''); }
+  });
   return lines.join('\n').trim();
+}
+function renderWriteUpCardsHtml(noted){
+  return noted.map(p=>{
+    const sentence=writeUpSentence(p);
+    if(!sentence) return '';
+    const photo=String(p.photo_url||'').trim();
+    const thumb=photo
+      ? `<img class="wu-photo" src="${esc(photo)}" alt="">`
+      : `<div class="wu-photo ph">👤</div>`;
+    const nm=((p.first||'')+' '+(p.last||'')).trim();
+    return `<div class="wu-card">${thumb}<div>
+      <div class="wu-name">${esc(nm)}${normJersey(p.jersey)?' · #'+esc(normJersey(p.jersey)):''}</div>
+      <p class="wu-text">${esc(sentence)}</p>
+    </div></div>`;
+  }).join('');
 }
 function renderWriteUpPanel(){
   if(!showWriteUp) return '';
+  const noted=notedWriteUpPlayers();
   const body=buildCampWriteUp();
   const {name, loc, date}=campWriteUpHeader();
   const meta=[loc, date].filter(Boolean).join(' · ');
+  const cards=noted.length ? renderWriteUpCardsHtml(noted) : '';
   return `<div class="writeup-box" id="writeUpBox">
     <h3>Camp Write-Up</h3>
     <div class="wu-head">${esc(name)}</div>
     ${meta?`<p class="wu-meta">${esc(meta)}</p>`:''}
-    <p class="wu-sub">Built from scout note bullets on each player. Tap 📝 to edit, then open this again to refresh.</p>
-    <div class="wu-body">${body?esc(body):'No scout notes yet — tap 📝 on a player and add bullet points (Enter for a new line).'}</div>
+    <p class="wu-sub">Headshots + bios from scout notes (city &amp; state included). Tap 📝 to edit notes.</p>
+    ${cards
+      ? `<div class="wu-list">${cards}</div><div class="wu-plain" id="wuPlainText">${esc(body)}</div>`
+      : `<div class="wu-body">No scout notes yet — tap 📝 on a player and add bullet points (Enter for a new line).</div>`}
     <div class="wu-actions">
       <button class="bigbtn" type="button" id="stBtnCopyWriteUp" ${body?'':'disabled'}>Copy write-up</button>
       <button class="bigbtn ghost" type="button" id="stBtnHideWriteUp">Hide</button>
