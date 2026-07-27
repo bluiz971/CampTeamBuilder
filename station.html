@@ -782,6 +782,8 @@ async function syncStationTeams(){
     teams, roster, teamsPosted:true,
     groups:{ gA1:groupCfg.gA1, gA2:groupCfg.gA2, gB1:groupCfg.gB1, gB2:groupCfg.gB2, numA:groupCfg.numA, numB:groupCfg.numB }
   });
+  // Keep posted write-up when syncing teams
+  if(campLiveExtra.writeUp) payload.writeUp=campLiveExtra.writeUp;
   try{
     const res=await authFetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=camp_id',{
       method:'POST',
@@ -1232,8 +1234,9 @@ $('#regSave').addEventListener('click', saveWalkUp);
 });
 
 function bindWriteUpActions(){
-  const copy=$('#stBtnCopyWriteUp'), hide=$('#stBtnHideWriteUp');
+  const copy=$('#stBtnCopyWriteUp'), hide=$('#stBtnHideWriteUp'), sync=$('#stBtnSyncWriteUp');
   if(hide) hide.addEventListener('click', ()=>{ showWriteUp=false; renderList(); });
+  if(sync) sync.addEventListener('click', ()=>syncWriteUpToParent());
   if(copy) copy.addEventListener('click', async ()=>{
     const text=buildCampWriteUp();
     if(!text){ toast('No notes to copy'); return; }
@@ -1241,7 +1244,6 @@ function bindWriteUpActions(){
       await navigator.clipboard.writeText(text);
       toast('Write-up copied');
     }catch(e){
-      // Fallback for older tablets
       const ta=document.createElement('textarea');
       ta.value=text; document.body.appendChild(ta); ta.select();
       try{ document.execCommand('copy'); toast('Write-up copied'); }catch(err){ toast('Copy failed — select the text manually'); }
@@ -1347,6 +1349,89 @@ function renderWriteUpCardsHtml(noted){
     </div></div>`;
   }).join('');
 }
+function buildWriteUpPayload(){
+  const noted=notedWriteUpPlayers();
+  if(!noted.length) return null;
+  const {name, loc, date}=campWriteUpHeader();
+  const standouts=noted.map(p=>{
+    const sentence=writeUpSentence(p);
+    if(!sentence) return null;
+    const city=String(p.city||'').trim();
+    const state=String(p.state||'').trim().toUpperCase();
+    return {
+      n: ((p.first||'')+' '+(p.last||'')).trim(),
+      j: normJersey(p.jersey),
+      ph: String(p.photo_url||'').trim(),
+      yr: String(p.grad_year||'').trim(),
+      pos: String(p.position||'').trim(),
+      ht: formatHeight(p.height)==='—'?'':formatHeight(p.height),
+      city, state,
+      school: String(p.school||'').trim(),
+      text: sentence
+    };
+  }).filter(Boolean);
+  if(!standouts.length) return null;
+  return {
+    posted: true,
+    title: name,
+    location: loc,
+    date: date,
+    text: buildCampWriteUp(),
+    standouts,
+    updatedAt: new Date().toISOString()
+  };
+}
+async function syncWriteUpToParent(){
+  if(!campId){ toast('Camp not found'); return; }
+  if(!(authSession && authSession.access_token)){ toast('Sign in required to sync'); return; }
+  const writeUp=buildWriteUpPayload();
+  if(!writeUp){ toast('Add scout notes first'); return; }
+  const btn=$('#stBtnSyncWriteUp');
+  if(btn){ btn.disabled=true; btn.textContent='Syncing…'; }
+  // Merge onto current live payload so teams/schedule aren't wiped
+  let base=Object.assign({}, campLiveExtra);
+  try{
+    const cur=await fetch(SUPABASE_URL+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(campId)+'&select=data',{
+      headers:authHeaders()
+    });
+    if(cur.ok){
+      const rows=await cur.json();
+      const d=rows && rows[0] && rows[0].data;
+      if(d && typeof d==='object') base=Object.assign({}, d);
+    }
+  }catch(e){}
+  if(teams.length){
+    const roster=[];
+    teams.forEach(t=>t.players.forEach(p=>{
+      roster.push({ n:p.n, j:String(p.j), team:t.name, yr:p.yr, pos:p.pos||'', ht:p.ht||'', sc:p.sc||'', ph:p.ph||'' });
+    }));
+    base.teams=teams; base.roster=roster; base.teamsPosted=teamsPosted!==false;
+  }
+  base.writeUp=writeUp;
+  base.groups=base.groups||{ gA1:groupCfg.gA1, gA2:groupCfg.gA2, gB1:groupCfg.gB1, gB2:groupCfg.gB2, numA:groupCfg.numA, numB:groupCfg.numB };
+  try{
+    const res=await authFetch(SUPABASE_URL+'/rest/v1/camp_live?on_conflict=camp_id',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify([{ camp_id:campId, code:campSlug, data:base, updated_at:new Date().toISOString() }])
+    });
+    if(res.ok){
+      campLiveExtra=Object.assign({}, base);
+      delete campLiveExtra.teams; delete campLiveExtra.roster; delete campLiveExtra.teamsPosted; delete campLiveExtra.groups;
+      // keep writeUp in campLiveExtra so team syncs preserve it
+      toast('Post Camp Report live for parents');
+      if(btn){ btn.disabled=false; btn.textContent='✓ Synced to Parent Page'; }
+      const note=$('#wuSyncNote');
+      if(note){ note.className='teams-note ok'; note.innerHTML='<b>✓ Live on parent page</b> — tap <b>Post Camp Report</b> on the home screen.'; }
+    }else{
+      toast('Sync failed ('+res.status+')');
+      if(btn){ btn.disabled=false; btn.textContent='⬆ Sync to Parent Page'; }
+    }
+  }catch(e){
+    toast('Could not reach Supabase');
+    if(btn){ btn.disabled=false; btn.textContent='⬆ Sync to Parent Page'; }
+  }
+}
 function renderWriteUpPanel(){
   if(!showWriteUp) return '';
   const noted=notedWriteUpPlayers();
@@ -1354,18 +1439,24 @@ function renderWriteUpPanel(){
   const {name, loc, date}=campWriteUpHeader();
   const meta=[loc, date].filter(Boolean).join(' · ');
   const cards=noted.length ? renderWriteUpCardsHtml(noted) : '';
+  const live=!!(campLiveExtra && campLiveExtra.writeUp && campLiveExtra.writeUp.posted);
   return `<div class="writeup-box" id="writeUpBox">
     <h3>Camp Write-Up</h3>
     <div class="wu-head">${esc(name)}</div>
     ${meta?`<p class="wu-meta">${esc(meta)}</p>`:''}
-    <p class="wu-sub">Headshots + bios from scout notes (city &amp; state included). Tap 📝 to edit notes.</p>
+    <p class="wu-sub">Headshots + bios from scout notes (city &amp; state included). Sync when ready so parents see <b>Post Camp Report</b> on the home page.</p>
     ${cards
       ? `<div class="wu-list">${cards}</div><div class="wu-plain" id="wuPlainText">${esc(body)}</div>`
       : `<div class="wu-body">No scout notes yet — tap 📝 on a player and add bullet points (Enter for a new line).</div>`}
     <div class="wu-actions">
-      <button class="bigbtn" type="button" id="stBtnCopyWriteUp" ${body?'':'disabled'}>Copy write-up</button>
+      <button class="bigbtn" type="button" id="stBtnSyncWriteUp" ${body?'':'disabled'}>⬆ Sync to Parent Page</button>
+      <button class="bigbtn ghost" type="button" id="stBtnCopyWriteUp" ${body?'':'disabled'}>Copy write-up</button>
       <button class="bigbtn ghost" type="button" id="stBtnHideWriteUp">Hide</button>
     </div>
+    <div class="teams-note${live?' ok':''}" id="wuSyncNote" style="margin-top:10px">${
+      live ? '<b>✓ Already posted</b> — sync again after editing notes to refresh the parent page.'
+      : (body ? 'Ready to post — tap Sync to Parent Page.' : '')
+    }</div>
   </div>`;
 }
 let noteTargetId=null;

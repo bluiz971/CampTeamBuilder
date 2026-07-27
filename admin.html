@@ -2025,7 +2025,7 @@ async function pushLive(silent, opts){
   if($('#gA1')){ S.gA1=+$('#gA1').value||S.gA1; S.gA2=+$('#gA2').value||S.gA2; S.gB1=+$('#gB1').value||S.gB1; S.gB2=+$('#gB2').value||S.gB2; }
   renderTally();
   const payload=buildPublicData({ includeTeams });
-  // Publish content sync shouldn't wipe teams that are already live
+  // Publish content sync shouldn't wipe teams / write-up that are already live
   if(!includeTeams){
     try{
       const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(campId)+'&select=data',{
@@ -2037,8 +2037,21 @@ async function pushLive(silent, opts){
         if(d && d.teamsPosted && d.teams && d.teams.length){
           payload.teams=d.teams; payload.roster=d.roster||[]; payload.teamsPosted=true;
         }
+        if(d && d.writeUp) payload.writeUp=d.writeUp;
       }
     }catch(e){ /* keep empty teams */ }
+  } else {
+    // Teams sync — still preserve an existing post-camp report
+    try{
+      const cur=await fetch(S.syncUrl.replace(/\/$/,'')+'/rest/v1/camp_live?camp_id=eq.'+encodeURIComponent(campId)+'&select=data',{
+        headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
+      });
+      if(cur.ok){
+        const rows=await cur.json();
+        const d=rows && rows[0] && rows[0].data;
+        if(d && d.writeUp) payload.writeUp=d.writeUp;
+      }
+    }catch(e){}
   }
   // Always include current group year ranges for station tallies
   payload.groups={ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB };
