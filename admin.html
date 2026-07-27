@@ -218,7 +218,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel on" id="panel-camps">
   <div class="panel-head">
     <div><h2>Camps</h2>
-    <p>Create and manage camps. Public links use the slug: <code>?camp=your-slug</code>. All roster/team work below applies only to the <b>Active camp</b> in the header.</p></div>
+    <p>Create and manage camps. Public links use the slug: <code>?camp=your-slug</code>. Share the <b>Walk-up form</b> link so day-of players can register themselves — they appear on that camp’s station Check-In list. All roster/team work below applies only to the <b>Active camp</b> in the header.</p></div>
   </div>
   <div class="mapping" style="margin-bottom:16px">
     <h3 style="margin-bottom:10px">Create camp</h3>
@@ -708,6 +708,7 @@ function renderCampsTable(){
     campsList.map(c=>{
       const parent=base+'/?camp='+encodeURIComponent(c.slug);
       const station=base+'/station.html?camp='+encodeURIComponent(c.slug);
+      const register=base+'/register.html?camp='+encodeURIComponent(c.slug);
       return `<tr>
         <td><b>${esc(c.name)}</b>${c.location?'<br><small style="color:var(--mut)">'+esc(c.location)+'</small>':''}</td>
         <td><code>${esc(c.slug)}</code></td>
@@ -715,7 +716,8 @@ function renderCampsTable(){
         <td>${esc(c.status)}</td>
         <td style="font-size:12px;line-height:1.6">
           <a href="${esc(parent)}" target="_blank" rel="noopener">Parent</a> ·
-          <a href="${esc(station)}" target="_blank" rel="noopener">Station</a>
+          <a href="${esc(station)}" target="_blank" rel="noopener">Station</a> ·
+          <a href="${esc(register)}" target="_blank" rel="noopener">Walk-up form</a>
         </td>
         <td class="row-actions">
           <button class="btn btn-ghost btn-sm" data-use="${esc(c.id)}">Use</button>
@@ -2635,13 +2637,26 @@ function renderSiteLink(){
   const note=$('#siteLinkNote');
   if(!S.siteBaseUrl){ note.innerHTML='<span style="color:var(--mut)">Enter your site\'s base URL above once it\'s deployed to see the exact parent link.</span>'; return; }
   if(!S.syncCode){ note.innerHTML='<span style="color:var(--mut)">Select an Active camp to complete the parent link.</span>'; return; }
-  const link=S.siteBaseUrl+'/?camp='+encodeURIComponent(S.syncCode);
-  note.innerHTML='<b>Parent link:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(link)+'</code> '
-    +'<button class="btn btn-dark btn-sm" id="btnCopyLink" style="margin-left:8px">Copy</button> '
-    +'<a href="'+esc(link)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a>';
+  const base=S.siteBaseUrl.replace(/\/$/,'');
+  const link=base+'/?camp='+encodeURIComponent(S.syncCode);
+  const station=base+'/station.html?camp='+encodeURIComponent(S.syncCode);
+  const register=base+'/register.html?camp='+encodeURIComponent(S.syncCode);
+  note.innerHTML='<div style="line-height:1.8">'
+    +'<div><b>Parent:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(link)+'</code> '
+    +'<button class="btn btn-dark btn-sm" id="btnCopyLink" style="margin-left:6px">Copy</button> '
+    +'<a href="'+esc(link)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a></div>'
+    +'<div><b>Station:</b> <a href="'+esc(station)+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600;text-decoration:none">'+esc(station)+'</a></div>'
+    +'<div><b>Walk-up form:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(register)+'</code> '
+    +'<button class="btn btn-dark btn-sm" id="btnCopyReg" style="margin-left:6px">Copy</button> '
+    +'<a href="'+esc(register)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a></div>'
+    +'</div>';
   const b=document.getElementById('btnCopyLink');
   if(b) b.addEventListener('click', ()=>{
     navigator.clipboard?.writeText(link).then(()=>{ b.textContent='Copied!'; setTimeout(()=>b.textContent='Copy',1500); });
+  });
+  const r=document.getElementById('btnCopyReg');
+  if(r) r.addEventListener('click', ()=>{
+    navigator.clipboard?.writeText(register).then(()=>{ r.textContent='Copied!'; setTimeout(()=>r.textContent='Copy',1500); });
   });
 }
 

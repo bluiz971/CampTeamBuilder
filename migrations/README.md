@@ -7,8 +7,9 @@ Run these in Supabase → **SQL Editor**, in order:
 3. **`002_fix_write_rls.sql`** — run if Publish sync fails with “not authorized” / RLS right after sign-in.
 4. **`003_move_roster_to_mid_atlantic.sql`** — optional one-time roster move (only if needed).
 5. **`004_player_scout_notes.sql`** — adds `scout_notes` for station Teams notes / camp write-ups.
+6. **`005_public_walkup_register.sql`** — allows public walk-up self-registration (`register.html`) into active camps.
 
 After that:
 
 - Sign in on **admin.html → Publish**, then open **Camps** to manage camps.
-- Parent / station links: `/?camp=your-slug` and `/station.html?camp=your-slug`.
+- Parent / station / walk-up: `/?camp=your-slug`, `/station.html?camp=your-slug`, `/register.html?camp=your-slug`.
