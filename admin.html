@@ -262,7 +262,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-roster">
   <div class="panel-head">
     <div><h2>Master Roster</h2>
-    <p>Upload the registration export (.xlsx, .xlsm or .csv). Columns are detected automatically — confirm the mapping below, then load.</p></div>
+    <p>Upload the registration export (.xlsx, .xlsm or .csv). Columns are detected automatically — confirm the mapping below, then load. <b>Walk-ups and public sign-ups already on this camp are kept</b> — they won’t be wiped by a re-upload.</p></div>
     <button class="btn btn-ghost btn-sm" id="btnReset">Reset All Data</button>
   </div>
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload roster file">
@@ -1083,9 +1083,35 @@ function preferPlayerRow(a, b){
     if(normJersey(p.jersey)) s+=4;
     if(p.checked_in||p.checkedIn) s+=2;
     if((p.addons_manual||p.addonsManual||[]).length) s+=1;
+    if(/walk-?up/i.test(p.items||'')) s+=1;
     return s;
   };
   return score(b)>score(a)?b:a;
+}
+
+/** Normalize a Supabase / local player into admin roster shape. */
+function toAdminPlayer(src, id){
+  const r=src||{};
+  const height=r.height||'';
+  const uid=r.uid||r.id||(crypto.randomUUID?crypto.randomUUID():('keep-'+Date.now()+'-'+id));
+  return {
+    id:id,
+    uid:uid,
+    first:r.first||'', last:r.last||'',
+    year:r.year||r.grad_year||'',
+    height:height, hin:heightToInches(height),
+    position:r.position||'', school:r.school||'',
+    city:r.city||'', state:r.state||'',
+    payStatus:r.payStatus||r.pay_status||'',
+    balance:r.balance||'',
+    items:r.items||'',
+    email:r.email||'',
+    checkedIn:!!(r.checkedIn!=null?r.checkedIn:r.checked_in),
+    jersey:r.jersey||'',
+    addonsManual:r.addonsManual||r.addons_manual||[],
+    addonsRemoved:r.addonsRemoved||r.addons_removed||[],
+    photoUrl:r.photoUrl||r.photo_url||''
+  };
 }
 
 function playersCampFilter(){
@@ -1151,6 +1177,22 @@ $('#btnLoad').addEventListener('click', async ()=>{
       photoUrl:old.photoUrl||remote.photo_url||''
     });
   });
+  // Keep walk-ups / self-registers / anyone already signed up who isn't on the spreadsheet.
+  // Prefer remote (real Supabase id) over a local-only copy of the same name.
+  let keptExtra=0;
+  Object.keys(remoteByName).forEach(key=>{
+    if(seen[key] || key==='|') return;
+    mapped.push(toAdminPlayer(remoteByName[key], mapped.length));
+    seen[key]=true;
+    keptExtra++;
+  });
+  Object.keys(prev).forEach(key=>{
+    if(seen[key] || key==='|') return;
+    mapped.push(toAdminPlayer(prev[key], mapped.length));
+    seen[key]=true;
+    keptExtra++;
+  });
+  mapped.forEach((p,i)=>p.id=i);
   S.players=mapped;
   S.teams=null;
   store.save(); renderAll(); pushRosterLive();
@@ -1160,6 +1202,7 @@ $('#btnLoad').addEventListener('click', async ()=>{
   $('#loadMsg').textContent=S.players.length+' players loaded'
     +(withJ?' · '+withJ+' jersey numbers carried over':'')
     +(withC?' · '+withC+' already checked in':'')
+    +(keptExtra?' · '+keptExtra+' walk-up/prior sign-up'+(keptExtra===1?'':'s')+' kept':'')
     +(dupesInFile?' · '+dupesInFile+' duplicate name'+(dupesInFile===1?'':'s')+' skipped in file':'');
 });
 
@@ -2369,16 +2412,20 @@ async function pushRosterLive(){
       }
       wrote+=chunk.length;
     }
-    // Remove orphan/duplicate rows left behind by older pushes (new UUIDs).
+    // Only remove true same-name duplicates left by older UUID churn.
+    // Never delete walk-ups / self-registers who aren't on the spreadsheet.
     let removed=0;
     const keep=new Set(rows.map(r=>r.id));
-    const existingRes=await fetch(S.syncUrl+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(campId)+'&select=id,first,last,jersey,checked_in,photo_url,addons_manual',{
+    const existingRes=await fetch(S.syncUrl+'/rest/v1/players?camp_id=eq.'+encodeURIComponent(campId)+'&select=id,first,last,jersey,checked_in,photo_url,addons_manual,items',{
       headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
     });
     if(existingRes.ok){
       const existing=await existingRes.json();
-      const orphans=existing.filter(r=>!keep.has(r.id)).map(r=>r.id);
-      // Also collapse same-name duplicates that somehow share keep-set edges
+      const keepNames=new Set();
+      existing.filter(r=>keep.has(r.id)).forEach(r=>{
+        const key=playerNameKey(r.first,r.last);
+        if(key!=='|') keepNames.add(key);
+      });
       const byName={};
       const nameDupes=[];
       existing.filter(r=>keep.has(r.id)).forEach(r=>{
@@ -2389,14 +2436,21 @@ async function pushRosterLive(){
         const drop=keepRow===byName[key]?r:byName[key];
         byName[key]=keepRow;
         nameDupes.push(drop.id);
-        keep.delete(drop.id); // drop from local roster too if present
+        keep.delete(drop.id);
       });
+      // Orphans with a name already on the new roster = leftover duplicate UUID — safe to delete.
+      // Orphans with a unique name = walk-up / self-register — keep them.
+      const orphanDupes=existing.filter(r=>{
+        if(keep.has(r.id)) return false;
+        const key=playerNameKey(r.first,r.last);
+        return key!=='|' && keepNames.has(key);
+      }).map(r=>r.id);
       if(nameDupes.length){
         S.players=S.players.filter(p=>!nameDupes.includes(p.uid));
         S.players.forEach((p,i)=>p.id=i);
         store.save();
       }
-      const toDelete=[...new Set([...orphans, ...nameDupes])];
+      const toDelete=[...new Set([...nameDupes, ...orphanDupes])];
       if(toDelete.length){ await deletePlayerIds(toDelete); removed=toDelete.length; }
     }
     // Verify rows are actually readable for this camp
@@ -2409,9 +2463,9 @@ async function pushRosterLive(){
       return;
     }
     $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Roster pushed to stations</b> ('+remoteCount+' on <code>'+esc(code)+'</code>'
-      +(removed?' · removed '+removed+' duplicate/orphan'+(removed===1?'':'s'):'')
+      +(removed?' · cleaned '+removed+' duplicate'+(removed===1?'':'s'):'')
       +') at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.'
-      +' Open station with <code>?camp='+esc(code)+'</code>';
+      +' Walk-ups / self-registers are kept. Open station with <code>?camp='+esc(code)+'</code>';
   }catch(e){
     $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Could not push roster to stations — check Live Sync is configured and you\'re signed in.</span>';
   }
