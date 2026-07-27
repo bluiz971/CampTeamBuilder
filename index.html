@@ -368,12 +368,12 @@ function renderHeader(){
 
 $$('#mainNav button').forEach(b=>b.addEventListener('click',()=>goView(b.dataset.v)));
 function goView(name){
-  if(name==='report' && !(D.writeUp && D.writeUp.posted)) name='home';
   $$('#mainNav button').forEach(x=>x.classList.remove('on'));$$('.view').forEach(x=>x.classList.remove('on'));
   const navBtn=$('[data-v="'+name+'"]');
   if(navBtn) navBtn.classList.add('on');
   const view=$('#v-'+name);
   if(view) view.classList.add('on');
+  if(name==='report') renderReport();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -383,15 +383,20 @@ function renderHome(){
   const webUrl=D.webUrl||DEFAULT_WEB_URL;
   const tiles=[];
   const teamsReady = !!(D.teams && D.teams.length && D.teamsPosted!==false);
-  const reportReady = !!(D.writeUp && D.writeUp.posted && (D.writeUp.standouts||[]).length);
+  const reportN = (D.writeUp && D.writeUp.posted && Array.isArray(D.writeUp.standouts)) ? D.writeUp.standouts.length : 0;
+  const reportReady = reportN > 0;
   const navReport=$('#navReport');
-  if(navReport) navReport.style.display=reportReady?'':'none';
+  if(navReport) navReport.style.display='';
   tiles.push({view:'teams',pic:'teamz',icon:'👕',label:'Teams',desc:teamsReady?(D.teams.length+' teams assigned'):'No Teams Posted yet',go:'View Teams'});
   tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?D.sched.length+' games posted':'Posted once available',go:'View Schedule'});
-  if(reportReady){
-    const n=(D.writeUp.standouts||[]).length;
-    tiles.push({view:'report',pic:'report',icon:'📋',label:'Post Camp Report',desc:n+' standout'+(n===1?'':'s')+' highlighted',go:'Read Report'});
-  }
+  tiles.push({
+    view:'report',
+    pic:'report',
+    icon:'📋',
+    label:'Post Camp Report',
+    desc: reportReady ? (reportN+' standout'+(reportN===1?'':'s')+' highlighted') : 'Posted once available',
+    go: reportReady ? 'Read Report' : 'View Report'
+  });
   if(D.shopUrl) tiles.push({href:D.shopUrl,ext:true,pic:'shop',icon:'🛒',label:'Add-Ons Shop',desc:'Mixtapes, evals, film & more',go:'Shop Now ↗'});
   if(D.appUrl) tiles.push({href:D.appUrl,ext:true,pic:'app',icon:'🏀',label:'Select 360',desc:'Training, recruiting & player tools',go:'Open App ↗'});
   tiles.push({href:webUrl,ext:true,pic:'web',icon:'🌐',label:'AAU Select Tour',desc:'Official website & other camps',go:'Visit Site ↗'});
