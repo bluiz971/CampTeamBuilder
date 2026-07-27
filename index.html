@@ -90,9 +90,21 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .pmodal .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:14px}
 .pmodal .grid div{background:var(--paper);border-radius:8px;padding:8px 10px}
 .pmodal .grid label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:2px}
+
+#introSplash{position:fixed;inset:0;z-index:500;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:opacity .5s ease}
+#introSplash.hide{opacity:0;pointer-events:none}
+#introVideo{width:100%;height:100%;object-fit:cover}
+#introSkip{position:absolute;top:max(16px,env(safe-area-inset-top));right:16px;background:rgba(20,26,34,.55);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:99px;padding:8px 16px;font-family:'Barlow Condensed';font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;backdrop-filter:blur(2px)}
+#introSound{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:rgba(20,26,34,.55);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:99px;padding:9px 18px;font-family:'Barlow';font-size:14px;cursor:pointer;backdrop-filter:blur(2px)}
 </style>
 </head>
 <body>
+
+<div id="introSplash">
+  <video id="introVideo" src="intro.mp4" playsinline autoplay></video>
+  <button id="introSkip" aria-label="Skip intro">Skip</button>
+  <button id="introSound" aria-label="Toggle sound" style="display:none">Tap for sound</button>
+</div>
 
 <header>
   <h1 id="hTitle1">Camp</h1>
@@ -180,6 +192,39 @@ function formatHeight(h){
   }
   return s;
 }
+
+// INTRO SPLASH — tries sound-on autoplay first; falls back to muted + tap for sound.
+(function(){
+  const splash=$('#introSplash'), vid=$('#introVideo'), soundBtn=$('#introSound');
+  if(!splash||!vid) return;
+  const dismiss=()=>{ splash.classList.add('hide'); setTimeout(()=>splash.remove(),550); };
+  vid.addEventListener('ended', dismiss);
+  vid.addEventListener('error', dismiss);
+  $('#introSkip').addEventListener('click', dismiss);
+
+  function showMuteToggle(){
+    soundBtn.style.display='block';
+    soundBtn.textContent = vid.muted ? 'Tap for sound' : 'Tap to mute';
+    soundBtn.setAttribute('aria-label', vid.muted ? 'Turn sound on' : 'Turn sound off');
+  }
+  soundBtn.addEventListener('click', ()=>{
+    vid.muted = !vid.muted;
+    showMuteToggle();
+  });
+
+  vid.muted=false;
+  const p = vid.play();
+  if(p && p.catch){
+    p.then(()=>{ showMuteToggle(); })
+     .catch(()=>{
+        vid.muted=true;
+        vid.play().then(showMuteToggle).catch(dismiss);
+     });
+  } else {
+    showMuteToggle();
+  }
+  setTimeout(()=>{ if(vid.paused && !vid.ended) dismiss(); }, 1800);
+})();
 
 const params=new URLSearchParams(location.search);
 const campSlug=(params.get('camp')||DEFAULT_CAMP_CODE||'').trim();
