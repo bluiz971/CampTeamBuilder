@@ -449,7 +449,7 @@ dialog select{width:100%;margin:10px 0 16px}
       <div><label>Camp slug (from Active camp)</label><input type="text" id="syncCode" placeholder="select a camp" style="width:160px;background:#faf9f6" readonly></div>
     </div>
     <div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>
-    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Sign in to enable pushing live updates. Parents don't need an account — only you (and any co-coach) need to sign in here.</p>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Sign in to push live updates. Parents don’t need an account. Prefer the dedicated page: <a href="login.html?next=admin.html" style="color:var(--orange);font-weight:600">login.html</a>.</p>
     <div id="signedOutRow" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
       <div><label>Email</label><input type="text" id="authEmail" placeholder="coach@example.com" style="width:220px" autocomplete="username"></div>
       <div><label>Password</label><input type="password" id="authPass" placeholder="••••••••" style="width:180px" autocomplete="current-password"></div>
@@ -605,10 +605,23 @@ try{
 
 function persistAdminAuth(){
   if(authSession && authSession.access_token){
-    try{ localStorage.setItem('campAuthSession', JSON.stringify(authSession)); }catch(e){}
+    try{
+      const raw=JSON.stringify(authSession);
+      localStorage.setItem('campAuthSession', raw);
+      localStorage.setItem('stationAuth', raw);
+    }catch(e){}
   } else {
-    try{ localStorage.removeItem('campAuthSession'); sessionStorage.removeItem('campAuthSession'); }catch(e){}
+    try{
+      localStorage.removeItem('campAuthSession');
+      localStorage.removeItem('stationAuth');
+      sessionStorage.removeItem('campAuthSession');
+    }catch(e){}
   }
+}
+// Staff tools require a signed-in coach account
+if(!(authSession && authSession.access_token)){
+  const next='admin.html'+location.search+location.hash;
+  location.replace('login.html?next='+encodeURIComponent(next));
 }
 async function refreshAdminSession(){
   if(!(authSession && authSession.refresh_token && S.syncUrl && S.syncKey)) return false;
@@ -2008,8 +2021,7 @@ $('#btnSignIn').addEventListener('click', async ()=>{
 $('#btnSignOut').addEventListener('click', ()=>{
   authSession=null;
   persistAdminAuth();
-  updateAuthUI();
-  $('#syncStatus').textContent='Signed out.';
+  location.replace('login.html?next=admin.html');
 });
 
 // Push the current public payload to Supabase (upsert by camp code).
@@ -2113,7 +2125,8 @@ async function pushLive(silent, opts){
     // PostgREST often returns HTTP 401 for RLS failures (42501), which is NOT an expired login
     if(res.status===401 && /jwt|expired|invalid token|not authenticated/i.test(body) && !/row-level security|42501/i.test(body)){
       if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">Session expired — sign in again.</span>';
-      authSession=null; persistAdminAuth(); updateAuthUI();
+      authSession=null; persistAdminAuth();
+      location.replace('login.html?next='+encodeURIComponent('admin.html'+location.search+location.hash));
       return false;
     }
     if(/camp_id|23502|not-null/i.test(body)){
@@ -3025,6 +3038,7 @@ function renderSiteLink(){
   const station=base+'/station.html?camp='+encodeURIComponent(S.syncCode);
   const register=base+'/register.html?camp='+encodeURIComponent(S.syncCode);
   note.innerHTML='<div style="line-height:1.8">'
+    +'<div><b>Staff login:</b> <a href="'+esc(base+'/login.html')+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600;text-decoration:none">'+esc(base+'/login.html')+'</a></div>'
     +'<div><b>Parent:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(link)+'</code> '
     +'<button class="btn btn-dark btn-sm" id="btnCopyLink" style="margin-left:6px">Copy</button> '
     +'<a href="'+esc(link)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a></div>'

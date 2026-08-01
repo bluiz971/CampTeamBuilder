@@ -429,14 +429,37 @@ $('#campCodeInput').addEventListener('input', async e=>{
 
 // --- Auth (localStorage + refresh_token so tablets stay signed in all day) ---
 let authSession=null;
-try{ const raw=localStorage.getItem('stationAuth'); if(raw) authSession=JSON.parse(raw); }catch(e){}
+try{
+  const raw=localStorage.getItem('stationAuth') || localStorage.getItem('campAuthSession');
+  if(raw){
+    authSession=JSON.parse(raw);
+    if(authSession && authSession.access_token){
+      try{
+        localStorage.setItem('stationAuth', raw);
+        localStorage.setItem('campAuthSession', raw);
+      }catch(e){}
+    }
+  }
+}catch(e){}
 
 function persistAuth(){
   if(authSession && authSession.access_token){
-    try{ localStorage.setItem('stationAuth', JSON.stringify(authSession)); }catch(e){}
+    try{
+      const raw=JSON.stringify(authSession);
+      localStorage.setItem('stationAuth', raw);
+      localStorage.setItem('campAuthSession', raw);
+    }catch(e){}
   } else {
-    try{ localStorage.removeItem('stationAuth'); }catch(e){}
+    try{
+      localStorage.removeItem('stationAuth');
+      localStorage.removeItem('campAuthSession');
+    }catch(e){}
   }
+}
+
+if(!(authSession && authSession.access_token)){
+  const next='station.html'+location.search+location.hash;
+  location.replace('login.html?next='+encodeURIComponent(next));
 }
 
 async function refreshAuthSession(){
@@ -514,7 +537,7 @@ $('#gBtn').addEventListener('click', async ()=>{
 });
 $('#btnSignOut').addEventListener('click', ()=>{
   authSession=null; persistAuth();
-  location.reload();
+  location.replace('login.html?next='+encodeURIComponent('station.html'+location.search+location.hash));
 });
 
 function authHeaders(extra){

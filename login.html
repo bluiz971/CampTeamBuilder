@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — Camp Team Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#141a22;--ink-2:#1e2733;--paper:#f6f5f2;--card:#fff;--line:#e2ded6;--orange:#e8590c;--amber:#ffb63d;--mut:#6b7280;--red:#c92a2a;--green:#15803d}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Barlow',system-ui,sans-serif;color:var(--ink);min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:24px 16px;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(232,89,12,.22), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(255,182,61,.18), transparent 50%),
+    linear-gradient(165deg, #1a222c 0%, #141a22 42%, #2a2118 100%);
+}
+.shell{width:100%;max-width:420px}
+.brand{text-align:center;color:#fff;margin-bottom:22px}
+.brand h1{font-family:'Barlow Condensed',sans-serif;font-size:clamp(34px,8vw,46px);text-transform:uppercase;letter-spacing:.02em;line-height:1}
+.brand h1 span{color:var(--amber)}
+.brand p{color:#9aa4b1;font-size:14px;margin-top:8px}
+.card{
+  background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;
+  padding:26px 24px 22px;box-shadow:0 24px 50px rgba(0,0,0,.35);
+}
+.card h2{font-family:'Barlow Condensed',sans-serif;font-size:22px;text-transform:uppercase;margin-bottom:4px}
+.card .sub{color:var(--mut);font-size:13px;margin-bottom:18px;line-height:1.45}
+label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 5px}
+input[type=email],input[type=password],input[type=text]{
+  width:100%;font-family:'Barlow',system-ui,sans-serif;font-size:16px;padding:12px 14px;
+  border:1.5px solid var(--line);border-radius:10px;margin-bottom:14px;background:#fff;
+}
+input:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+.dest{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 16px}
+.dest label.opt{
+  display:flex;align-items:center;justify-content:center;gap:6px;margin:0;padding:10px 8px;
+  border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.03em;font-family:'Barlow Condensed',sans-serif;color:var(--mut);
+}
+.dest input{display:none}
+.dest input:checked + span{
+  display:block;width:100%;text-align:center;padding:10px 8px;border-radius:8px;
+  background:var(--ink);color:#fff;border:1.5px solid var(--ink);
+}
+.dest label.opt span{display:block;width:100%;text-align:center;padding:10px 8px;border-radius:8px;border:1.5px solid transparent}
+.btn{
+  width:100%;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;background:var(--orange);color:#fff;border:none;
+  border-radius:10px;padding:13px 16px;cursor:pointer;
+}
+.btn:disabled{opacity:.65;cursor:wait}
+.msg{min-height:20px;margin-top:12px;font-size:13px;color:var(--mut);text-align:center;line-height:1.4}
+.msg.err{color:var(--red)}.msg.ok{color:var(--green)}
+.foot{text-align:center;margin-top:16px;font-size:13px}
+.foot a{color:var(--amber);font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="brand">
+    <h1>Camp Team <span>Builder</span></h1>
+    <p>AAU Select Tour · Coach &amp; station sign-in</p>
+  </div>
+  <div class="card">
+    <h2>Sign in</h2>
+    <p class="sub">Parents don’t need an account. This page is for coaches and check-in tablets only.</p>
+    <form id="loginForm" autocomplete="on">
+      <label for="email">Email</label>
+      <input id="email" name="username" type="email" autocomplete="username" required placeholder="coach@example.com">
+      <label for="pass">Password</label>
+      <input id="pass" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+      <label>Open after sign-in</label>
+      <div class="dest">
+        <label class="opt"><input type="radio" name="dest" value="admin.html" checked><span>Admin</span></label>
+        <label class="opt"><input type="radio" name="dest" value="station.html"><span>Station</span></label>
+      </div>
+      <button class="btn" type="submit" id="btnGo">Sign In</button>
+    </form>
+    <div class="msg" id="msg"></div>
+  </div>
+  <p class="foot"><a href="index.html">← Parent camp page</a></p>
+</div>
+<script>
+const SUPABASE_URL = "https://nxncasbkrcermftbviuw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54bmNhc2JrcmNlcm1mdGJ2aXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY3NjYsImV4cCI6MjA5OTc5Mjc2Nn0.XdcpcrTLhWeJWf6DXS2PPkXOGjYy8m9nFtagbFoqt9I";
+
+const params = new URLSearchParams(location.search);
+const $=s=>document.querySelector(s);
+
+function safeNext(raw){
+  try{
+    const u=new URL(String(raw||'admin.html'), location.href);
+    if(u.origin!==location.origin) return 'admin.html';
+    const file=(u.pathname.split('/').pop()||'').toLowerCase();
+    if(file!=='admin.html' && file!=='station.html') return 'admin.html';
+    return file + u.search + u.hash;
+  }catch(e){ return 'admin.html'; }
+}
+
+function persistSession(session){
+  const raw=JSON.stringify(session);
+  try{
+    localStorage.setItem('campAuthSession', raw);
+    localStorage.setItem('stationAuth', raw);
+  }catch(e){}
+}
+
+function readExisting(){
+  try{
+    const raw=localStorage.getItem('campAuthSession')||localStorage.getItem('stationAuth');
+    if(!raw) return null;
+    const s=JSON.parse(raw);
+    return s && s.access_token ? s : null;
+  }catch(e){ return null; }
+}
+
+// Pre-select destination from ?next=
+(function initDest(){
+  const next=safeNext(params.get('next')||'admin.html');
+  const file=next.split(/[?#]/)[0];
+  const radio=$(`input[name="dest"][value="${file}"]`);
+  if(radio) radio.checked=true;
+})();
+
+// Already signed in → continue
+(function boot(){
+  const existing=readExisting();
+  if(!existing) return;
+  const next=safeNext(params.get('next') || ($('input[name="dest"]:checked')||{}).value || 'admin.html');
+  location.replace(next);
+})();
+
+$('#loginForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email=$('#email').value.trim();
+  const pass=$('#pass').value;
+  const dest=safeNext(($('input[name="dest"]:checked')||{}).value || params.get('next') || 'admin.html');
+  const msg=$('#msg');
+  const btn=$('#btnGo');
+  if(!email || !pass){ msg.className='msg err'; msg.textContent='Enter your email and password.'; return; }
+  msg.className='msg'; msg.textContent='Signing in…';
+  btn.disabled=true;
+  try{
+    const res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{ 'apikey':SUPABASE_ANON_KEY, 'Content-Type':'application/json' },
+      body:JSON.stringify({ email, password:pass })
+    });
+    const body=await res.json();
+    if(res.ok && body.access_token){
+      persistSession({
+        access_token: body.access_token,
+        refresh_token: body.refresh_token,
+        email: email
+      });
+      msg.className='msg ok';
+      msg.textContent='Signed in — opening…';
+      location.replace(dest);
+    } else {
+      msg.className='msg err';
+      msg.textContent='Sign-in failed: '+(body.error_description||body.msg||'check email/password');
+      btn.disabled=false;
+    }
+  }catch(err){
+    msg.className='msg err';
+    msg.textContent='Could not reach Supabase. Check your connection.';
+    btn.disabled=false;
+  }
+});
+</script>
+</body>
+</html>
