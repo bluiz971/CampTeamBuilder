@@ -103,6 +103,14 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .report-card .rn{font-family:'Barlow Condensed';font-size:20px;text-transform:uppercase;margin:0 0 6px}
 .report-card .rt{font-size:15px;line-height:1.55;margin:0;color:var(--ink)}
 .report-empty{text-align:center;color:var(--mut);padding:40px 20px;font-size:15px;line-height:1.5}
+.daily-head{margin-bottom:12px}
+.daily-head h2{font-family:'Barlow Condensed';font-size:28px;text-transform:uppercase;margin:0 0 4px}
+.daily-head p{margin:0;color:var(--mut);font-size:14px}
+.daily-head .daily-open{display:inline-block;margin-top:10px;font-family:'Barlow Condensed';font-weight:600;text-transform:uppercase;font-size:13px;color:var(--orange);text-decoration:none}
+.daily-frame{width:100%;min-height:70vh;height:calc(100vh - 220px);border:1px solid var(--line);border-radius:12px;background:#fff}
+.daily-img-wrap{text-align:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto}
+.daily-img-wrap img{max-width:100%;height:auto;display:block;margin:0 auto}
+.daily-empty{text-align:center;color:var(--mut);padding:40px 20px;font-size:15px;line-height:1.5}
 
 #introSplash{position:fixed;inset:0;z-index:500;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:opacity .5s ease}
 #introSplash.hide{opacity:0;pointer-events:none}
@@ -174,6 +182,14 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
         <p class="meta" id="reportMeta"></p>
       </div>
       <div class="report-list" id="reportList"></div>
+    </section>
+    <section class="view" id="v-daily">
+      <div class="daily-head">
+        <h2 id="dailyTitle">Daily Camp Schedule</h2>
+        <p id="dailyMeta"></p>
+        <a id="dailyOpenExt" class="daily-open" href="#" target="_blank" rel="noopener" style="display:none">Open in new tab ↗</a>
+      </div>
+      <div id="dailyBody"></div>
     </section>
   </div>
 </main>
@@ -375,7 +391,36 @@ function goView(name){
   const view=$('#v-'+name);
   if(view) view.classList.add('on');
   if(name==='report') renderReport();
+  if(name==='daily') renderDaily();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function dailyIsImage(url){
+  return /\.(png|jpe?g|webp|gif)(\?|#|$)/i.test(url||'');
+}
+function renderDaily(){
+  const url=String(D.dailySchedUrl||'').trim();
+  const label=String(D.dailySchedLabel||'').trim() || 'Daily Camp Schedule';
+  const titleEl=$('#dailyTitle');
+  const metaEl=$('#dailyMeta');
+  const body=$('#dailyBody');
+  const openA=$('#dailyOpenExt');
+  if(titleEl) titleEl.textContent=label;
+  if(metaEl) metaEl.textContent=url?'Full day agenda':'';
+  if(openA){
+    if(url){ openA.href=url; openA.style.display='inline-block'; }
+    else { openA.removeAttribute('href'); openA.style.display='none'; }
+  }
+  if(!body) return;
+  if(!url){
+    body.innerHTML='<div class="daily-empty">The daily camp schedule hasn\'t been posted yet.</div>';
+    return;
+  }
+  if(dailyIsImage(url)){
+    body.innerHTML='<div class="daily-img-wrap"><img src="'+esc(url)+'" alt="'+esc(label)+'"></div>';
+  } else {
+    body.innerHTML='<iframe class="daily-frame" src="'+esc(url)+'" title="'+esc(label)+'"></iframe>';
+  }
 }
 
 // HOME — tile order: Teams, Schedule, Report, Shop | Select 360, Website, Instagram
@@ -393,9 +438,9 @@ function renderHome(){
   const dailyUrl=String(D.dailySchedUrl||'').trim();
   const dailyLabel=String(D.dailySchedLabel||'').trim() || 'Daily Camp Schedule';
   if(dailyUrl){
-    tiles.push({href:dailyUrl,ext:true,pic:'daily',icon:'🗓️',label:dailyLabel,desc:'Full day agenda — tap to open',go:'Open Schedule ↗'});
+    tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:dailyLabel,desc:'Full day agenda — tap to view',go:'View Schedule'});
   } else {
-    tiles.push({view:'schedule',pic:'daily',icon:'🗓️',label:'Daily Camp Schedule',desc:'Posted once available',go:'View Schedule'});
+    tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:'Daily Camp Schedule',desc:'Posted once available',go:'View Schedule'});
   }
   tiles.push({
     view:'report',

@@ -8,6 +8,7 @@ Run these in Supabase → **SQL Editor**, in order:
 4. **`003_move_roster_to_mid_atlantic.sql`** — optional one-time roster move (only if needed).
 5. **`004_player_scout_notes.sql`** — adds `scout_notes` for station Teams notes / camp write-ups.
 6. **`005_public_walkup_register.sql`** — allows public walk-up self-registration (`register.html`) into active camps.
+7. **`006_camp_files_storage.sql`** — Storage bucket for daily schedule PDF uploads.
 
 After that:
 

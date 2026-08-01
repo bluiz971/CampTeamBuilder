@@ -396,12 +396,19 @@ dialog select{width:100%;margin:10px 0 16px}
   <div id="schedPreview"></div>
 
   <div class="gen-bar" style="display:block;margin-top:22px">
-    <h3 style="font-size:18px;text-transform:uppercase;margin-bottom:4px">Daily camp schedule link</h3>
-    <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Paste a Google Drive / PDF / image link for the day’s overall camp agenda (registration, sessions, meals). Parents get a <b>Daily Schedule</b> tile on the home page that opens this link.</p>
+    <h3 style="font-size:18px;text-transform:uppercase;margin-bottom:4px">Daily camp schedule</h3>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Upload a <b>PDF</b> (or image) of the day’s agenda — it’s stored and linked for parents. Or paste an existing Drive/PDF URL. Parents get a <b>Daily Schedule</b> tile that opens the schedule on the site.</p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+      <div>
+        <label>Upload PDF / image</label>
+        <input type="file" id="dailySchedFile" accept=".pdf,application/pdf,image/*" style="display:block;max-width:280px">
+      </div>
+      <button class="btn btn-orange btn-sm" type="button" id="btnUploadDailySched">⬆ Upload &amp; Publish</button>
+    </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-      <div style="flex:1;min-width:240px"><label>Schedule link (URL)</label><input type="url" id="dailySchedUrl" placeholder="https://drive.google.com/…" style="width:100%"></div>
+      <div style="flex:1;min-width:240px"><label>Or paste a link (URL)</label><input type="url" id="dailySchedUrl" placeholder="https://… or leave blank after upload" style="width:100%"></div>
       <div><label>Tile label (optional)</label><input type="text" id="dailySchedLabel" placeholder="Daily Camp Schedule" style="width:200px"></div>
-      <button class="btn btn-orange btn-sm" type="button" id="btnSyncDailySched">⬆ Sync Daily Link</button>
+      <button class="btn btn-dark btn-sm" type="button" id="btnSyncDailySched">Sync Link Only</button>
       <button class="btn btn-ghost btn-sm" type="button" id="btnClearDailySched">Clear</button>
     </div>
     <div class="balance-note" id="dailySchedNote" style="margin-top:10px"></div>
@@ -2211,6 +2218,99 @@ $('#btnSyncSched').addEventListener('click', async ()=>{
     note.innerHTML='<b style="color:var(--green)">✓ Schedule posted</b> ('+bits.join(' · ')+') at '+t+'. Parents will see it within ~20 seconds.';
   }
 });
+
+async function uploadDailyScheduleFile(file){
+  const note=$('#dailySchedNote');
+  if(!(authSession && authSession.access_token)){
+    if(note) note.innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>';
+    return null;
+  }
+  if(!(S.syncUrl && S.syncKey)){
+    if(note) note.innerHTML='<span style="color:var(--red)">Set Project URL and anon key on Publish.</span>';
+    return null;
+  }
+  const active=await ensureActiveCamp();
+  if(!active.ok){
+    if(note) note.innerHTML='<span style="color:var(--red)">'+esc(active.error)+'</span>';
+    return null;
+  }
+  const slug=active.slug||S.syncCode||'camp';
+  const name=String(file.name||'schedule.pdf').toLowerCase();
+  let ext='pdf';
+  if(/\.(png)$/i.test(name)) ext='png';
+  else if(/\.(jpe?g)$/i.test(name)) ext='jpg';
+  else if(/\.(webp)$/i.test(name)) ext='webp';
+  else if(/\.(gif)$/i.test(name)) ext='gif';
+  else if(/\.(pdf)$/i.test(name) || (file.type||'').includes('pdf')) ext='pdf';
+  else if((file.type||'').startsWith('image/')){
+    ext=(file.type.split('/')[1]||'jpg').replace('jpeg','jpg');
+  } else {
+    if(note) note.innerHTML='<span style="color:var(--red)">Please upload a PDF or image (JPG/PNG).</span>';
+    return null;
+  }
+  if(file.size > 20*1024*1024){
+    if(note) note.innerHTML='<span style="color:var(--red)">File is too large (max 20 MB).</span>';
+    return null;
+  }
+  const path=slug+'/daily-schedule.'+ext;
+  const contentType=file.type || (ext==='pdf'?'application/pdf':'image/'+(ext==='jpg'?'jpeg':ext));
+  const base=S.syncUrl.replace(/\/$/,'');
+  const res=await adminAuthFetch(base+'/storage/v1/object/camp-files/'+path,{
+    method:'POST',
+    headers:{
+      'Content-Type': contentType,
+      'x-upsert': 'true'
+    },
+    body: file
+  });
+  if(!res.ok){
+    const body=await res.text();
+    if(/Bucket not found|does not exist/i.test(body) || res.status===404){
+      if(note) note.innerHTML='<span style="color:var(--red)">Storage bucket missing — run <code>migrations/006_camp_files_storage.sql</code> in Supabase SQL Editor, then try again.</span>';
+    } else if(res.status===401||res.status===403 || /row-level security|policy|403/i.test(body)){
+      if(note) note.innerHTML='<span style="color:var(--red)">Upload blocked — run <code>migrations/006_camp_files_storage.sql</code> and sign in again.</span>';
+    } else {
+      if(note) note.innerHTML='<span style="color:var(--red)">Upload failed ('+res.status+'). '+esc(body.slice(0,120))+'</span>';
+    }
+    return null;
+  }
+  return base+'/storage/v1/object/public/camp-files/'+path+'?t='+Date.now();
+}
+
+$('#btnUploadDailySched').addEventListener('click', async ()=>{
+  const note=$('#dailySchedNote');
+  const inp=$('#dailySchedFile');
+  const file=inp && inp.files && inp.files[0];
+  if(!file){
+    if(note) note.innerHTML='<span style="color:var(--red)">Choose a PDF (or image) file first.</span>';
+    return;
+  }
+  S.dailySchedLabel=String(($('#dailySchedLabel')&&$('#dailySchedLabel').value)||S.dailySchedLabel||'').trim();
+  if(note) note.textContent='Uploading '+file.name+'…';
+  const btn=$('#btnUploadDailySched');
+  if(btn){ btn.disabled=true; btn.textContent='Uploading…'; }
+  try{
+    const url=await uploadDailyScheduleFile(file);
+    if(!url) return;
+    S.dailySchedUrl=url;
+    if($('#dailySchedUrl')) $('#dailySchedUrl').value=url;
+    store.save();
+    if(note) note.textContent='Uploaded — publishing to parent page…';
+    const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
+    if(ok && note){
+      const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+      note.innerHTML='<b style="color:var(--green)">✓ PDF published</b> at '+t+'. Parents open it from the <b>Daily Schedule</b> tile.'
+        +' <a href="'+esc(url)+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600">Preview ↗</a>';
+    } else if(note && !ok){
+      note.innerHTML='Uploaded, but sync failed — tap <b>Sync Link Only</b> after signing in.';
+    }
+  }catch(e){
+    if(note) note.innerHTML='<span style="color:var(--red)">Upload failed — check connection.</span>';
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='⬆ Upload & Publish'; }
+  }
+});
+
 $('#btnSyncDailySched').addEventListener('click', async ()=>{
   const note=$('#dailySchedNote');
   const url=String(S.dailySchedUrl||($('#dailySchedUrl')&&$('#dailySchedUrl').value)||'').trim();
@@ -2218,7 +2318,7 @@ $('#btnSyncDailySched').addEventListener('click', async ()=>{
   S.dailySchedLabel=String(($('#dailySchedLabel')&&$('#dailySchedLabel').value)||S.dailySchedLabel||'').trim();
   store.save();
   if(!url){
-    if(note) note.innerHTML='<span style="color:var(--red)">Paste a schedule URL first (Google Drive, PDF, etc.).</span>';
+    if(note) note.innerHTML='<span style="color:var(--red)">Upload a PDF or paste a schedule URL first.</span>';
     return;
   }
   if(!/^https?:\/\//i.test(url)){
@@ -2229,20 +2329,21 @@ $('#btnSyncDailySched').addEventListener('click', async ()=>{
   const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
   if(ok && note){
     const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-    note.innerHTML='<b style="color:var(--green)">✓ Daily schedule link live</b> at '+t+'. Parents see a <b>Daily Schedule</b> tile that opens this link.';
+    note.innerHTML='<b style="color:var(--green)">✓ Daily schedule link live</b> at '+t+'. Parents see a <b>Daily Schedule</b> tile that opens this file.';
   }
 });
 $('#btnClearDailySched').addEventListener('click', async ()=>{
-  if(!confirm('Remove the daily camp schedule link from the parent page?')) return;
+  if(!confirm('Remove the daily camp schedule from the parent page?')) return;
   S.dailySchedUrl=''; S.dailySchedLabel='';
   if($('#dailySchedUrl')) $('#dailySchedUrl').value='';
   if($('#dailySchedLabel')) $('#dailySchedLabel').value='';
+  if($('#dailySchedFile')) $('#dailySchedFile').value='';
   store.save();
   const note=$('#dailySchedNote');
   if(note) note.textContent='Clearing…';
   const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
   if(note) note.innerHTML=ok
-    ? '<b style="color:var(--green)">✓ Daily schedule link cleared</b> on the parent page.'
+    ? '<b style="color:var(--green)">✓ Daily schedule cleared</b> on the parent page.'
     : '<span style="color:var(--mut)">Cleared locally. Sign in and sync to update the parent page.</span>';
 });
 $('#btnClearTeams').addEventListener('click', async ()=>{
