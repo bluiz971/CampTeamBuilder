@@ -67,6 +67,7 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .tile .pic.insta{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
 .tile .pic.web{background:linear-gradient(135deg,#15803d,#1e2733)}
 .tile .pic.report{background:linear-gradient(135deg,#1e3a5f,#e8590c)}
+.tile .pic.daily{background:linear-gradient(135deg,#0f766e,#134e4a)}
 .tile .cap{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:3px}
 .tile .cap b{font-family:'Barlow Condensed';font-size:19px;text-transform:uppercase;letter-spacing:.02em}
 .tile .cap span{color:var(--mut);font-size:13px}
@@ -250,7 +251,7 @@ const params=new URLSearchParams(location.search);
 const campSlug=(params.get('camp')||DEFAULT_CAMP_CODE||'').trim();
 
 let campRow=null;
-let D={roster:[],teams:[],teamsPosted:false,sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:'',igUrl:'',webUrl:'',writeUp:null};
+let D={roster:[],teams:[],teamsPosted:false,sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:'',igUrl:'',webUrl:'',writeUp:null,dailySchedUrl:'',dailySchedLabel:''};
 let myTeam=null, dayFilter='all', lastUpdated=null;
 
 function formatCampDate(d){
@@ -389,6 +390,13 @@ function renderHome(){
   if(navReport) navReport.style.display='';
   tiles.push({view:'teams',pic:'teamz',icon:'👕',label:'Teams',desc:teamsReady?(D.teams.length+' teams assigned'):'No Teams Posted yet',go:'View Teams'});
   tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?D.sched.length+' games posted':'Posted once available',go:'View Schedule'});
+  const dailyUrl=String(D.dailySchedUrl||'').trim();
+  const dailyLabel=String(D.dailySchedLabel||'').trim() || 'Daily Camp Schedule';
+  if(dailyUrl){
+    tiles.push({href:dailyUrl,ext:true,pic:'daily',icon:'🗓️',label:dailyLabel,desc:'Full day agenda — tap to open',go:'Open Schedule ↗'});
+  } else {
+    tiles.push({view:'schedule',pic:'daily',icon:'🗓️',label:'Daily Camp Schedule',desc:'Posted once available',go:'View Schedule'});
+  }
   tiles.push({
     view:'report',
     pic:'report',

@@ -394,6 +394,18 @@ dialog select{width:100%;margin:10px 0 16px}
     <span id="schedMsg" style="margin-left:12px;font-size:14px;color:var(--mut)"></span></div>
   </div>
   <div id="schedPreview"></div>
+
+  <div class="gen-bar" style="display:block;margin-top:22px">
+    <h3 style="font-size:18px;text-transform:uppercase;margin-bottom:4px">Daily camp schedule link</h3>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Paste a Google Drive / PDF / image link for the day’s overall camp agenda (registration, sessions, meals). Parents get a <b>Daily Schedule</b> tile on the home page that opens this link.</p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:240px"><label>Schedule link (URL)</label><input type="url" id="dailySchedUrl" placeholder="https://drive.google.com/…" style="width:100%"></div>
+      <div><label>Tile label (optional)</label><input type="text" id="dailySchedLabel" placeholder="Daily Camp Schedule" style="width:200px"></div>
+      <button class="btn btn-orange btn-sm" type="button" id="btnSyncDailySched">⬆ Sync Daily Link</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="btnClearDailySched">Clear</button>
+    </div>
+    <div class="balance-note" id="dailySchedNote" style="margin-top:10px"></div>
+  </div>
 </section>
 
 <!-- ============ 1. PUBLISH ============ -->
@@ -510,7 +522,7 @@ const DEFAULT_CAMP_CODE = "georgia-2026";
 /* ===================================================================== */
 
 const DEFAULT_SITE_BASE_URL = "https://selecttourcamp.netlify.app";
-let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', syncUrl: '', syncKey: '', syncCode: '', campId: '', siteBaseUrl: '', teamsLive: false };
+let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', dailySchedUrl: '', dailySchedLabel: '', syncUrl: '', syncKey: '', syncCode: '', campId: '', siteBaseUrl: '', teamsLive: false };
 let campsList=[];
 const GLOBAL_KEY='campTeamBuilder_global_v2';
 const campStoreKey=id=>'campTeamBuilder_camp_'+id;
@@ -562,6 +574,7 @@ S.gA1=S.gA1||2027; S.gA2=S.gA2||2030; S.gB1=S.gB1||2031; S.gB2=S.gB2||2035;
 S.schedule=S.schedule||[]; S.pubTitle=S.pubTitle||''; S.pubSub=S.pubSub||'';
 S.appUrl=S.appUrl||'https://select360.mvt.so/'; S.shopUrl=S.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD';
 S.igUrl=S.igUrl||'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA=='; S.webUrl=S.webUrl||'https://aauselecttour.com';
+S.dailySchedUrl=S.dailySchedUrl||''; S.dailySchedLabel=S.dailySchedLabel||'';
 S.syncUrl=S.syncUrl||DEFAULT_SUPABASE_URL||''; S.syncKey=S.syncKey||DEFAULT_SUPABASE_ANON_KEY||''; S.syncCode=S.syncCode||DEFAULT_CAMP_CODE||''; S.siteBaseUrl=S.siteBaseUrl||DEFAULT_SITE_BASE_URL||''; S.teamsLive=!!S.teamsLive;
 S.campId=S.campId||'';
 if(S.teams){
@@ -754,6 +767,7 @@ async function refreshCampsUI(){
 function emptyCampState(){
   return { players:[], teams:null, numA:12, numB:16, gA1:2027, gA2:2030, gB1:2031, gB2:2035, schedule:[],
     pubTitle:'', pubSub:'', appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl,
+    dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'',
     syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, campId:S.campId, siteBaseUrl:S.siteBaseUrl, teamsLive:false };
 }
 async function selectCamp(campId){
@@ -762,7 +776,7 @@ async function selectCamp(campId){
   const next=campsList.find(c=>c.id===campId);
   if(!next) return;
   const saved=store.loadCamp(campId);
-  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl };
+  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl, dailySchedLabel:S.dailySchedLabel };
   if(saved){ S=Object.assign(emptyCampState(), saved, keep, { campId:next.id, syncCode:next.slug }); }
   else {
     // Migrate legacy blob once into this camp if slug matches
@@ -1939,6 +1953,8 @@ $('#pubAppUrl').addEventListener('input',e=>{ S.appUrl=e.target.value.trim(); st
 $('#pubShopUrl').addEventListener('input',e=>{ S.shopUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#pubIgUrl').addEventListener('input',e=>{ S.igUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#pubWebUrl').addEventListener('input',e=>{ S.webUrl=e.target.value.trim(); store.save(); autoPushLive(); });
+$('#dailySchedUrl').addEventListener('input',e=>{ S.dailySchedUrl=e.target.value.trim(); store.save(); });
+$('#dailySchedLabel').addEventListener('input',e=>{ S.dailySchedLabel=e.target.value.trim(); store.save(); });
 $('#syncUrl').addEventListener('input',e=>{ S.syncUrl=e.target.value.trim().replace(/\/$/,''); store.save(); });
 $('#syncKey').addEventListener('input',e=>{ S.syncKey=e.target.value.trim(); store.save(); });
 // syncCode is readonly — set via Active camp selector / Camps tab
@@ -2181,16 +2197,53 @@ async function pullLiveTeams(silent){
 }
 $('#btnSyncSched').addEventListener('click', async ()=>{
   const note=$('#schedSyncNote');
-  if(!S.schedule.length){
-    if(note) note.innerHTML='<span style="color:var(--red)">Load a schedule first, then sync it to the parent page.</span>';
+  if(!S.schedule.length && !String(S.dailySchedUrl||'').trim()){
+    if(note) note.innerHTML='<span style="color:var(--red)">Load a game schedule and/or set a Daily Camp Schedule link first.</span>';
     return;
   }
   if(note) note.textContent='Syncing schedule…';
   const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
   if(ok && note){
     const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-    note.innerHTML='<b style="color:var(--green)">✓ Schedule posted</b> ('+S.schedule.length+' games) at '+t+'. Parents will see it within ~20 seconds.';
+    const bits=[];
+    if(S.schedule.length) bits.push(S.schedule.length+' games');
+    if(String(S.dailySchedUrl||'').trim()) bits.push('daily link');
+    note.innerHTML='<b style="color:var(--green)">✓ Schedule posted</b> ('+bits.join(' · ')+') at '+t+'. Parents will see it within ~20 seconds.';
   }
+});
+$('#btnSyncDailySched').addEventListener('click', async ()=>{
+  const note=$('#dailySchedNote');
+  const url=String(S.dailySchedUrl||($('#dailySchedUrl')&&$('#dailySchedUrl').value)||'').trim();
+  S.dailySchedUrl=url;
+  S.dailySchedLabel=String(($('#dailySchedLabel')&&$('#dailySchedLabel').value)||S.dailySchedLabel||'').trim();
+  store.save();
+  if(!url){
+    if(note) note.innerHTML='<span style="color:var(--red)">Paste a schedule URL first (Google Drive, PDF, etc.).</span>';
+    return;
+  }
+  if(!/^https?:\/\//i.test(url)){
+    if(note) note.innerHTML='<span style="color:var(--red)">Link must start with http:// or https://</span>';
+    return;
+  }
+  if(note) note.textContent='Syncing daily schedule link…';
+  const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
+  if(ok && note){
+    const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+    note.innerHTML='<b style="color:var(--green)">✓ Daily schedule link live</b> at '+t+'. Parents see a <b>Daily Schedule</b> tile that opens this link.';
+  }
+});
+$('#btnClearDailySched').addEventListener('click', async ()=>{
+  if(!confirm('Remove the daily camp schedule link from the parent page?')) return;
+  S.dailySchedUrl=''; S.dailySchedLabel='';
+  if($('#dailySchedUrl')) $('#dailySchedUrl').value='';
+  if($('#dailySchedLabel')) $('#dailySchedLabel').value='';
+  store.save();
+  const note=$('#dailySchedNote');
+  if(note) note.textContent='Clearing…';
+  const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
+  if(note) note.innerHTML=ok
+    ? '<b style="color:var(--green)">✓ Daily schedule link cleared</b> on the parent page.'
+    : '<span style="color:var(--mut)">Cleared locally. Sign in and sync to update the parent page.</span>';
 });
 $('#btnClearTeams').addEventListener('click', async ()=>{
   if(!confirm('Clear assigned teams?\n\nRemoves local teams and posts empty rosters to the parent/station pages. Check-ins and jerseys stay.')) return;
@@ -2695,7 +2748,7 @@ function buildPublicData(opts){
                  .replace(/[·|,\-\s]+$/,'').replace(/^[·|,\-\s]+/,'').trim();
     return { y:dt.getFullYear(), mo:dt.getMonth()+1, d:dt.getDate(), startMin, loc };
   })();
-  return { roster, teams:teamsList, teamsPosted:postTeams, groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'' };
+  return { roster, teams:teamsList, teamsPosted:postTeams, groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'', dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'' };
 }
 
 $('#siteBaseUrl').addEventListener('input', e=>{ S.siteBaseUrl=e.target.value.trim().replace(/\/$/,''); store.save(); renderSiteLink(); });
@@ -2777,10 +2830,11 @@ $('#btnReset').addEventListener('click', async ()=>{
   }
   // Keep Live Sync config so you can reload a roster without re-pasting keys
   const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, campId:S.campId, siteBaseUrl:S.siteBaseUrl||DEFAULT_SITE_BASE_URL,
-    appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl };
+    appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'' };
   S={players:[],teams:null,numA:12,numB:16,gA1:2027,gA2:2030,gB1:2031,gB2:2035,schedule:[],pubTitle:'',pubSub:'',
     appUrl:keep.appUrl||'https://select360.mvt.so/', shopUrl:keep.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD',
     igUrl:keep.igUrl||'', webUrl:keep.webUrl||'',
+    dailySchedUrl:keep.dailySchedUrl||'', dailySchedLabel:keep.dailySchedLabel||'',
     syncUrl:keep.syncUrl||'', syncKey:keep.syncKey||'', syncCode:keep.syncCode||'', campId:keep.campId||'',
     siteBaseUrl:keep.siteBaseUrl, teamsLive:false};
   store.save();
@@ -2800,7 +2854,7 @@ function updateScoreboard(){
   $('#sbDue').textContent=S.players.filter(hasDue).length;
   $('#sbTeams').textContent=S.teams?[...S.teams.A,...S.teams.B].length:0;
 }
-function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
+function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; if($('#dailySchedUrl')) $('#dailySchedUrl').value=S.dailySchedUrl||''; if($('#dailySchedLabel')) $('#dailySchedLabel').value=S.dailySchedLabel||''; $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
 ['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); autoPushLive(); }));
 renderAll();
 updateAuthUI();
