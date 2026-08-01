@@ -105,8 +105,6 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .report-empty{text-align:center;color:var(--mut);padding:40px 20px;font-size:15px;line-height:1.5}
 .daily-head{margin-bottom:12px}
 .daily-head h2{font-family:'Barlow Condensed';font-size:28px;text-transform:uppercase;margin:0 0 4px}
-.daily-head p{margin:0;color:var(--mut);font-size:14px}
-.daily-head .daily-open{display:inline-block;margin-top:10px;font-family:'Barlow Condensed';font-weight:600;text-transform:uppercase;font-size:13px;color:var(--orange);text-decoration:none}
 .daily-empty{text-align:center;color:var(--mut);padding:40px 20px;font-size:15px;line-height:1.5}
 .daily-act{font-weight:600;text-align:left}
 .daily-loc{color:var(--mut);font-size:13px;display:block;margin-top:2px}
@@ -185,8 +183,6 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
     <section class="view" id="v-daily">
       <div class="daily-head">
         <h2 id="dailyTitle">Daily Camp Schedule</h2>
-        <p id="dailyMeta"></p>
-        <a id="dailyOpenExt" class="daily-open" href="#" target="_blank" rel="noopener" style="display:none">Open in new tab ↗</a>
       </div>
       <div id="dailyBody"></div>
     </section>
@@ -404,19 +400,12 @@ function renderDaily(){
   const label=String(D.dailySchedLabel||'').trim() || 'Daily Camp Schedule';
   const items=Array.isArray(D.dailySched)?D.dailySched.filter(it=>it && (it.t||it.a)):[];
   const titleEl=$('#dailyTitle');
-  const metaEl=$('#dailyMeta');
   const body=$('#dailyBody');
-  const openA=$('#dailyOpenExt');
   if(titleEl) titleEl.textContent=label;
-  if(metaEl) metaEl.textContent=items.length?(items.length+' items'):(url?'Full day agenda':'');
-  if(openA){
-    if(url){ openA.href=url; openA.style.display='inline-block'; openA.textContent='Original PDF ↗'; }
-    else { openA.removeAttribute('href'); openA.style.display='none'; }
-  }
   if(!body) return;
   if(items.length){
     const hasLoc=items.some(it=>it.loc);
-    body.innerHTML=`<div class="gday"><h3>${esc(label)} <span>· ${items.length} items</span></h3>
+    body.innerHTML=`<div class="gday"><h3>${esc(label)}</h3>
       <div class="tbl-wrap"><table><tr><th>Time</th><th>Activity</th>${hasLoc?'<th>Location</th>':''}</tr>
       ${items.map(it=>`<tr>
         <td class="tcol">${esc(it.t||'')}</td>
