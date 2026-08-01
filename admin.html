@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Camp Team Builder — AAU Select Tour</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -397,18 +398,19 @@ dialog select{width:100%;margin:10px 0 16px}
 
   <div class="gen-bar" style="display:block;margin-top:22px">
     <h3 style="font-size:18px;text-transform:uppercase;margin-bottom:4px">Daily camp schedule</h3>
-    <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Upload a <b>PDF</b> (or image) of the day’s agenda — it’s stored and linked for parents. Or paste an existing Drive/PDF URL. Parents get a <b>Daily Schedule</b> tile that opens the schedule on the site.</p>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Upload a <b>PDF</b> of the day’s agenda — we extract times and activities and show parents a schedule grid (same look as Game Schedule). Text-based PDFs work best. You can edit the preview before publishing.</p>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
       <div>
-        <label>Upload PDF / image</label>
-        <input type="file" id="dailySchedFile" accept=".pdf,application/pdf,image/*" style="display:block;max-width:280px">
+        <label>Upload PDF</label>
+        <input type="file" id="dailySchedFile" accept=".pdf,application/pdf" style="display:block;max-width:280px">
       </div>
-      <button class="btn btn-orange btn-sm" type="button" id="btnUploadDailySched">⬆ Upload &amp; Publish</button>
+      <button class="btn btn-orange btn-sm" type="button" id="btnUploadDailySched">⬆ Convert &amp; Publish</button>
     </div>
+    <div id="dailySchedPreview" style="margin:12px 0"></div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-      <div style="flex:1;min-width:240px"><label>Or paste a link (URL)</label><input type="url" id="dailySchedUrl" placeholder="https://… or leave blank after upload" style="width:100%"></div>
+      <div style="flex:1;min-width:240px"><label>Original PDF link (optional)</label><input type="url" id="dailySchedUrl" placeholder="Filled after upload — or paste a URL" style="width:100%"></div>
       <div><label>Tile label (optional)</label><input type="text" id="dailySchedLabel" placeholder="Daily Camp Schedule" style="width:200px"></div>
-      <button class="btn btn-dark btn-sm" type="button" id="btnSyncDailySched">Sync Link Only</button>
+      <button class="btn btn-dark btn-sm" type="button" id="btnSyncDailySched">Sync Preview Only</button>
       <button class="btn btn-ghost btn-sm" type="button" id="btnClearDailySched">Clear</button>
     </div>
     <div class="balance-note" id="dailySchedNote" style="margin-top:10px"></div>
@@ -529,7 +531,7 @@ const DEFAULT_CAMP_CODE = "georgia-2026";
 /* ===================================================================== */
 
 const DEFAULT_SITE_BASE_URL = "https://selecttourcamp.netlify.app";
-let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', dailySchedUrl: '', dailySchedLabel: '', syncUrl: '', syncKey: '', syncCode: '', campId: '', siteBaseUrl: '', teamsLive: false };
+let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', dailySchedUrl: '', dailySchedLabel: '', dailySched: [], syncUrl: '', syncKey: '', syncCode: '', campId: '', siteBaseUrl: '', teamsLive: false };
 let campsList=[];
 const GLOBAL_KEY='campTeamBuilder_global_v2';
 const campStoreKey=id=>'campTeamBuilder_camp_'+id;
@@ -581,7 +583,7 @@ S.gA1=S.gA1||2027; S.gA2=S.gA2||2030; S.gB1=S.gB1||2031; S.gB2=S.gB2||2035;
 S.schedule=S.schedule||[]; S.pubTitle=S.pubTitle||''; S.pubSub=S.pubSub||'';
 S.appUrl=S.appUrl||'https://select360.mvt.so/'; S.shopUrl=S.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD';
 S.igUrl=S.igUrl||'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA=='; S.webUrl=S.webUrl||'https://aauselecttour.com';
-S.dailySchedUrl=S.dailySchedUrl||''; S.dailySchedLabel=S.dailySchedLabel||'';
+S.dailySchedUrl=S.dailySchedUrl||''; S.dailySchedLabel=S.dailySchedLabel||''; S.dailySched=Array.isArray(S.dailySched)?S.dailySched:[];
 S.syncUrl=S.syncUrl||DEFAULT_SUPABASE_URL||''; S.syncKey=S.syncKey||DEFAULT_SUPABASE_ANON_KEY||''; S.syncCode=S.syncCode||DEFAULT_CAMP_CODE||''; S.siteBaseUrl=S.siteBaseUrl||DEFAULT_SITE_BASE_URL||''; S.teamsLive=!!S.teamsLive;
 S.campId=S.campId||'';
 if(S.teams){
@@ -774,7 +776,7 @@ async function refreshCampsUI(){
 function emptyCampState(){
   return { players:[], teams:null, numA:12, numB:16, gA1:2027, gA2:2030, gB1:2031, gB2:2035, schedule:[],
     pubTitle:'', pubSub:'', appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl,
-    dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'',
+    dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'', dailySched:Array.isArray(S.dailySched)?S.dailySched:[],
     syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, campId:S.campId, siteBaseUrl:S.siteBaseUrl, teamsLive:false };
 }
 async function selectCamp(campId){
@@ -783,7 +785,7 @@ async function selectCamp(campId){
   const next=campsList.find(c=>c.id===campId);
   if(!next) return;
   const saved=store.loadCamp(campId);
-  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl, dailySchedLabel:S.dailySchedLabel };
+  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl, dailySchedLabel:S.dailySchedLabel, dailySched:S.dailySched };
   if(saved){ S=Object.assign(emptyCampState(), saved, keep, { campId:next.id, syncCode:next.slug }); }
   else {
     // Migrate legacy blob once into this camp if slug matches
@@ -2204,8 +2206,8 @@ async function pullLiveTeams(silent){
 }
 $('#btnSyncSched').addEventListener('click', async ()=>{
   const note=$('#schedSyncNote');
-  if(!S.schedule.length && !String(S.dailySchedUrl||'').trim()){
-    if(note) note.innerHTML='<span style="color:var(--red)">Load a game schedule and/or set a Daily Camp Schedule link first.</span>';
+  if(!S.schedule.length && !String(S.dailySchedUrl||'').trim() && !(Array.isArray(S.dailySched)&&S.dailySched.length)){
+    if(note) note.innerHTML='<span style="color:var(--red)">Load a game schedule and/or convert a Daily Camp Schedule first.</span>';
     return;
   }
   if(note) note.textContent='Syncing schedule…';
@@ -2214,7 +2216,8 @@ $('#btnSyncSched').addEventListener('click', async ()=>{
     const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
     const bits=[];
     if(S.schedule.length) bits.push(S.schedule.length+' games');
-    if(String(S.dailySchedUrl||'').trim()) bits.push('daily link');
+    if(Array.isArray(S.dailySched)&&S.dailySched.length) bits.push(S.dailySched.length+' daily items');
+    else if(String(S.dailySchedUrl||'').trim()) bits.push('daily link');
     note.innerHTML='<b style="color:var(--green)">✓ Schedule posted</b> ('+bits.join(' · ')+') at '+t+'. Parents will see it within ~20 seconds.';
   }
 });
@@ -2245,7 +2248,7 @@ async function uploadDailyScheduleFile(file){
   else if((file.type||'').startsWith('image/')){
     ext=(file.type.split('/')[1]||'jpg').replace('jpeg','jpg');
   } else {
-    if(note) note.innerHTML='<span style="color:var(--red)">Please upload a PDF or image (JPG/PNG).</span>';
+    if(note) note.innerHTML='<span style="color:var(--red)">Please upload a PDF.</span>';
     return null;
   }
   if(file.size > 20*1024*1024){
@@ -2277,37 +2280,194 @@ async function uploadDailyScheduleFile(file){
   return base+'/storage/v1/object/public/camp-files/'+path+'?t='+Date.now();
 }
 
+function normalizeDailyTime(raw){
+  const s=String(raw||'').replace(/\s+/g,' ').trim();
+  const m=s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  if(!m) return s;
+  let h=+m[1];
+  const min=m[2]!=null?m[2]:'00';
+  let ap=(m[3]||'').toLowerCase();
+  if(!ap){
+    if(h>=1 && h<=6) ap='pm';
+    else if(h===12 || h>=7) ap='am';
+  }
+  if(ap==='pm' && h<12) h+=12;
+  if(ap==='am' && h===12) h=0;
+  const h12=((h+11)%12)+1;
+  const suffix=h>=12?'PM':'AM';
+  return h12+':'+min+' '+suffix;
+}
+function parseDailyAgendaLines(lines){
+  const items=[];
+  const timeTok='(\\d{1,2}(?::\\d{2})?\\s*(?:[AaPp][Mm])?)';
+  const rangeRe=new RegExp('^'+timeTok+'\\s*[-–—to]+\\s*'+timeTok+'\\s*[:|\\-–—]?\\s*(.+)$','i');
+  const singleRe=new RegExp('^'+timeTok+'\\s*[:|\\-–—]?\\s*(.+)$','i');
+  const skip=/^(time|activity|event|location|schedule|daily|agenda|camp|date|day)\b/i;
+  (lines||[]).forEach(raw=>{
+    let line=String(raw||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+    if(!line || line.length<3) return;
+    if(skip.test(line) && !/\d/.test(line)) return;
+    let m=line.match(rangeRe);
+    if(m){
+      const t=normalizeDailyTime(m[1])+' – '+normalizeDailyTime(m[2]);
+      let rest=String(m[3]||'').trim().replace(/^[\|:·•\-–—]+/,'').trim();
+      if(!rest || rest.length<2) return;
+      const parts=rest.split(/\s*[|·•]\s*/).map(x=>x.trim()).filter(Boolean);
+      items.push({ t, a:parts[0]||rest, loc:parts[1]||'', d:'' });
+      return;
+    }
+    m=line.match(singleRe);
+    if(m){
+      const t=normalizeDailyTime(m[1]);
+      let rest=String(m[2]||'').trim().replace(/^[\|:·•\-–—]+/,'').trim();
+      if(!rest || rest.length<2) return;
+      if(/^(am|pm)$/i.test(rest)) return;
+      const parts=rest.split(/\s*[|·•]\s*/).map(x=>x.trim()).filter(Boolean);
+      items.push({ t, a:parts[0]||rest, loc:parts[1]||'', d:'' });
+    }
+  });
+  // Dedupe identical rows
+  const seen=new Set();
+  return items.filter(it=>{
+    const k=(it.t+'|'+it.a+'|'+it.loc).toLowerCase();
+    if(seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+function pdfItemsToLines(items){
+  const rows=[];
+  (items||[]).forEach(it=>{
+    const str=String(it.str||'').replace(/\s+/g,' ').trim();
+    if(!str) return;
+    const t=it.transform||[];
+    const x=+(t[4]||0), y=+(t[5]||0);
+    let row=rows.find(r=>Math.abs(r.y-y)<3.2);
+    if(!row){ row={y, parts:[]}; rows.push(row); }
+    row.parts.push({x, str});
+  });
+  rows.sort((a,b)=>b.y-a.y);
+  return rows.map(r=>{
+    r.parts.sort((a,b)=>a.x-b.x);
+    return r.parts.map(p=>p.str).join(' ').replace(/\s+/g,' ').trim();
+  }).filter(Boolean);
+}
+async function extractTextFromPdfFile(file){
+  if(typeof pdfjsLib==='undefined') throw new Error('PDF library failed to load');
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const buf=await file.arrayBuffer();
+  const doc=await pdfjsLib.getDocument({ data:buf }).promise;
+  const lines=[];
+  for(let p=1;p<=doc.numPages;p++){
+    const page=await doc.getPage(p);
+    const content=await page.getTextContent();
+    lines.push(...pdfItemsToLines(content.items||[]));
+  }
+  return lines;
+}
+function renderDailySchedPreview(){
+  const wrap=$('#dailySchedPreview');
+  if(!wrap) return;
+  const items=Array.isArray(S.dailySched)?S.dailySched:[];
+  if(!items.length){
+    wrap.innerHTML='';
+    return;
+  }
+  const hasLoc=items.some(it=>it.loc);
+  wrap.innerHTML=`<div class="gday" style="margin:0">
+    <h3 style="font-size:16px;text-transform:uppercase;background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0">${esc(S.dailySchedLabel||'Daily Camp Schedule')} <span style="color:var(--amber);font-size:14px">· ${items.length} items</span>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnAddDailyRow" style="float:right;margin-top:-2px;color:#fff;border-color:rgba(255,255,255,.35)">+ Add row</button>
+    </h3>
+    <div class="tbl-wrap" style="overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:0 0 8px 8px">
+      <table class="sched-grid" style="width:100%;border-collapse:collapse;font-size:14px">
+        <tr><th style="text-align:left">Time</th><th>Activity</th>${hasLoc?'<th>Location</th>':''}<th style="width:70px"></th></tr>
+        ${items.map((it,i)=>`<tr>
+          <td class="tcol"><input data-di="${i}" data-f="t" value="${esc(it.t||'')}" style="width:110px;font:inherit;font-weight:700;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:#fff"></td>
+          <td><input data-di="${i}" data-f="a" value="${esc(it.a||'')}" style="width:100%;min-width:160px;font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px"></td>
+          ${hasLoc?`<td><input data-di="${i}" data-f="loc" value="${esc(it.loc||'')}" style="width:100%;min-width:100px;font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px"></td>`:''}
+          <td><button type="button" class="btn btn-ghost btn-sm" data-del-di="${i}">✕</button></td>
+        </tr>`).join('')}
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--mut);margin-top:8px">Edit times/activities above, then publish. Parents see this grid (same style as Game Schedule).</p>
+  </div>`;
+  wrap.querySelectorAll('input[data-di]').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const i=+inp.dataset.di, f=inp.dataset.f;
+      if(!S.dailySched[i]) return;
+      S.dailySched[i][f]=inp.value;
+      store.save();
+    });
+  });
+  wrap.querySelectorAll('[data-del-di]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      S.dailySched.splice(+btn.dataset.delDi,1);
+      store.save();
+      renderDailySchedPreview();
+    });
+  });
+  const add=$('#btnAddDailyRow');
+  if(add) add.addEventListener('click',()=>{
+    if(!Array.isArray(S.dailySched)) S.dailySched=[];
+    S.dailySched.push({ t:'', a:'', loc:'', d:'' });
+    store.save();
+    renderDailySchedPreview();
+  });
+}
+
 $('#btnUploadDailySched').addEventListener('click', async ()=>{
   const note=$('#dailySchedNote');
   const inp=$('#dailySchedFile');
   const file=inp && inp.files && inp.files[0];
   if(!file){
-    if(note) note.innerHTML='<span style="color:var(--red)">Choose a PDF (or image) file first.</span>';
+    if(note) note.innerHTML='<span style="color:var(--red)">Choose a PDF file first.</span>';
     return;
   }
   S.dailySchedLabel=String(($('#dailySchedLabel')&&$('#dailySchedLabel').value)||S.dailySchedLabel||'').trim();
-  if(note) note.textContent='Uploading '+file.name+'…';
   const btn=$('#btnUploadDailySched');
-  if(btn){ btn.disabled=true; btn.textContent='Uploading…'; }
+  if(btn){ btn.disabled=true; btn.textContent='Converting…'; }
   try{
-    const url=await uploadDailyScheduleFile(file);
-    if(!url) return;
-    S.dailySchedUrl=url;
-    if($('#dailySchedUrl')) $('#dailySchedUrl').value=url;
+    if(note) note.textContent='Reading PDF…';
+    let items=[];
+    try{
+      const lines=await extractTextFromPdfFile(file);
+      items=parseDailyAgendaLines(lines);
+      if(!items.length && lines.length){
+        // Fallback: treat non-empty lines after first time-looking chunk
+        items=parseDailyAgendaLines(lines.map(l=>l.replace(/\t/g,' | ')));
+      }
+    }catch(e){
+      if(note) note.innerHTML='<span style="color:var(--red)">Could not read PDF text. Use a text-based PDF (not a scanned photo).</span>';
+      return;
+    }
+    if(!items.length){
+      if(note) note.innerHTML='<span style="color:var(--red)">No times found in the PDF. Make sure lines look like <code>8:00 AM Check-in</code> or <code>9:00-10:00 Warm-up</code>.</span>';
+      return;
+    }
+    S.dailySched=items;
     store.save();
-    if(note) note.textContent='Uploaded — publishing to parent page…';
+    renderDailySchedPreview();
+    if(note) note.textContent='Converted '+items.length+' items — uploading PDF & publishing…';
+    if(btn) btn.textContent='Uploading…';
+    const url=await uploadDailyScheduleFile(file);
+    if(url){
+      S.dailySchedUrl=url;
+      if($('#dailySchedUrl')) $('#dailySchedUrl').value=url;
+      store.save();
+    }
+    if(note) note.textContent='Publishing schedule grid to parent page…';
     const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
     if(ok && note){
       const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-      note.innerHTML='<b style="color:var(--green)">✓ PDF published</b> at '+t+'. Parents open it from the <b>Daily Schedule</b> tile.'
-        +' <a href="'+esc(url)+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600">Preview ↗</a>';
+      note.innerHTML='<b style="color:var(--green)">✓ Daily schedule converted</b> ('+items.length+' items) at '+t+'. Parents see it like the Game Schedule.'
+        +(url?' <a href="'+esc(url)+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600">Original PDF ↗</a>':'');
     } else if(note && !ok){
-      note.innerHTML='Uploaded, but sync failed — tap <b>Sync Link Only</b> after signing in.';
+      note.innerHTML='Converted locally — sync failed. Sign in and tap <b>Sync Preview Only</b>.';
     }
   }catch(e){
-    if(note) note.innerHTML='<span style="color:var(--red)">Upload failed — check connection.</span>';
+    if(note) note.innerHTML='<span style="color:var(--red)">Convert failed — check connection / PDF format.</span>';
   }finally{
-    if(btn){ btn.disabled=false; btn.textContent='⬆ Upload & Publish'; }
+    if(btn){ btn.disabled=false; btn.textContent='⬆ Convert & Publish'; }
   }
 });
 
@@ -2317,28 +2477,30 @@ $('#btnSyncDailySched').addEventListener('click', async ()=>{
   S.dailySchedUrl=url;
   S.dailySchedLabel=String(($('#dailySchedLabel')&&$('#dailySchedLabel').value)||S.dailySchedLabel||'').trim();
   store.save();
-  if(!url){
-    if(note) note.innerHTML='<span style="color:var(--red)">Upload a PDF or paste a schedule URL first.</span>';
+  if(!(Array.isArray(S.dailySched) && S.dailySched.length) && !url){
+    if(note) note.innerHTML='<span style="color:var(--red)">Convert a PDF first (or paste a link).</span>';
     return;
   }
-  if(!/^https?:\/\//i.test(url)){
+  if(url && !/^https?:\/\//i.test(url)){
     if(note) note.innerHTML='<span style="color:var(--red)">Link must start with http:// or https://</span>';
     return;
   }
-  if(note) note.textContent='Syncing daily schedule link…';
+  if(note) note.textContent='Syncing daily schedule…';
   const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
   if(ok && note){
     const t=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-    note.innerHTML='<b style="color:var(--green)">✓ Daily schedule link live</b> at '+t+'. Parents see a <b>Daily Schedule</b> tile that opens this file.';
+    const n=(S.dailySched||[]).length;
+    note.innerHTML='<b style="color:var(--green)">✓ Daily schedule live</b>'+(n?' ('+n+' items)':'')+' at '+t+'.';
   }
 });
 $('#btnClearDailySched').addEventListener('click', async ()=>{
   if(!confirm('Remove the daily camp schedule from the parent page?')) return;
-  S.dailySchedUrl=''; S.dailySchedLabel='';
+  S.dailySchedUrl=''; S.dailySchedLabel=''; S.dailySched=[];
   if($('#dailySchedUrl')) $('#dailySchedUrl').value='';
   if($('#dailySchedLabel')) $('#dailySchedLabel').value='';
   if($('#dailySchedFile')) $('#dailySchedFile').value='';
   store.save();
+  renderDailySchedPreview();
   const note=$('#dailySchedNote');
   if(note) note.textContent='Clearing…';
   const ok=await pushLive(false, {includeTeams:!!S.teamsLive, statusEl:note});
@@ -2849,7 +3011,7 @@ function buildPublicData(opts){
                  .replace(/[·|,\-\s]+$/,'').replace(/^[·|,\-\s]+/,'').trim();
     return { y:dt.getFullYear(), mo:dt.getMonth()+1, d:dt.getDate(), startMin, loc };
   })();
-  return { roster, teams:teamsList, teamsPosted:postTeams, groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'', dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'' };
+  return { roster, teams:teamsList, teamsPosted:postTeams, groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'', dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'', dailySched:Array.isArray(S.dailySched)?S.dailySched:[] };
 }
 
 $('#siteBaseUrl').addEventListener('input', e=>{ S.siteBaseUrl=e.target.value.trim().replace(/\/$/,''); store.save(); renderSiteLink(); });
@@ -2931,11 +3093,11 @@ $('#btnReset').addEventListener('click', async ()=>{
   }
   // Keep Live Sync config so you can reload a roster without re-pasting keys
   const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, campId:S.campId, siteBaseUrl:S.siteBaseUrl||DEFAULT_SITE_BASE_URL,
-    appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'' };
+    appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'', dailySched:Array.isArray(S.dailySched)?S.dailySched:[] };
   S={players:[],teams:null,numA:12,numB:16,gA1:2027,gA2:2030,gB1:2031,gB2:2035,schedule:[],pubTitle:'',pubSub:'',
     appUrl:keep.appUrl||'https://select360.mvt.so/', shopUrl:keep.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD',
     igUrl:keep.igUrl||'', webUrl:keep.webUrl||'',
-    dailySchedUrl:keep.dailySchedUrl||'', dailySchedLabel:keep.dailySchedLabel||'',
+    dailySchedUrl:keep.dailySchedUrl||'', dailySchedLabel:keep.dailySchedLabel||'', dailySched:keep.dailySched||[],
     syncUrl:keep.syncUrl||'', syncKey:keep.syncKey||'', syncCode:keep.syncCode||'', campId:keep.campId||'',
     siteBaseUrl:keep.siteBaseUrl, teamsLive:false};
   store.save();
@@ -2955,7 +3117,7 @@ function updateScoreboard(){
   $('#sbDue').textContent=S.players.filter(hasDue).length;
   $('#sbTeams').textContent=S.teams?[...S.teams.A,...S.teams.B].length:0;
 }
-function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; if($('#dailySchedUrl')) $('#dailySchedUrl').value=S.dailySchedUrl||''; if($('#dailySchedLabel')) $('#dailySchedLabel').value=S.dailySchedLabel||''; $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
+function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; if($('#dailySchedUrl')) $('#dailySchedUrl').value=S.dailySchedUrl||''; if($('#dailySchedLabel')) $('#dailySchedLabel').value=S.dailySchedLabel||''; renderDailySchedPreview(); $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
 ['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); autoPushLive(); }));
 renderAll();
 updateAuthUI();

@@ -107,10 +107,9 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .daily-head h2{font-family:'Barlow Condensed';font-size:28px;text-transform:uppercase;margin:0 0 4px}
 .daily-head p{margin:0;color:var(--mut);font-size:14px}
 .daily-head .daily-open{display:inline-block;margin-top:10px;font-family:'Barlow Condensed';font-weight:600;text-transform:uppercase;font-size:13px;color:var(--orange);text-decoration:none}
-.daily-frame{width:100%;min-height:70vh;height:calc(100vh - 220px);border:1px solid var(--line);border-radius:12px;background:#fff}
-.daily-img-wrap{text-align:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto}
-.daily-img-wrap img{max-width:100%;height:auto;display:block;margin:0 auto}
 .daily-empty{text-align:center;color:var(--mut);padding:40px 20px;font-size:15px;line-height:1.5}
+.daily-act{font-weight:600;text-align:left}
+.daily-loc{color:var(--mut);font-size:13px;display:block;margin-top:2px}
 
 #introSplash{position:fixed;inset:0;z-index:500;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:opacity .5s ease}
 #introSplash.hide{opacity:0;pointer-events:none}
@@ -267,7 +266,7 @@ const params=new URLSearchParams(location.search);
 const campSlug=(params.get('camp')||DEFAULT_CAMP_CODE||'').trim();
 
 let campRow=null;
-let D={roster:[],teams:[],teamsPosted:false,sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:'',igUrl:'',webUrl:'',writeUp:null,dailySchedUrl:'',dailySchedLabel:''};
+let D={roster:[],teams:[],teamsPosted:false,sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:'',igUrl:'',webUrl:'',writeUp:null,dailySchedUrl:'',dailySchedLabel:'',dailySched:[]};
 let myTeam=null, dayFilter='all', lastUpdated=null;
 
 function formatCampDate(d){
@@ -354,6 +353,7 @@ async function fetchLive(){
     if(rows[0].updated_at!==lastUpdated){
       lastUpdated=rows[0].updated_at;
       Object.assign(D, rows[0].data);
+      if(!Array.isArray(D.dailySched)) D.dailySched=[];
       $('#loadingState').style.display='none';
       $('#notFoundState').style.display='none';
       $('#siteRoot').style.display='block';
@@ -362,6 +362,7 @@ async function fetchLive(){
       renderHome();
       renderTeamsView();
       renderReport();
+      renderDaily();
       renderDays();
       renderSched();
       renderCalLink();
@@ -401,25 +402,38 @@ function dailyIsImage(url){
 function renderDaily(){
   const url=String(D.dailySchedUrl||'').trim();
   const label=String(D.dailySchedLabel||'').trim() || 'Daily Camp Schedule';
+  const items=Array.isArray(D.dailySched)?D.dailySched.filter(it=>it && (it.t||it.a)):[];
   const titleEl=$('#dailyTitle');
   const metaEl=$('#dailyMeta');
   const body=$('#dailyBody');
   const openA=$('#dailyOpenExt');
   if(titleEl) titleEl.textContent=label;
-  if(metaEl) metaEl.textContent=url?'Full day agenda':'';
+  if(metaEl) metaEl.textContent=items.length?(items.length+' items'):(url?'Full day agenda':'');
   if(openA){
-    if(url){ openA.href=url; openA.style.display='inline-block'; }
+    if(url){ openA.href=url; openA.style.display='inline-block'; openA.textContent='Original PDF ↗'; }
     else { openA.removeAttribute('href'); openA.style.display='none'; }
   }
   if(!body) return;
+  if(items.length){
+    const hasLoc=items.some(it=>it.loc);
+    body.innerHTML=`<div class="gday"><h3>${esc(label)} <span>· ${items.length} items</span></h3>
+      <div class="tbl-wrap"><table><tr><th>Time</th><th>Activity</th>${hasLoc?'<th>Location</th>':''}</tr>
+      ${items.map(it=>`<tr>
+        <td class="tcol">${esc(it.t||'')}</td>
+        <td class="daily-act">${esc(it.a||'')}${!hasLoc&&it.loc?`<span class="daily-loc">${esc(it.loc)}</span>`:''}</td>
+        ${hasLoc?`<td>${esc(it.loc||'—')}</td>`:''}
+      </tr>`).join('')}
+      </table></div></div>`;
+    return;
+  }
   if(!url){
     body.innerHTML='<div class="daily-empty">The daily camp schedule hasn\'t been posted yet.</div>';
     return;
   }
   if(dailyIsImage(url)){
-    body.innerHTML='<div class="daily-img-wrap"><img src="'+esc(url)+'" alt="'+esc(label)+'"></div>';
+    body.innerHTML='<div class="tbl-wrap" style="padding:12px;text-align:center"><img src="'+esc(url)+'" alt="'+esc(label)+'" style="max-width:100%;height:auto"></div>';
   } else {
-    body.innerHTML='<iframe class="daily-frame" src="'+esc(url)+'" title="'+esc(label)+'"></iframe>';
+    body.innerHTML='<iframe style="width:100%;min-height:70vh;height:calc(100vh - 220px);border:1px solid var(--line);border-radius:0 0 8px 8px;background:#fff" src="'+esc(url)+'" title="'+esc(label)+'"></iframe>';
   }
 }
 
@@ -436,9 +450,11 @@ function renderHome(){
   tiles.push({view:'teams',pic:'teamz',icon:'👕',label:'Teams',desc:teamsReady?(D.teams.length+' teams assigned'):'No Teams Posted yet',go:'View Teams'});
   tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?D.sched.length+' games posted':'Posted once available',go:'View Schedule'});
   const dailyUrl=String(D.dailySchedUrl||'').trim();
+  const dailyItems=Array.isArray(D.dailySched)?D.dailySched:[];
+  const dailyReady=dailyItems.length>0 || !!dailyUrl;
   const dailyLabel=String(D.dailySchedLabel||'').trim() || 'Daily Camp Schedule';
-  if(dailyUrl){
-    tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:dailyLabel,desc:'Full day agenda — tap to view',go:'View Schedule'});
+  if(dailyReady){
+    tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:dailyLabel,desc:dailyItems.length?(dailyItems.length+' items posted'):'Full day agenda — tap to view',go:'View Schedule'});
   } else {
     tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:'Daily Camp Schedule',desc:'Posted once available',go:'View Schedule'});
   }
