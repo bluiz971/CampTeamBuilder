@@ -454,7 +454,7 @@ function renderHome(){
   const dailyReady=dailyItems.length>0 || !!dailyUrl;
   const dailyLabel=String(D.dailySchedLabel||'').trim() || 'Daily Camp Schedule';
   if(dailyReady){
-    tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:dailyLabel,desc:dailyItems.length?(dailyItems.length+' items posted'):'Full day agenda — tap to view',go:'View Schedule'});
+    tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:dailyLabel,desc:'Camp Schedule Available Now',go:'View Schedule'});
   } else {
     tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:'Daily Camp Schedule',desc:'Posted once available',go:'View Schedule'});
   }
