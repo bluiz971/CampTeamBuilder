@@ -442,7 +442,7 @@ function renderHome(){
   const navReport=$('#navReport');
   if(navReport) navReport.style.display='';
   tiles.push({view:'teams',pic:'teamz',icon:'👕',label:'Teams',desc:teamsReady?(D.teams.length+' teams assigned'):'No Teams Posted yet',go:'View Teams'});
-  tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?'Games posted':'Posted once available',go:'View Schedule'});
+  tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?'games posted':'Posted once available',go:'View Schedule'});
   const dailyUrl=String(D.dailySchedUrl||'').trim();
   const dailyItems=Array.isArray(D.dailySched)?D.dailySched:[];
   const dailyReady=dailyItems.length>0 || !!dailyUrl;
