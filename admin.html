@@ -176,6 +176,10 @@ dialog::backdrop{background:rgba(20,26,34,.55)}
 dialog h3{font-size:20px;text-transform:uppercase;margin-bottom:10px}
 dialog select{width:100%;margin:10px 0 16px}
 .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
+#editPlayerDlg{max-width:400px}
+.edit-fld{margin:0 0 12px}
+.edit-fld label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);display:block;margin-bottom:4px}
+.edit-fld input{width:100%;box-sizing:border-box}
 
 @media(max-width:640px){
   .ci-row{grid-template-columns:auto 1fr auto;grid-template-areas:"num who check" "num badge ht"}
@@ -344,7 +348,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-players">
   <div class="panel-head">
     <div><h2>Player Data</h2>
-    <p>Everyone who is checked in with a jersey number. Use <b>Edit #</b> to change a number, or <b>Clear #</b> to send them back to the Jersey page. Players missing height (especially walk-ups) are highlighted — tap <b>Edit Ht</b> so team balancing can use them.</p></div>
+    <p>Everyone who is checked in with a jersey number. Use <b>Edit Info</b> to change year, email, or position; <b>Edit Ht</b> / <b>Edit #</b> for height and jersey; or <b>Clear #</b> to send them back to the Jersey page. Players missing height (especially walk-ups) are highlighted.</p></div>
     <button class="btn btn-dark btn-sm" id="btnCsvPlayers">Export CSV</button>
   </div>
   <div class="balance-note" id="pdHtNote" style="margin-bottom:10px"></div>
@@ -523,6 +527,19 @@ dialog select{width:100%;margin:10px 0 16px}
   <div class="dlg-actions">
     <button class="btn btn-ghost btn-sm" id="addLateCancel">Cancel</button>
     <button class="btn btn-orange btn-sm" id="addLateOk">Add to Team</button>
+  </div>
+</dialog>
+
+<dialog id="editPlayerDlg">
+  <h3>Edit player info</h3>
+  <p id="editPlayerWho" style="font-size:14px;color:var(--mut);margin-bottom:14px"></p>
+  <input type="hidden" id="editPlayerIdx">
+  <div class="edit-fld"><label for="editPlayerYear">Grad Year</label><input type="text" id="editPlayerYear" placeholder="e.g. 2028" inputmode="numeric"></div>
+  <div class="edit-fld"><label for="editPlayerPos">Position</label><input type="text" id="editPlayerPos" placeholder="e.g. Guard, Wing, Big"></div>
+  <div class="edit-fld"><label for="editPlayerEmail">Email</label><input type="text" id="editPlayerEmail" placeholder="parent@example.com" autocomplete="off"></div>
+  <div class="dlg-actions">
+    <button class="btn btn-ghost btn-sm" id="editPlayerCancel">Cancel</button>
+    <button class="btn btn-orange btn-sm" id="editPlayerOk">Save</button>
   </div>
 </dialog>
 
@@ -1572,15 +1589,16 @@ function renderPlayers(){
     }
   }
   if(!pool.length){ t.innerHTML='<tr><td style="padding:30px;text-align:center;color:var(--mut)">No players yet — they appear here once checked in with a jersey number.</td></tr>'; return; }
-  t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Ht</th><th>Position</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
+  t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Ht</th><th>Position</th><th>Email</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
     pool.sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>{
       const g=groupOf(p.year), i=S.players.indexOf(p);
       const tags=displayAddOns(p);
       const miss=needsHeight(p);
-      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
+      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)||'—'}</td><td style="font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(p.email||'')}">${esc(p.email)||'—'}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
       <td class="addon-cell">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}<button class="addon-add" data-addon="${i}" title="Add / edit add-ons">+ Add</button></td>
-      <td class="row-actions"><button class="btn btn-ghost btn-sm" data-eh="${i}" title="Edit height">Edit Ht</button><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
+      <td class="row-actions"><button class="btn btn-ghost btn-sm" data-ei="${i}" title="Edit year, email, position">Edit Info</button><button class="btn btn-ghost btn-sm" data-eh="${i}" title="Edit height">Edit Ht</button><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
     }).join('');
+  t.querySelectorAll('[data-ei]').forEach(b=>b.addEventListener('click',()=>openEditPlayer(+b.dataset.ei)));
   t.querySelectorAll('[data-eh]').forEach(b=>b.addEventListener('click', async ()=>{
     const p=S.players[+b.dataset.eh];
     const v=prompt('Height for '+p.first+' '+p.last+' (e.g. 5\'10 or 70):', p.height||'');
@@ -1657,6 +1675,45 @@ function renderPlayers(){
   t.querySelectorAll('[data-addon]').forEach(b=>b.addEventListener('click',e=>{
     openAddOnMenu(S.players[+b.dataset.addon], e.currentTarget);
   }));
+}
+
+function openEditPlayer(idx){
+  const p=S.players[idx];
+  if(!p) return;
+  $('#editPlayerIdx').value=String(idx);
+  $('#editPlayerWho').textContent=(p.jersey?'#'+p.jersey+' ':'')+p.first+' '+p.last;
+  $('#editPlayerYear').value=p.year||'';
+  $('#editPlayerPos').value=p.position||'';
+  $('#editPlayerEmail').value=p.email||'';
+  $('#editPlayerDlg').showModal();
+  setTimeout(()=>$('#editPlayerYear').focus(), 50);
+}
+
+async function saveEditPlayer(){
+  const idx=+$('#editPlayerIdx').value;
+  const p=S.players[idx];
+  if(!p){ $('#editPlayerDlg').close(); return; }
+  const year=String($('#editPlayerYear').value||'').trim();
+  const position=String($('#editPlayerPos').value||'').trim();
+  const email=String($('#editPlayerEmail').value||'').trim();
+  const yearChanged=String(p.year||'')!==year;
+  const posChanged=(p.position||'')!==position;
+  p.year=year;
+  p.position=position;
+  p.email=email;
+  store.save();
+  $('#editPlayerDlg').close();
+  refresh();
+  if(authSession && authSession.access_token && p.uid){
+    try{
+      await fetch(S.syncUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.uid),{
+        method:'PATCH',
+        headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+        body:JSON.stringify({ grad_year:year, position, email })
+      });
+    }catch(e){}
+  }
+  if(yearChanged || posChanged) autoPushLive();
 }
 
 // Popover to toggle add-ons on a player
@@ -1970,6 +2027,12 @@ $('#addLateOk').addEventListener('click', ()=>{
   autoPushLive();
   const note=$('#teamsSyncNote');
   if(note) note.innerHTML='<b style="color:var(--green)">✓ Added</b> #'+esc(p.jersey)+' '+esc(p.first)+' '+esc(p.last)+' to '+esc(team.name)+'. Click <b>Sync Teams to Parent Page</b> if parents need it right away.';
+});
+
+$('#editPlayerCancel').addEventListener('click', ()=>$('#editPlayerDlg').close());
+$('#editPlayerOk').addEventListener('click', ()=>{ saveEditPlayer(); });
+$('#editPlayerDlg').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && e.target && e.target.tagName==='INPUT'){ e.preventDefault(); saveEditPlayer(); }
 });
 
 /* =============================================================
