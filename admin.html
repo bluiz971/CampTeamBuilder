@@ -127,8 +127,9 @@ tr:nth-child(even) td{background:#faf9f6}
 .sched-grid th{text-align:center}
 .sched-grid th:first-child{text-align:left}
 .sched-grid .vs{color:var(--mut);font-weight:400;font-size:12px;margin:0 2px}
-.sched-grid .gcell{padding:3px 0}
+.sched-grid .gcell{padding:3px 0;text-align:center}
 .sched-grid .gcell+.gcell{border-top:1px dashed var(--line)}
+.sched-grid .gcell.note{font-weight:600;color:var(--ink);line-height:1.35}
 
 /* ---------- Teams ---------- */
 .gen-bar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px}
@@ -386,7 +387,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-schedule">
   <div class="panel-head">
     <div><h2>Game Schedules</h2>
-    <p>Upload a schedule file (.xlsx / .csv). Works with the AAU grid format — Time down the left, Court columns across the top, cells like "1 v 2". Multiple games stacked in one cell (on separate lines) are all read. Team numbers map to your generated teams (1 → Team 1). Add a Date in cell A1 or the filename for multi-day camps.</p></div>
+    <p>Upload a schedule file (.xlsx / .csv). Works with the AAU grid format — Time down the left, Court columns across the top. Cells are shown <b>exactly as in the sheet</b> (stacked games, Skill Dev notes, etc.). Team numbers still map to your generated teams for “my team” highlights. Add a Date in cell A1 or the filename for multi-day camps.</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-orange btn-sm" id="btnSyncSched">⬆ Sync Schedule to Parent Page</button>
       <button class="btn btn-ghost btn-sm" id="btnClearSched" hidden>Clear Schedule</button>
@@ -2039,7 +2040,7 @@ function readSched(f){
         if(first.includes('time') && hasCourt){ hdrIdx=i; break; }
       }
       // Or detect matrix by "N v N" cells even without a clean header
-      const looksMatrix = hdrIdx>=0 || rows.some(r=>r.slice(1).some(c=>/^\s*\d+\s*v\s*\d+\s*$/i.test(String(c))));
+      const looksMatrix = hdrIdx>=0 || rows.some(r=>r.slice(1).some(c=>/\d+\s*v\s*\d+|skill\s*dev/i.test(String(c))));
 
       if(looksMatrix){
         parseMatrix(rows, hdrIdx, guessDate(f.name, rows));
@@ -2054,7 +2055,7 @@ function readSched(f){
   rd.readAsArrayBuffer(f);
 }
 
-// Parse the AAU grid into individual games
+// Parse the AAU grid — keep every line in each cell (games + Skill Dev notes)
 function parseMatrix(rows, hdrIdx, date){
   let courts=[];
   if(hdrIdx>=0){
@@ -2062,46 +2063,74 @@ function parseMatrix(rows, hdrIdx, date){
   }
   const start = hdrIdx>=0 ? hdrIdx+1 : 0;
   const games=[];
-  // Pull every "N v N" matchup out of one cell (games can be stacked on
-  // separate lines, or separated by commas / slashes within a single cell)
-  const matchRe=/(\d+|[A-Za-z][\w'-]*)\s*v(?:s)?\.?\s*(\d+|[A-Za-z][\w'-]*)/gi;
-  function cellGames(cell){
-    const out=[]; let m;
-    matchRe.lastIndex=0;
-    while((m=matchRe.exec(cell))!==null){ out.push([m[1],m[2]]); }
-    return out;
+  const gameRe=/^(\d+|[A-Za-z][\w'-]*)\s*v(?:s)?\.?\s*(\d+|[A-Za-z][\w'-]*)$/i;
+  function parseCellLines(cell){
+    return String(cell||'').replace(/\r/g,'').split(/\n/).map(l=>l.trim()).filter(Boolean);
   }
-  let lastTime='';   // carry forward when a time cell is blank (merged rows)
+  function lineEntry(line, time, court){
+    const m=line.match(gameRe);
+    if(m){
+      return {
+        date:date||'', time, court, camp:'',
+        kind:'game', text:line,
+        home:teamName(m[1]), away:teamName(m[2]),
+        _h:m[1], _a:m[2]
+      };
+    }
+    // Also catch "1 v 2" buried with extra spaces / stacked in one line with commas
+    const embedded=[];
+    const re=/(\d+|[A-Za-z][\w'-]*)\s*v(?:s)?\.?\s*(\d+|[A-Za-z][\w'-]*)/gi;
+    let mm, last=0;
+    while((mm=re.exec(line))!==null){
+      embedded.push({
+        date:date||'', time, court, camp:'',
+        kind:'game', text:mm[0].replace(/\s+/g,' ').trim(),
+        home:teamName(mm[1]), away:teamName(mm[2]),
+        _h:mm[1], _a:mm[2]
+      });
+      last=mm.index+mm[0].length;
+    }
+    if(embedded.length===1 && line.replace(/\s+/g,' ').trim()===embedded[0].text) return embedded[0];
+    if(embedded.length>1 && !/[a-z]/i.test(line.replace(/v(?:s)?\.?/gi,''))) return embedded;
+    // Skill Dev / notes / "1, 2 & 3" / times — keep verbatim
+    return {
+      date:date||'', time, court, camp:'',
+      kind:'note', text:line,
+      home:'', away:'', _h:null, _a:null
+    };
+  }
+  let lastTime='';
   for(let i=start;i<rows.length;i++){
     const r=rows[i];
     let timeCell=String(r[0]||'').trim();
-    if(/end of camp|free to leave|evaluation|follow us|www\.|@|twitter|instagram/i.test(timeCell)) continue;
-    // A row whose time cell is a real clock time updates lastTime; blank rows
-    // (from a vertically-merged time cell) inherit the time above them.
+    if(/end of camp|free to leave|evaluation|follow us|www\.|@|twitter|instagram|^game schedule$/i.test(timeCell)) continue;
     if(/\d{1,2}:\d{2}/.test(timeCell)) lastTime=timeCell;
     const time = /\d{1,2}:\d{2}/.test(timeCell) ? timeCell : lastTime;
     if(!time) continue;
-    let rowHadGame=false;
     for(let c=1;c<r.length;c++){
       const cell=String(r[c]||'').replace(/\r/g,'').trim();
       if(!cell) continue;
       const court = courts[c-1] || ('Court '+c);
-      cellGames(cell).forEach(([h,a])=>{
-        rowHadGame=true;
-        games.push({ date:date||'', time, court, camp:'', home:teamName(h), away:teamName(a), _h:h, _a:a });
+      parseCellLines(cell).forEach(line=>{
+        const entry=lineEntry(line, time, court);
+        if(Array.isArray(entry)) entry.forEach(e=>games.push(e));
+        else games.push(entry);
       });
     }
   }
-  if(!games.length){ alert('No "1 v 2" style matchups found in that grid.'); return; }
+  if(!games.length){ alert('No schedule cells found in that grid.'); return; }
   S.schedule=games;
   store.save(); renderSchedule(); autoPushLive();
   $('#mapSched').hidden=true;
-  const unresolved=games.filter(g=>/^Team \d+$/.test(g.home)||/^Team \d+$/.test(g.away)).length;
-  // Per-time breakdown so it's obvious every stacked game was captured
+  const nGames=games.filter(g=>g.kind!=='note').length;
+  const nNotes=games.filter(g=>g.kind==='note').length;
+  const unresolved=games.filter(g=>g.kind==='game' && (/^Team \d+$/.test(g.home)||/^Team \d+$/.test(g.away))).length;
   const bySlot={}; games.forEach(g=>{ bySlot[g.time]=(bySlot[g.time]||0)+1; });
   const slots=Object.entries(bySlot).map(([t,n])=>t+'×'+n).join(', ');
-  $('#schedMsg').innerHTML='<b>'+games.length+' games loaded</b> ('+slots+')'
-    +(unresolved?' · '+unresolved+' teams not yet generated':'');
+  $('#schedMsg').innerHTML='<b>'+nGames+' games</b>'+(nNotes?' · '+nNotes+' note'+(nNotes===1?'':'s')+' (Skill Dev, etc.)':'')
+    +' loaded ('+slots+')'
+    +(unresolved?' · '+unresolved+' teams not yet generated':'')
+    +' — shown exactly as in the sheet.';
 }
 
 function buildSchedMapping(){
@@ -2167,24 +2196,31 @@ function scheduleGrid(games){
   games.forEach(g=>{ const k=g.time+'|'+g.court; (cell[k]=cell[k]||[]).push(g); });
   return {courts,times,cell};
 }
+function schedCellHtml(gs){
+  if(!gs||!gs.length) return '<td></td>';
+  return `<td>${gs.map(g=>{
+    const isNote=g.kind==='note' || (!g.home && !g.away);
+    if(isNote) return `<div class="gcell note">${esc(g.text||'')}</div>`;
+    // Prefer original sheet line (e.g. "1 v 2") so the app matches the upload
+    if(g.text) return `<div class="gcell">${esc(g.text)}</div>`;
+    return `<div class="gcell"><b>${esc(g.home)}</b> <span class="vs">v</span> <b>${esc(g.away)}</b></div>`;
+  }).join('')}</td>`;
+}
 function renderSchedule(){
   const wrap=$('#schedPreview');
   $('#btnClearSched').hidden=!S.schedule.length;
   if(!S.schedule.length){ wrap.innerHTML=''; return; }
   const byDate={};
   schedSorted().forEach(g=>{ (byDate[g.date||'Game Schedule']=byDate[g.date||'Game Schedule']||[]).push(g); });
-  wrap.innerHTML='<h3 class="disp" style="font-size:18px;text-transform:uppercase;margin:18px 0 10px">'+S.schedule.length+' games loaded</h3>'+
+  const nGames=S.schedule.filter(g=>g.kind!=='note').length;
+  wrap.innerHTML='<h3 class="disp" style="font-size:18px;text-transform:uppercase;margin:18px 0 10px">Game Schedule <span style="color:var(--mut);font-size:15px;font-weight:600">· '+nGames+' games</span></h3>'+
     Object.entries(byDate).map(([d,games])=>{
       const {courts,times,cell}=scheduleGrid(games);
       return `<div style="margin-bottom:18px">
-      <div style="font-family:'Barlow Condensed';font-weight:600;text-transform:uppercase;background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0">${esc(d)} <span style="color:var(--amber)">· ${games.length} games</span></div>
+      <div style="font-family:'Barlow Condensed';font-weight:600;text-transform:uppercase;background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px 8px 0 0;text-align:center">${esc(d)}</div>
       <div class="tbl-wrap" style="border-radius:0 0 8px 8px"><table class="sched-grid">
         <tr><th>Time</th>${courts.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>
-        ${times.map(t=>`<tr><td class="tcol">${esc(t.raw)}</td>${courts.map(c=>{
-          const gs=cell[t.raw+'|'+c];
-          if(!gs||!gs.length) return '<td>—</td>';
-          return `<td>${gs.map(g=>`<div class="gcell"><b>${esc(g.home)}</b> <span class="vs">v</span> <b>${esc(g.away)}</b></div>`).join('')}</td>`;
-        }).join('')}</tr>`).join('')}
+        ${times.map(t=>`<tr><td class="tcol">${esc(t.raw)}</td>${courts.map(c=>schedCellHtml(cell[t.raw+'|'+c])).join('')}</tr>`).join('')}
       </table></div></div>`;
     }).join('');
 }
@@ -3244,7 +3280,12 @@ function buildPublicData(opts){
     name:t.name,
     players:t.players.map(playerById).filter(Boolean).sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>({j:String(p.jersey),n:p.first+' '+p.last,yr:String(p.year),pos:p.position||'',ht:formatHeight(p.height)==='—'?'':formatHeight(p.height),sc:p.school||'',ph:p.photoUrl||''}))
   })):[];
-  const sched=schedSorted().map(g=>({d:g.date,t:g.time,c:g.court,cp:g.camp,h:g.home,a:g.away}));
+  const sched=schedSorted().map(g=>({
+    d:g.date, t:g.time, c:g.court, cp:g.camp,
+    h:g.home||'', a:g.away||'',
+    k:g.kind||((!g.home&&!g.away)?'note':'game'),
+    x:g.text||''
+  }));
   const title=(S.pubTitle||'Camp Teams & Schedule').replace(/</g,'');
   const sub=(S.pubSub||'').replace(/</g,'');
   // Try to pull a calendar date out of the subtitle for an "Add to Calendar" link

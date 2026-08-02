@@ -49,7 +49,8 @@ th:first-child{text-align:left}
 td{padding:11px 12px;border-top:1px solid var(--line);text-align:center;vertical-align:middle}
 td.tcol{font-family:'Barlow Condensed';font-weight:700;font-size:17px;background:#f0eee9;white-space:nowrap}
 .vs{color:var(--mut);font-weight:400;font-size:12px;margin:0 2px}
-.gcell{padding:3px 0}.gcell+.gcell{border-top:1px dashed var(--line)}
+.gcell{padding:3px 0;text-align:center}.gcell+.gcell{border-top:1px dashed var(--line)}
+.gcell.note{font-weight:600;line-height:1.35}
 tr:nth-child(even) td:not(.tcol){background:#faf9f6}
 .mine{background:var(--amber)!important;border-radius:6px;font-weight:700}
 .teamgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
@@ -553,18 +554,24 @@ function renderSched(){
   if(!D.sched.length){wrap.innerHTML='<div class="empty">Schedule not posted yet.</div>';return;}
   const byDate={};
   D.sched.filter(g=>dayFilter==='all'||(g.d||'Game Schedule')===dayFilter).forEach(g=>{(byDate[g.d||'Game Schedule']=byDate[g.d||'Game Schedule']||[]).push(g);});
+  const lineHtml=(g)=>{
+    const isNote=g.k==='note' || (!g.h && !g.a && g.x);
+    const mine=myTeam&&!isNote&&(g.h===myTeam||g.a===myTeam);
+    if(isNote) return `<div class="gcell note">${esc(g.x||'')}</div>`;
+    // Prefer original sheet text ("1 v 2") so parents see the same grid
+    if(g.x) return `<div class="gcell"${mine?' style="font-weight:700"':''}>${esc(g.x)}</div>`;
+    return `<div class="gcell"${mine?' style="font-weight:700"':''}><b>${esc(g.h)}</b> <span class="vs">v</span> <b>${esc(g.a)}</b></div>`;
+  };
   wrap.innerHTML=Object.entries(byDate).map(([d,gs])=>{
     const {courts,times,cell}=gridFor(gs);
-    return `<div class="gday"><h3>${esc(d)} <span>· ${gs.length} games</span></h3>
+    const nGames=gs.filter(g=>g.k!=='note' && (g.h||g.a||/\bv\b/i.test(g.x||''))).length;
+    return `<div class="gday"><h3>${esc(d)}${nGames?` <span>· ${nGames} games</span>`:''}</h3>
     <div class="tbl-wrap"><table><tr><th>Time</th>${courts.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>
     ${times.map(t=>`<tr><td class="tcol">${esc(t.raw)}</td>${courts.map(c=>{
       const cg=cell[t.raw+'|'+c];
-      if(!cg||!cg.length)return '<td>—</td>';
-      const anyMine=myTeam&&cg.some(g=>g.h===myTeam||g.a===myTeam);
-      return `<td class="${anyMine?'mine':''}">${cg.map(g=>{
-        const mine=myTeam&&(g.h===myTeam||g.a===myTeam);
-        return `<div class="gcell"${mine?' style="font-weight:700"':''}><b>${esc(g.h)}</b> <span class="vs">v</span> <b>${esc(g.a)}</b></div>`;
-      }).join('')}</td>`;
+      if(!cg||!cg.length)return '<td></td>';
+      const anyMine=myTeam&&cg.some(g=>g.k!=='note'&&(g.h===myTeam||g.a===myTeam));
+      return `<td class="${anyMine?'mine':''}">${cg.map(lineHtml).join('')}</td>`;
     }).join('')}</tr>`).join('')}
     </table></div></div>`;
   }).join('')||'<div class="empty">No games this day.</div>';
