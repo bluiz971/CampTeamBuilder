@@ -930,27 +930,78 @@ $('#btnSaveCamp').addEventListener('click', async ()=>{
    HELPERS
 ============================================================= */
 function heightToInches(h){
-  if(h==null) return 0;
+  if(h==null || h==='') return 0;
+  // Excel sometimes returns a Date for cells typed like 5'4
+  if(Object.prototype.toString.call(h)==='[object Date]' && !isNaN(h)){
+    const feet=h.getHours(), inch=h.getMinutes();
+    if(feet>=3 && feet<=8 && inch>=0 && inch<12) return feet*12+inch;
+    return 0;
+  }
   if(typeof h==='number'){
+    if(h>0 && h<1){
+      // Excel time serial: hour = feet, minute = inches (common for 5'4 → 5:04)
+      const totalMin=Math.round(h*24*60);
+      const feet=Math.floor(totalMin/60), inch=totalMin%60;
+      if(feet>=3 && feet<=8 && inch>=0 && inch<12) return feet*12+inch;
+    }
     if(h>40&&h<90) return Math.round(h);        // inches
-    if(h>=3&&h<8) return Math.round(h*12);      // feet as number (5.5 = 5'6")
+    if(h>=3&&h<8){
+      // 5.333… feet, or 5.4 meaning 5'4 when typed as decimal feet.inches
+      const f=Math.floor(h);
+      const frac=h-f;
+      if(frac>0 && frac<1){
+        const asInch=Math.round(frac*10); // 5.4 → 4 inches (one decimal)
+        if(asInch<12) return f*12+asInch;
+        const asFracIn=Math.round(frac*12); // 5.5 → 6 inches
+        if(asFracIn<12) return f*12+asFracIn;
+      }
+      return Math.round(h*12);
+    }
     if(h>=120&&h<=231) return Math.round(h/2.54); // centimeters
     return 0;
   }
-  const s=String(h).trim();
-  let m=s.match(/(\d+)\s*'\s*(\d+)?/);            // 5'11" or 5'11 or 6'
+  let s=String(h).trim();
+  if(!s || s==='—' || s==='-') return 0;
+  // Normalize curly quotes / primes / commas Excel and locales often insert
+  s=s.replace(/[\u2018\u2019\u201B\u2032\u2035`´]/g,"'")
+     .replace(/[\u201C\u201D\u2033]/g,'"')
+     .replace(/,/g,"'")
+     .replace(/\s+/g,' ')
+     .trim();
+  let m=s.match(/^(\d+)\s*'\s*(\d{1,2})?\s*"?\s*$/);  // 5'11" or 5'11 or 6'
   if(m) return (+m[1])*12 + (+(m[2]||0));
-  m=s.match(/^(\d+)\s*(?:ft|feet|foot)\.?\s*(\d+)?/i); // 5 ft 11
+  m=s.match(/^(\d+)\s*['′]\s*(\d{1,2})?\s*["″]?\s*$/);
+  if(m) return (+m[1])*12 + (+(m[2]||0));
+  m=s.match(/^(\d+)\s*[-–—]\s*(\d{1,2})$/);           // 5-4
+  if(m && +m[1]>=3 && +m[1]<=8 && +m[2]<12) return (+m[1])*12 + (+m[2]);
+  m=s.match(/^(\d+)\s+(\d{1,2})$/);                    // 5 4
+  if(m && +m[1]>=3 && +m[1]<=8 && +m[2]<12) return (+m[1])*12 + (+m[2]);
+  m=s.match(/^(\d+)\s*(?:ft|feet|foot)\.?\s*(\d{1,2})?/i); // 5 ft 11
   if(m) return (+m[1])*12 + (+(m[2]||0));
   m=s.match(/^([4-7])\.(\d{1,2})$/);              // 5.11 typed as feet.inches
   if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
   m=s.match(/^(\d+(?:\.\d+)?)\s*cm$/i);           // 178 cm
   if(m) return Math.round(+m[1]/2.54);
+  // Pure Excel serial left as text "0.21111"
+  if(/^0\.\d+$/.test(s)){
+    const v=+s;
+    const totalMin=Math.round(v*24*60);
+    const feet=Math.floor(totalMin/60), inch=totalMin%60;
+    if(feet>=3 && feet<=8 && inch>=0 && inch<12) return feet*12+inch;
+  }
   if(/^\d{2}(\.\d+)?$/.test(s)){ const v=+s; if(v>40&&v<90) return Math.round(v); } // 71 inches
   if(/^[4-7]$/.test(s)) return (+s)*12;           // just "6"
   m=s.match(/^(\d{3})$/);                         // 178 (cm, no unit)
   if(m && +m[1]>=120 && +m[1]<=231) return Math.round(+m[1]/2.54);
   return 0;
+}
+/** Return a clean 5'10 string when possible; otherwise the original trimmed text. */
+function normalizeHeightValue(h){
+  if(h==null || h==='') return '';
+  const inches=heightToInches(h);
+  if(inches) return inchesToH(inches);
+  const s=String(h).trim();
+  return (!s || s==='—' || s==='-') ? '' : s;
 }
 function inchesToH(i){ if(!i) return '—'; const f=Math.floor(i/12), n=Math.round(i-f*12); return f+"'"+n; }
 function formatHeight(h){
@@ -1035,7 +1086,7 @@ const FIELDS = [
   ['first','First Name',['first name']],
   ['last','Last Name',['last name']],
   ['year','Grad. Year',['grad. year','grad year','graduating year','class']],
-  ['height','Height',['height']],
+  ['height','Height',['height','ht','player height']],
   ['position','Position',['position']],
   ['school','School',['school']],
   ['city','City',['city']],
@@ -1068,7 +1119,7 @@ function readFile(f){
         const rows=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,range:0,defval:''});
         if(rows[0] && rows[0].some(h=>/first name/i.test(String(h)))){ sheet=n; break; }
       }
-      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:''});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:'',raw:false});
       if(!rows.length){ alert('That sheet looks empty.'); return; }
       rawHeaders=rows[0].map(h=>String(h).trim());
       rawRows=rows.slice(1).filter(r=>r.some(c=>String(c).trim()!==''));
@@ -1076,7 +1127,7 @@ function readFile(f){
       // and check-in marks, keyed by First+Last name
       extraByName={};
       for(const n of wb.SheetNames){
-        const rws=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''});
+        const rws=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:'',raw:false});
         if(!rws.length) continue;
         const hd=rws[0].map(h=>String(h).toLowerCase().trim());
         const ji=hd.findIndex(h=>h==='###'||h.startsWith('jersey'));
@@ -1149,14 +1200,14 @@ function preferPlayerRow(a, b){
 /** Normalize a Supabase / local player into admin roster shape. */
 function toAdminPlayer(src, id){
   const r=src||{};
-  const height=r.height||'';
+  const height=normalizeHeightValue(r.height||'') || String(r.height||'').trim();
   const uid=r.uid||r.id||(crypto.randomUUID?crypto.randomUUID():('keep-'+Date.now()+'-'+id));
   return {
     id:id,
     uid:uid,
     first:r.first||'', last:r.last||'',
     year:r.year||r.grad_year||'',
-    height:height, hin:heightToInches(height),
+    height:height, hin:heightToInches(height||r.height||''),
     position:r.position||'', school:r.school||'',
     city:r.city||'', state:r.state||'',
     payStatus:r.payStatus||r.pay_status||'',
@@ -1266,10 +1317,12 @@ $('#btnLoad').addEventListener('click', async ()=>{
     // Player Data tab formula), or an explicit check-in mark, or prior state
     const checkedIn=!!(old.checkedIn||remote.checked_in||g('checkin')||extra.checkin||jersey);
     const items=g('items')||old.items||remote.items||'';
+    const htRaw=g('height')||old.height||remote.height||'';
+    const height=normalizeHeightValue(htRaw) || (String(htRaw||'').trim() && !/^0\.\d+$/.test(String(htRaw).trim()) ? String(htRaw).trim() : '');
     mapped.push({
       id:mapped.length, uid: old.uid || remote.id || (crypto.randomUUID ? crypto.randomUUID() : (key+'-'+Date.now()+'-'+i)),
-      first, last, year:g('year')||old.year||remote.grad_year||'', height:g('height')||old.height||remote.height||'',
-      hin:heightToInches(g('height')||old.height||remote.height||''), position:g('position')||old.position||remote.position||'', school:g('school')||old.school||remote.school||'',
+      first, last, year:g('year')||old.year||remote.grad_year||'', height,
+      hin:heightToInches(height||htRaw), position:g('position')||old.position||remote.position||'', school:g('school')||old.school||remote.school||'',
       city:g('city')||old.city||remote.city||'', state:g('state')||old.state||remote.state||'', payStatus:g('payStatus')||old.payStatus||remote.pay_status||'',
       balance:g('balance')||old.balance||remote.balance||'', items, email:g('email')||old.email||remote.email||'',
       checkedIn, jersey,
@@ -2698,13 +2751,26 @@ function autoPushLive(){
    DIFFERENT player at the same time without clobbering each other.
 ============================================================= */
 function playerRow(p){
+  const height=normalizeHeightValue(p.height)||p.height||'';
   return {
     id:p.uid, camp_id:S.campId, camp_code:S.syncCode, first:p.first, last:p.last, grad_year:String(p.year||''),
-    height:p.height||'', position:p.position||'', school:p.school||'', city:p.city||'', state:p.state||'',
+    height, position:p.position||'', school:p.school||'', city:p.city||'', state:p.state||'',
     pay_status:p.payStatus||'', balance:String(p.balance||''), items:p.items||'', email:p.email||'',
     jersey:String(p.jersey||''), checked_in:!!p.checkedIn,
     addons_manual:p.addonsManual||[], addons_removed:p.addonsRemoved||[], photo_url:p.photoUrl||''
   };
+}
+
+/** Re-parse Excel/time/curly-quote heights already sitting on the roster. */
+function repairPlayerHeights(){
+  let fixed=0;
+  (S.players||[]).forEach(p=>{
+    const n=normalizeHeightValue(p.height);
+    const inches=heightToInches(n||p.height);
+    if(n && n!==String(p.height||'').trim()){ p.height=n; fixed++; }
+    p.hin=inches||0;
+  });
+  return fixed;
 }
 
 let _rosterPushTimer=null;
@@ -2838,6 +2904,8 @@ async function pushRosterLive(){
     return;
   }
   try{
+    const htFixed=repairPlayerHeights();
+    if(htFixed){ store.save(); renderAll(); }
     const rows=S.players.filter(p=>p.uid).map(p=>{
       const row=playerRow(p);
       row.camp_id=campId; row.camp_code=code;
@@ -2927,6 +2995,7 @@ async function pushRosterLive(){
     }
     $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Roster pushed to stations</b> ('+remoteCount+' on <code>'+esc(code)+'</code>'
       +(removed?' · cleaned '+removed+' duplicate'+(removed===1?'':'s'):'')
+      +(htFixed?' · repaired '+htFixed+' height'+(htFixed===1?'':'s'):'')
       +') at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.'
       +' Walk-ups / self-registers are kept. Open station with <code>?camp='+esc(code)+'</code>';
   }catch(e){
@@ -3041,7 +3110,7 @@ async function pollPlayersLive(){
         S.players.push({
           id:S.players.length, uid:r.id,
           first:r.first||'', last:r.last||'', year:r.grad_year||'',
-          height:r.height||'', hin:heightToInches(r.height||''),
+          height:normalizeHeightValue(r.height||'')||(r.height||''), hin:heightToInches(r.height||''),
           position:r.position||'', school:r.school||'',
           city:r.city||'', state:r.state||'',
           payStatus:r.pay_status||'', balance:r.balance||'',
@@ -3063,7 +3132,10 @@ async function pollPlayersLive(){
         p.checkedIn=r.checked_in; p.jersey=r.jersey||''; p.addonsManual=r.addons_manual||[];
         p.addonsRemoved=r.addons_removed||[]; p.photoUrl=r.photo_url||'';
         p.first=r.first||p.first; p.last=r.last||p.last; p.year=r.grad_year||p.year;
-        p.height=r.height||''; p.hin=heightToInches(p.height);
+        // Don't wipe a readable local height with an empty/unreadable remote value
+        if(heightToInches(r.height)){ p.height=normalizeHeightValue(r.height); }
+        else if(!heightToInches(p.height) && r.height){ p.height=String(r.height||''); }
+        p.hin=heightToInches(p.height);
         p.position=r.position||''; p.school=r.school||'';
         p.city=r.city||p.city; p.state=r.state||p.state;
         p.payStatus=r.pay_status||p.payStatus; p.balance=r.balance||p.balance;
@@ -3254,6 +3326,7 @@ function updateScoreboard(){
 }
 function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; if($('#dailySchedUrl')) $('#dailySchedUrl').value=S.dailySchedUrl||''; if($('#dailySchedLabel')) $('#dailySchedLabel').value=S.dailySchedLabel||''; renderDailySchedPreview(); $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
 ['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); autoPushLive(); }));
+if(repairPlayerHeights()) store.save();
 renderAll();
 updateAuthUI();
 (async function bootCamps(){
