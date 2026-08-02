@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -85,7 +85,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .hiddenfile{display:none}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:9px;font-size:14px;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 
-/* Station teams — match admin team cards */
+/* Station teams â€” match admin team cards */
 .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
 .team-card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .team-card header{background:var(--ink);color:#fff;padding:10px 14px;border-bottom:3px solid var(--orange);display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -246,19 +246,19 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
         <button class="signoutbtn" id="btnSignOut">Sign Out</button>
       </div>
     </div>
-    <div class="livepill" id="livePill">Connecting…</div>
+    <div class="livepill" id="livePill">Connectingâ€¦</div>
     <div class="livepill" id="campMeta" style="margin-top:4px"></div>
     <div class="roletabs">
-      <button data-role="checkin" class="on"><span class="ic">✅</span>Check-In</button>
-      <button data-role="jersey"><span class="ic">🔢</span>Jersey</button>
-      <button data-role="addons"><span class="ic">➕</span>Add-Ons</button>
-      <button data-role="photos"><span class="ic">📷</span>Photos</button>
-      <button data-role="playerdata"><span class="ic">👤</span>Player Data</button>
-      <button data-role="teams"><span class="ic">👕</span>Teams</button>
+      <button data-role="checkin" class="on"><span class="ic">âœ…</span>Check-In</button>
+      <button data-role="jersey"><span class="ic">ðŸ”¢</span>Jersey</button>
+      <button data-role="addons"><span class="ic">âž•</span>Add-Ons</button>
+      <button data-role="photos"><span class="ic">ðŸ“·</span>Photos</button>
+      <button data-role="playerdata"><span class="ic">ðŸ‘¤</span>Player Data</button>
+      <button data-role="teams"><span class="ic">ðŸ‘•</span>Teams</button>
     </div>
   </header>
   <main>
-    <div class="searchbar"><input type="search" id="q" placeholder="Search name or school…"></div>
+    <div class="searchbar"><input type="search" id="q" placeholder="Search name or schoolâ€¦"></div>
     <div class="plist" id="plist"></div>
   </main>
 </div>
@@ -269,7 +269,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 <div id="camModal" aria-hidden="true">
   <div class="cam-head">
     <b id="camWho">Take photo</b>
-    <span>Frame head and upper body, then capture — or upload from the gallery</span>
+    <span>Frame head and upper body, then capture â€” or upload from the gallery</span>
   </div>
   <div class="cam-stage">
     <video id="camVideo" playsinline muted autoplay></video>
@@ -282,7 +282,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
     <button class="bigbtn ghost" type="button" id="camFlip">Flip Camera</button>
     <button class="bigbtn" type="button" id="camShutter">Take Photo</button>
     <button class="bigbtn" type="button" id="camRetake" style="display:none">Retake</button>
-    <button class="bigbtn" type="button" id="camUse" style="display:none">Upload ✓</button>
+    <button class="bigbtn" type="button" id="camUse" style="display:none">Upload âœ“</button>
   </div>
   <p class="cam-hint">Uses the rear camera (not selfie). Photos are framed as upper-body shots, then uploaded right away.</p>
 </div>
@@ -301,8 +301,8 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 <dialog id="noteDlg">
   <h3>Scout note</h3>
   <p id="noteWho" class="reg-sub" style="margin-bottom:0"></p>
-  <textarea id="noteText" placeholder="• good shooter"></textarea>
-  <p style="font-size:12px;color:var(--mut);margin:0 0 4px;line-height:1.4">Bullet list — press Enter for a new point. The Camp Write-Up turns these into full sentences.</p>
+  <textarea id="noteText" placeholder="â€¢ good shooter"></textarea>
+  <p style="font-size:12px;color:var(--mut);margin:0 0 4px;line-height:1.4">Bullet list â€” press Enter for a new point. The Camp Write-Up turns these into full sentences.</p>
   <div class="dlg-actions">
     <button class="bigbtn ghost" type="button" id="noteClear">Clear</button>
     <button class="bigbtn ghost" type="button" id="noteCancel">Cancel</button>
@@ -312,7 +312,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 
 <dialog id="addDlg">
   <h3>Add late player</h3>
-  <p class="reg-sub" style="margin-bottom:12px">Place a walk-up (or anyone with a jersey who isn’t on a team yet) onto an existing team — no regenerate needed.</p>
+  <p class="reg-sub" style="margin-bottom:12px">Place a walk-up (or anyone with a jersey who isnâ€™t on a team yet) onto an existing team â€” no regenerate needed.</p>
   <label style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">Player</label>
   <select id="addPlayerSel" style="width:100%;font-size:16px;padding:12px;border:1.5px solid var(--line);border-radius:9px;margin:6px 0 14px"></select>
   <label style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">Team</label>
@@ -326,7 +326,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 
 <dialog id="regDlg">
   <h3>Register walk-up</h3>
-  <p class="reg-sub">For a player who is not on the uploaded roster. They’ll be checked in and sent to the Jersey queue.</p>
+  <p class="reg-sub">For a player who is not on the uploaded roster. Theyâ€™ll be checked in and sent to the Jersey queue.</p>
   <div class="reg-grid">
     <div><label>First name *</label><input type="text" id="regFirst" autocomplete="off" autocapitalize="words"></div>
     <div><label>Last name *</label><input type="text" id="regLast" autocomplete="off" autocapitalize="words"></div>
@@ -334,7 +334,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
     <div><label>Height</label><input type="text" id="regHeight" placeholder="5'10" autocomplete="off"></div>
     <div><label>Position</label>
       <select id="regPos">
-        <option value="">—</option>
+        <option value="">â€”</option>
         <option>PG</option><option>SG</option><option>SF</option><option>PF</option><option>C</option>
         <option>G</option><option>W</option><option>F</option><option>Big</option>
       </select>
@@ -355,7 +355,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   <div class="reg-msg" id="regMsg"></div>
   <div class="dlg-actions">
     <button class="bigbtn ghost" type="button" id="regCancel">Cancel</button>
-    <button class="bigbtn" type="button" id="regSave">Check In ✓</button>
+    <button class="bigbtn" type="button" id="regSave">Check In âœ“</button>
   </div>
 </dialog>
 
@@ -377,9 +377,9 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 
 <script>
 /* =====================================================================
-   CONFIG — same Supabase project as index.html / admin.html. Set once
+   CONFIG â€” same Supabase project as index.html / admin.html. Set once
    per tablet (or once, then just bookmark the file / add to home screen).
-   DEFAULT_CAMP_CODE pre-fills the Camp field on a brand-new device —
+   DEFAULT_CAMP_CODE pre-fills the Camp field on a brand-new device â€”
    update it each season so new tablets aren't blank on first sign-in.
    It's just a starting point; the field on-screen can still be changed.
 ===================================================================== */
@@ -419,17 +419,17 @@ function heightToInches(h){
     return 0;
   }
   let s=String(h).trim();
-  if(!s || s==='—' || s==='-') return 0;
-  s=s.replace(/[\u2018\u2019\u201B\u2032\u2035`´]/g,"'")
+  if(!s || s==='â€”' || s==='-') return 0;
+  s=s.replace(/[\u2018\u2019\u201B\u2032\u2035`Â´]/g,"'")
      .replace(/[\u201C\u201D\u2033]/g,'"')
      .replace(/,/g,"'")
      .replace(/\s+/g,' ')
      .trim();
   let m=s.match(/^(\d+)\s*'\s*(\d{1,2})?\s*"?\s*$/);
   if(m) return (+m[1])*12 + (+(m[2]||0));
-  m=s.match(/^(\d+)\s*['′]\s*(\d{1,2})?\s*["″]?\s*$/);
+  m=s.match(/^(\d+)\s*['â€²]\s*(\d{1,2})?\s*["â€³]?\s*$/);
   if(m) return (+m[1])*12 + (+(m[2]||0));
-  m=s.match(/^(\d+)\s*[-–—]\s*(\d{1,2})$/);
+  m=s.match(/^(\d+)\s*[-â€“â€”]\s*(\d{1,2})$/);
   if(m && +m[1]>=3 && +m[1]<=8 && +m[2]<12) return (+m[1])*12 + (+m[2]);
   m=s.match(/^(\d+)\s+(\d{1,2})$/);
   if(m && +m[1]>=3 && +m[1]<=8 && +m[2]<12) return (+m[1])*12 + (+m[2]);
@@ -451,18 +451,18 @@ function heightToInches(h){
   if(m && +m[1]>=120 && +m[1]<=231) return Math.round(+m[1]/2.54);
   return 0;
 }
-function inchesToH(i){ if(!i) return '—'; const f=Math.floor(i/12), n=Math.round(i-f*12); return f+"'"+n; }
+function inchesToH(i){ if(!i) return 'â€”'; const f=Math.floor(i/12), n=Math.round(i-f*12); return f+"'"+n; }
 function normalizeHeightValue(h){
   if(h==null || h==='') return '';
   const inches=heightToInches(h);
   if(inches) return inchesToH(inches);
   const s=String(h).trim();
-  return (!s || s==='—' || s==='-') ? '' : s;
+  return (!s || s==='â€”' || s==='-') ? '' : s;
 }
 function formatHeight(h){
   if(h==null||h==='') return '';
   const s=String(h).trim();
-  if(!s||s==='—'||s==='-') return '';
+  if(!s||s==='â€”'||s==='-') return '';
   const inches=heightToInches(h);
   return inches?inchesToH(inches):s;
 }
@@ -486,7 +486,7 @@ function renderCampMeta(){
   const bits=[campRow.name];
   if(campRow.location) bits.push(campRow.location);
   if(campRow.camp_date) bits.push(formatCampDate(campRow.camp_date));
-  el.textContent=bits.join(' · ');
+  el.textContent=bits.join(' Â· ');
 }
 function showCampNotFoundState(detail){
   $('#livePill').textContent='Camp not found';
@@ -635,7 +635,7 @@ if(authSession && authSession.access_token) showApp();
 $('#gBtn').addEventListener('click', async ()=>{
   const email=$('#gEmail').value.trim(), pass=$('#gPass').value;
   if(!email||!pass){ $('#gMsg').textContent='Enter email and password.'; return; }
-  $('#gMsg').textContent='Signing in…'; $('#gMsg').style.color='var(--mut)';
+  $('#gMsg').textContent='Signing inâ€¦'; $('#gMsg').style.color='var(--mut)';
   try{
     const res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{
       method:'POST', headers:{'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'},
@@ -711,9 +711,9 @@ async function pollPlayers(){
     });
     if(!res.ok){
       if(res.status===401||res.status===403){
-        $('#livePill').textContent='Session expired — sign out and back in.';
+        $('#livePill').textContent='Session expired â€” sign out and back in.';
       }
-      else $('#livePill').textContent='Could not load — retrying…';
+      else $('#livePill').textContent='Could not load â€” retryingâ€¦';
       return;
     }
     players=dedupePlayersByName(await res.json()).map(p=>{
@@ -721,17 +721,17 @@ async function pollPlayers(){
       if(n) p.height=n;
       return p;
     });
-    $('#livePill').textContent='🟢 Live — '+players.length+' players · updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-    // Don't rebuild the list while a jersey/number field is focused — that kills the mobile keypad
+    $('#livePill').textContent='ðŸŸ¢ Live â€” '+players.length+' players Â· updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+    // Don't rebuild the list while a jersey/number field is focused â€” that kills the mobile keypad
     requestListRender();
-  }catch(e){ $('#livePill').textContent='⚪ Offline — retrying…'; }
+  }catch(e){ $('#livePill').textContent='âšª Offline â€” retryingâ€¦'; }
 }
 
-// Team rosters — generate on this tablet, sync to camp_live for parents/admin.
+// Team rosters â€” generate on this tablet, sync to camp_live for parents/admin.
 let teams=[];
 let teamsPosted=false;
 let pendingLocalTeams=false; // true after Generate until Sync succeeds
-let lastTeamsUpdatedAt=''; // camp_live.updated_at — used to pull remote changes across accounts
+let lastTeamsUpdatedAt=''; // camp_live.updated_at â€” used to pull remote changes across accounts
 let showWriteUp=false;
 let campLiveExtra={}; // preserve title/sched/etc when we push teams
 let groupCfg={ gA1:2027, gA2:2030, gB1:2031, gB2:2035, numA:3, numB:3 };
@@ -742,7 +742,7 @@ function teamsForCount(n){
 }
 function renderHeightSummary(teamList){
   if(!teamList || !teamList.length) return '';
-  const buckets=[[76,82,"6'4–6'10"],[72,75,"6'0–6'3"],[67,71,"5'7–5'11"],[61,66,"5'1–5'6"],[48,60,"4'0–5'0"]];
+  const buckets=[[76,82,"6'4â€“6'10"],[72,75,"6'0â€“6'3"],[67,71,"5'7â€“5'11"],[61,66,"5'1â€“5'6"],[48,60,"4'0â€“5'0"]];
   const rows=teamList.map(t=>{
     const hts=(t.players||[]).map(p=>heightToInches(p.ht)).filter(Boolean);
     const avg=hts.length?hts.reduce((a,b)=>a+b,0)/hts.length:0;
@@ -793,7 +793,7 @@ function toPublicTeams(built){
       .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0))
       .map(p=>({
         j:String(p.jersey), n:p.first+' '+p.last, yr:String(p.grad_year||''),
-        pos:p.position||'', ht:formatHeight(p.height)==='—'?'':formatHeight(p.height),
+        pos:p.position||'', ht:formatHeight(p.height)==='â€”'?'':formatHeight(p.height),
         sc:p.school||'', ph:p.photo_url||''
       }))
   }));
@@ -886,8 +886,8 @@ function generateStationTeams(){
   teams=toPublicTeams([...teamsA, ...teamsB]);
   teamsPosted=false;
   pendingLocalTeams=true;
-  if(skipped>0) toast(skipped+' player(s) outside year ranges — adjust Group A/B years');
-  else toast(teams.length+' teams generated — syncing for all stations…');
+  if(skipped>0) toast(skipped+' player(s) outside year ranges â€” adjust Group A/B years');
+  else toast(teams.length+' teams generated â€” syncing for all stationsâ€¦');
   renderList();
   // Auto-sync so every signed-in tablet / account sees the same rosters
   syncStationTeams();
@@ -898,7 +898,7 @@ async function syncStationTeams(){
   if(!(authSession && authSession.access_token)){ toast('Sign in required to sync'); return; }
   readGroupInputs();
   const note=$('#stTeamsNote');
-  if(note){ note.className='teams-note'; note.textContent='Syncing…'; }
+  if(note){ note.className='teams-note'; note.textContent='Syncingâ€¦'; }
   const roster=[];
   teams.forEach(t=>t.players.forEach(p=>{
     roster.push({ n:p.n, j:String(p.j), team:t.name, yr:p.yr, pos:p.pos||'', ht:p.ht||'', sc:p.sc||'', ph:p.ph||'' });
@@ -918,11 +918,11 @@ async function syncStationTeams(){
     if(res.ok){
       teamsPosted=true; pendingLocalTeams=false;
       lastTeamsUpdatedAt=new Date().toISOString();
-      if(note){ note.className='teams-note ok'; note.innerHTML='<b>✓ Teams live</b> — parents & every station on this camp will see them within a few seconds.'; }
+      if(note){ note.className='teams-note ok'; note.innerHTML='<b>âœ“ Teams live</b> â€” parents & every station on this camp will see them within a few seconds.'; }
       toast('Teams synced to all stations');
       renderList();
     }else{
-      if(note){ note.className='teams-note err'; note.textContent='Sync failed ('+res.status+') — try again.'; }
+      if(note){ note.className='teams-note err'; note.textContent='Sync failed ('+res.status+') â€” try again.'; }
       toast('Sync failed');
     }
   }catch(e){
@@ -937,20 +937,20 @@ function renderGroupTally(){
   const outside=pool.filter(p=>!stationGroupOf(p.grad_year));
   const numA=teamsForCount(inA.length);
   const numB=teamsForCount(inB.length);
-  const per=(n,t)=>{ if(!t) return '—'; const base=Math.floor(n/t), extra=n%t; return extra? (base+'–'+(base+1)) : String(base); };
+  const per=(n,t)=>{ if(!t) return 'â€”'; const base=Math.floor(n/t), extra=n%t; return extra? (base+'â€“'+(base+1)) : String(base); };
   const card=(cls,label,y1,y2,list,tCount,names)=>`<div class="gt-card ${cls}">
-    <h4>${label}</h4><div class="rng">Grad years ${y1}–${y2} · ${names}</div>
+    <h4>${label}</h4><div class="rng">Grad years ${y1}â€“${y2} Â· ${names}</div>
     <div class="gt-nums">
       <span class="big">${list.length}<small>players w/ jersey</small></span>
-      <span class="arrow">→</span>
+      <span class="arrow">â†’</span>
       <span class="teams">${tCount}<small>teams</small></span>
     </div>
     <div class="gt-detail">${list.length? 'About <b>'+per(list.length,tCount)+'</b> players per team.' : 'No numbered players in this range yet.'}</div>
   </div>`;
   return `<div class="grp-tally">`
-    + card('','Group A', groupCfg.gA1, groupCfg.gA2, inA, numA, 'Teams 1–'+numA)
-    + card('b','Group B', groupCfg.gB1, groupCfg.gB2, inB, numB, 'Teams '+(numA+1)+'–'+(numA+numB))
-    + (outside.length? `<div class="gt-card" style="grid-column:1/-1;border-left-color:var(--red)"><h4>Outside both ranges</h4><div class="gt-detail"><b>${outside.length}</b> numbered player(s) outside ${groupCfg.gA1}–${groupCfg.gA2} and ${groupCfg.gB1}–${groupCfg.gB2}.</div></div>`:'')
+    + card('','Group A', groupCfg.gA1, groupCfg.gA2, inA, numA, 'Teams 1â€“'+numA)
+    + card('b','Group B', groupCfg.gB1, groupCfg.gB2, inB, numB, 'Teams '+(numA+1)+'â€“'+(numA+numB))
+    + (outside.length? `<div class="gt-card" style="grid-column:1/-1;border-left-color:var(--red)"><h4>Outside both ranges</h4><div class="gt-detail"><b>${outside.length}</b> numbered player(s) outside ${groupCfg.gA1}â€“${groupCfg.gA2} and ${groupCfg.gB1}â€“${groupCfg.gB2}.</div></div>`:'')
     + `</div>`;
 }
 function renderTeamsToolbar(){
@@ -958,14 +958,14 @@ function renderTeamsToolbar(){
   return `<div class="teams-toolbar">
     <div class="gen-row">
       <div><label>Group A years</label><div class="yr">
-        <input type="number" id="stGA1" min="2020" max="2045" value="${groupCfg.gA1}"> –
+        <input type="number" id="stGA1" min="2020" max="2045" value="${groupCfg.gA1}"> â€“
         <input type="number" id="stGA2" min="2020" max="2045" value="${groupCfg.gA2}">
       </div></div>
       <div><label>Group A teams (auto)</label>
         <input type="number" id="stNumA" value="${groupCfg.numA}" readonly style="background:#faf9f6">
       </div>
       <div><label>Group B years</label><div class="yr">
-        <input type="number" id="stGB1" min="2020" max="2045" value="${groupCfg.gB1}"> –
+        <input type="number" id="stGB1" min="2020" max="2045" value="${groupCfg.gB1}"> â€“
         <input type="number" id="stGB2" min="2020" max="2045" value="${groupCfg.gB2}">
       </div></div>
       <div><label>Group B teams (auto)</label>
@@ -973,17 +973,17 @@ function renderTeamsToolbar(){
       </div>
     </div>
     <div class="actions">
-      <button class="bigbtn" type="button" id="stBtnGen">🏀 Generate Balanced Teams</button>
-      <button class="bigbtn ghost" type="button" id="stBtnAddLate">＋ Add Late Player to a Team</button>
-      <button class="bigbtn ghost" type="button" id="stBtnSync">⬆ Sync Teams to Parent Page</button>
-      <button class="bigbtn" type="button" id="stBtnWriteUp">✍ Camp Write-Up${noted?' ('+noted+')':''}</button>
-      <button class="bigbtn ghost" type="button" id="stBtnClearTeams">🗑 Clear Teams</button>
+      <button class="bigbtn" type="button" id="stBtnGen">ðŸ€ Generate Balanced Teams</button>
+      <button class="bigbtn ghost" type="button" id="stBtnAddLate">ï¼‹ Add Late Player to a Team</button>
+      <button class="bigbtn ghost" type="button" id="stBtnSync">â¬† Sync Teams to Parent Page</button>
+      <button class="bigbtn" type="button" id="stBtnWriteUp">âœ Camp Write-Up${noted?' ('+noted+')':''}</button>
+      <button class="bigbtn ghost" type="button" id="stBtnClearTeams">ðŸ—‘ Clear Teams</button>
     </div>
     <div class="teams-note" id="stTeamsNote">${
-      pendingLocalTeams ? 'Local edits pending — syncing so every station stays in sync…'
-      : (teamsPosted && teams.length ? 'Teams are live across all signed-in stations. Tap 📝 for scout notes, ⇄ to move.'
+      pendingLocalTeams ? 'Local edits pending â€” syncing so every station stays in syncâ€¦'
+      : (teamsPosted && teams.length ? 'Teams are live across all signed-in stations. Tap ðŸ“ for scout notes, â‡„ to move.'
       : (teams.length ? 'Teams loaded from live sync. Generate again only if you need a fresh balance.'
-      : 'Generate when jersey assignment is far enough along — it auto-syncs to other stations.'))
+      : 'Generate when jersey assignment is far enough along â€” it auto-syncs to other stations.'))
     }</div>
   </div>`;
 }
@@ -991,7 +991,7 @@ async function clearStationTeams(){
   if(!confirm('Clear assigned teams for this camp?\n\nRemoves team cards here and on the parent page. Player check-ins/jerseys are left alone.')) return;
   teams=[]; teamsPosted=false; pendingLocalTeams=false;
   const note=$('#stTeamsNote');
-  if(note){ note.className='teams-note'; note.textContent='Clearing…'; }
+  if(note){ note.className='teams-note'; note.textContent='Clearingâ€¦'; }
   if(authSession && authSession.access_token && campId){
     const payload=Object.assign({}, campLiveExtra, {
       teams:[], roster:[], teamsPosted:false,
@@ -1003,7 +1003,7 @@ async function clearStationTeams(){
         headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
         body:JSON.stringify([{ camp_id:campId, code:campSlug, data:payload, updated_at:new Date().toISOString() }])
       });
-      if(!res.ok){ toast('Could not clear parent page — try again'); }
+      if(!res.ok){ toast('Could not clear parent page â€” try again'); }
       else { lastTeamsUpdatedAt=new Date().toISOString(); toast('Teams cleared'); }
     }catch(e){ toast('Could not clear parent page'); }
   } else {
@@ -1027,7 +1027,7 @@ function openStationMove(fromIdx, jersey, name){
   mvFromIdx=fromIdx; mvPlayer=p;
   const bucket=stationTeamBucket(from);
   const options=teams.map((t,i)=>({t,i})).filter(({t})=>stationTeamBucket(t)===bucket);
-  $('#mvWho').textContent=`#${p.j} ${p.n} — ${p.pos||'—'}, ${formatHeight(p.ht)||'—'}`;
+  $('#mvWho').textContent=`#${p.j} ${p.n} â€” ${p.pos||'â€”'}, ${formatHeight(p.ht)||'â€”'}`;
   $('#mvSel').innerHTML=options.map(({t,i})=>
     `<option value="${i}" ${i===fromIdx?'selected':''}>${esc(t.name)} (${t.players.length})</option>`
   ).join('');
@@ -1047,7 +1047,7 @@ $('#mvOk').addEventListener('click', async ()=>{
   mvPlayer=null; mvFromIdx=null;
   $('#mvDlg').close();
   renderList();
-  toast('Moved — syncing…');
+  toast('Moved â€” syncingâ€¦');
   await syncStationTeams();
 });
 
@@ -1073,13 +1073,13 @@ function openAddToTeamDialog(){
   const free=unassignedJerseyPlayers();
   const msg=$('#addDlgMsg'); if(msg) msg.textContent='';
   if(!free.length){
-    toast('No unassigned players with jerseys — register a walk-up and assign a number first');
+    toast('No unassigned players with jerseys â€” register a walk-up and assign a number first');
     return;
   }
   $('#addPlayerSel').innerHTML=free.map(p=>{
     const label='#'+p.jersey+' '+p.first+' '+p.last
-      +(p.grad_year?' · '+p.grad_year:'')
-      +(isWalkUp(p)?' · Walk-up':'');
+      +(p.grad_year?' Â· '+p.grad_year:'')
+      +(isWalkUp(p)?' Â· Walk-up':'');
     return `<option value="${esc(p.id)}">${esc(label)}</option>`;
   }).join('');
   const fillTeams=()=>{
@@ -1112,7 +1112,7 @@ async function confirmAddToTeam(){
   if(playersAlreadyOnTeams().has(key)){ if(msg) msg.textContent='That player is already on a team.'; return; }
   const entry={
     j:String(p.jersey), n:name.trim(), yr:String(p.grad_year||''),
-    pos:p.position||'', ht:formatHeight(p.height)==='—'?'':formatHeight(p.height),
+    pos:p.position||'', ht:formatHeight(p.height)==='â€”'?'':formatHeight(p.height),
     sc:p.school||'', ph:p.photo_url||''
   };
   to.players.push(entry);
@@ -1123,10 +1123,10 @@ async function confirmAddToTeam(){
   $('#addDlg').close();
   renderList();
   if(wasLive){
-    toast('Added to '+to.name+' — syncing…');
+    toast('Added to '+to.name+' â€” syncingâ€¦');
     await syncStationTeams();
   } else {
-    toast('Added to '+to.name+' — Sync Teams to update parents');
+    toast('Added to '+to.name+' â€” Sync Teams to update parents');
   }
 }
 $('#addCancel').addEventListener('click', ()=>$('#addDlg').close());
@@ -1238,7 +1238,7 @@ function toast(msg){
 }
 
 // Live poll rebuilds #plist every few seconds. On phones that tears down the
-// focused jersey input and dismisses the keypad — skip redraw while typing.
+// focused jersey input and dismisses the keypad â€” skip redraw while typing.
 let deferredListRender=false;
 function isEditingList(){
   const dlg=$('#editPlayerDlg');
@@ -1273,8 +1273,8 @@ async function patchPlayer(id, fields){
   if(!res.ok){
     let detail='';
     try{ const t=await res.text(); detail=t; }catch(e){}
-    if(/scout_notes/i.test(detail)) toast('⚠ Run migration 004 (scout_notes) in Supabase SQL Editor');
-    else toast('⚠ Save failed — check connection');
+    if(/scout_notes/i.test(detail)) toast('âš  Run migration 004 (scout_notes) in Supabase SQL Editor');
+    else toast('âš  Save failed â€” check connection');
     return false;
   }
   // optimistic local update so the UI feels instant; next poll reconciles
@@ -1286,8 +1286,8 @@ function isWalkUp(p){
   return /walk-?up/i.test(String(p.items||''));
 }
 function walkUpBarHtml(){
-  return `<div class="walkup-bar"><button type="button" class="bigbtn" id="btnWalkUp">＋ Register walk-up</button>
-    <p style="font-size:12px;color:var(--mut);margin:8px 0 0;line-height:1.4">Or send parents the public form: <code style="font-size:11px">walkup.html?camp=${esc(campSlug||campCode)}</code> — they land here on Check-In.</p>
+  return `<div class="walkup-bar"><button type="button" class="bigbtn" id="btnWalkUp">ï¼‹ Register walk-up</button>
+    <p style="font-size:12px;color:var(--mut);margin:8px 0 0;line-height:1.4">Or send parents the public form: <code style="font-size:11px">walkup.html?camp=${esc(campSlug||campCode)}</code> â€” they land here on Check-In.</p>
   </div>`;
 }
 function bindWalkUpBar(){
@@ -1309,7 +1309,7 @@ function closeWalkUpDialog(){
   if(dlg.close) dlg.close(); else dlg.removeAttribute('open');
 }
 async function saveWalkUp(){
-  if(!campId || !campSlug){ $('#regMsg').textContent='Camp not resolved — check the Camp field.'; return; }
+  if(!campId || !campSlug){ $('#regMsg').textContent='Camp not resolved â€” check the Camp field.'; return; }
   const first=$('#regFirst').value.trim();
   const last=$('#regLast').value.trim();
   const year=$('#regYear').value.trim();
@@ -1318,7 +1318,7 @@ async function saveWalkUp(){
   const key=playerNameKey(first, last);
   const existing=players.find(p=>playerNameKey(p.first,p.last)===key);
   if(existing){
-    $('#regMsg').textContent='That name is already on the roster — search for them instead.';
+    $('#regMsg').textContent='That name is already on the roster â€” search for them instead.';
     return;
   }
   const balance=String($('#regBalance').value||'').trim();
@@ -1339,7 +1339,7 @@ async function saveWalkUp(){
     addons_manual:[], addons_removed:[], photo_url:''
   };
   const btn=$('#regSave');
-  btn.disabled=true; btn.textContent='Saving…';
+  btn.disabled=true; btn.textContent='Savingâ€¦';
   $('#regMsg').textContent='';
   try{
     const res=await fetch(SUPABASE_URL+'/rest/v1/players',{
@@ -1357,13 +1357,13 @@ async function saveWalkUp(){
     players.push(p);
     players=dedupePlayersByName(players);
     closeWalkUpDialog();
-    toast(first+' '+last+' checked in — assign a jersey next');
+    toast(first+' '+last+' checked in â€” assign a jersey next');
     // Stay on check-in so staff can register another, or switch to jersey if preferred
     renderList();
   }catch(e){
-    $('#regMsg').textContent='Could not reach Supabase — check connection.';
+    $('#regMsg').textContent='Could not reach Supabase â€” check connection.';
   }finally{
-    btn.disabled=false; btn.textContent='Check In ✓';
+    btn.disabled=false; btn.textContent='Check In âœ“';
   }
 }
 $('#regCancel').addEventListener('click', closeWalkUpDialog);
@@ -1391,7 +1391,7 @@ function bindWriteUpActions(){
     }catch(e){
       const ta=document.createElement('textarea');
       ta.value=text; document.body.appendChild(ta); ta.select();
-      try{ document.execCommand('copy'); toast('Write-up copied'); }catch(err){ toast('Copy failed — select the text manually'); }
+      try{ document.execCommand('copy'); toast('Write-up copied'); }catch(err){ toast('Copy failed â€” select the text manually'); }
       ta.remove();
     }
   });
@@ -1414,12 +1414,12 @@ function noteTraits(raw){
   return String(raw||'')
     .split(/\r?\n/)
     .flatMap(line=>line.split(/[;]+/))
-    .map(l=>l.replace(/^[•\-\*\u2022]\s*/,'').trim())
+    .map(l=>l.replace(/^[â€¢\-\*\u2022]\s*/,'').trim())
     .filter(Boolean);
 }
 function notesToBulletEditor(raw){
   const traits=noteTraits(raw);
-  return traits.length ? traits.map(t=>'• '+t).join('\n') : '• ';
+  return traits.length ? traits.map(t=>'â€¢ '+t).join('\n') : 'â€¢ ';
 }
 function bulletEditorToNotes(raw){
   return noteTraits(raw).join('\n');
@@ -1430,7 +1430,7 @@ function writeUpSentence(p){
   if(!traits.length) return '';
   const name=((p.first||'')+' '+(p.last||'')).trim();
   const ht=formatHeight(p.height);
-  const htDisp=ht && ht!=='—' ? ht : '';
+  const htDisp=ht && ht!=='â€”' ? ht : '';
   const yr=String(p.grad_year||'').trim();
   const pos=String(p.position||'').trim() || 'player';
   const city=String(p.city||'').trim();
@@ -1486,10 +1486,10 @@ function renderWriteUpCardsHtml(noted){
     const photo=String(p.photo_url||'').trim();
     const thumb=photo
       ? `<img class="wu-photo" src="${esc(photo)}" alt="">`
-      : `<div class="wu-photo ph">👤</div>`;
+      : `<div class="wu-photo ph">ðŸ‘¤</div>`;
     const nm=((p.first||'')+' '+(p.last||'')).trim();
     return `<div class="wu-card">${thumb}<div>
-      <div class="wu-name">${esc(nm)}${normJersey(p.jersey)?' · #'+esc(normJersey(p.jersey)):''}</div>
+      <div class="wu-name">${esc(nm)}${normJersey(p.jersey)?' Â· #'+esc(normJersey(p.jersey)):''}</div>
       <p class="wu-text">${esc(sentence)}</p>
     </div></div>`;
   }).join('');
@@ -1509,7 +1509,7 @@ function buildWriteUpPayload(){
       ph: String(p.photo_url||'').trim(),
       yr: String(p.grad_year||'').trim(),
       pos: String(p.position||'').trim(),
-      ht: formatHeight(p.height)==='—'?'':formatHeight(p.height),
+      ht: formatHeight(p.height)==='â€”'?'':formatHeight(p.height),
       city, state,
       school: String(p.school||'').trim(),
       text: sentence
@@ -1532,7 +1532,7 @@ async function syncWriteUpToParent(){
   const writeUp=buildWriteUpPayload();
   if(!writeUp){ toast('Add scout notes first'); return; }
   const btn=$('#stBtnSyncWriteUp');
-  if(btn){ btn.disabled=true; btn.textContent='Syncing…'; }
+  if(btn){ btn.disabled=true; btn.textContent='Syncingâ€¦'; }
   // Merge onto current live payload so teams/schedule aren't wiped
   let base=Object.assign({}, campLiveExtra);
   try{
@@ -1565,16 +1565,16 @@ async function syncWriteUpToParent(){
       delete campLiveExtra.teams; delete campLiveExtra.roster; delete campLiveExtra.teamsPosted; delete campLiveExtra.groups;
       // keep writeUp in campLiveExtra so team syncs preserve it
       toast('Post Camp Report live for parents');
-      if(btn){ btn.disabled=false; btn.textContent='✓ Synced to Parent Page'; }
+      if(btn){ btn.disabled=false; btn.textContent='âœ“ Synced to Parent Page'; }
       const note=$('#wuSyncNote');
-      if(note){ note.className='teams-note ok'; note.innerHTML='<b>✓ Live on parent page</b> — tap <b>Post Camp Report</b> on the home screen.'; }
+      if(note){ note.className='teams-note ok'; note.innerHTML='<b>âœ“ Live on parent page</b> â€” tap <b>Post Camp Report</b> on the home screen.'; }
     }else{
       toast('Sync failed ('+res.status+')');
-      if(btn){ btn.disabled=false; btn.textContent='⬆ Sync to Parent Page'; }
+      if(btn){ btn.disabled=false; btn.textContent='â¬† Sync to Parent Page'; }
     }
   }catch(e){
     toast('Could not reach Supabase');
-    if(btn){ btn.disabled=false; btn.textContent='⬆ Sync to Parent Page'; }
+    if(btn){ btn.disabled=false; btn.textContent='â¬† Sync to Parent Page'; }
   }
 }
 function renderWriteUpPanel(){
@@ -1582,7 +1582,7 @@ function renderWriteUpPanel(){
   const noted=notedWriteUpPlayers();
   const body=buildCampWriteUp();
   const {name, loc, date}=campWriteUpHeader();
-  const meta=[loc, date].filter(Boolean).join(' · ');
+  const meta=[loc, date].filter(Boolean).join(' Â· ');
   const cards=noted.length ? renderWriteUpCardsHtml(noted) : '';
   const live=!!(campLiveExtra && campLiveExtra.writeUp && campLiveExtra.writeUp.posted);
   return `<div class="writeup-box" id="writeUpBox">
@@ -1592,25 +1592,25 @@ function renderWriteUpPanel(){
     <p class="wu-sub">Headshots + bios from scout notes (city &amp; state included). Sync when ready so parents see <b>Post Camp Report</b> on the home page.</p>
     ${cards
       ? `<div class="wu-list">${cards}</div><div class="wu-plain" id="wuPlainText">${esc(body)}</div>`
-      : `<div class="wu-body">No scout notes yet — tap 📝 on a player and add bullet points (Enter for a new line).</div>`}
+      : `<div class="wu-body">No scout notes yet â€” tap ðŸ“ on a player and add bullet points (Enter for a new line).</div>`}
     <div class="wu-actions">
-      <button class="bigbtn" type="button" id="stBtnSyncWriteUp" ${body?'':'disabled'}>⬆ Sync to Parent Page</button>
+      <button class="bigbtn" type="button" id="stBtnSyncWriteUp" ${body?'':'disabled'}>â¬† Sync to Parent Page</button>
       <button class="bigbtn ghost" type="button" id="stBtnCopyWriteUp" ${body?'':'disabled'}>Copy write-up</button>
       <button class="bigbtn ghost" type="button" id="stBtnHideWriteUp">Hide</button>
     </div>
     <div class="teams-note${live?' ok':''}" id="wuSyncNote" style="margin-top:10px">${
-      live ? '<b>✓ Already posted</b> — sync again after editing notes to refresh the parent page.'
-      : (body ? 'Ready to post — tap Sync to Parent Page.' : '')
+      live ? '<b>âœ“ Already posted</b> â€” sync again after editing notes to refresh the parent page.'
+      : (body ? 'Ready to post â€” tap Sync to Parent Page.' : '')
     }</div>
   </div>`;
 }
 let noteTargetId=null;
 function openScoutNote(j, n){
   const p=findPlayerForTeamSlot(j, n);
-  if(!p){ toast('Player not found in roster — check jersey/name'); return; }
+  if(!p){ toast('Player not found in roster â€” check jersey/name'); return; }
   noteTargetId=p.id;
   $('#noteWho').textContent='#'+normJersey(p.jersey)+' '+p.first+' '+p.last
-    +(p.position?' · '+p.position:'')+(p.grad_year?' · '+p.grad_year:'');
+    +(p.position?' Â· '+p.position:'')+(p.grad_year?' Â· '+p.grad_year:'');
   const ta=$('#noteText');
   ta.value=notesToBulletEditor(p.scout_notes);
   const dlg=$('#noteDlg');
@@ -1632,7 +1632,7 @@ async function saveScoutNote(clear){
 }
 $('#noteCancel').addEventListener('click', ()=>{ noteTargetId=null; $('#noteDlg').close(); });
 $('#noteClear').addEventListener('click', ()=>{
-  $('#noteText').value='• ';
+  $('#noteText').value='â€¢ ';
   $('#noteText').focus();
 });
 $('#noteSave').addEventListener('click', ()=>saveScoutNote(false));
@@ -1642,14 +1642,14 @@ $('#noteText').addEventListener('keydown', e=>{
   const ta=e.target;
   const start=ta.selectionStart, end=ta.selectionEnd;
   const v=ta.value;
-  const insert='\n• ';
+  const insert='\nâ€¢ ';
   ta.value=v.slice(0, start)+insert+v.slice(end);
   const pos=start+insert.length;
   ta.setSelectionRange(pos, pos);
 });
 $('#noteText').addEventListener('input', ()=>{
   const ta=$('#noteText');
-  if(!ta.value.trim()){ ta.value='• '; ta.setSelectionRange(2,2); }
+  if(!ta.value.trim()){ ta.value='â€¢ '; ta.setSelectionRange(2,2); }
 });
 
 function findLivePlayerByJerseyName(j, n){
@@ -1676,7 +1676,7 @@ function resolveTopPerformerPlayer(ref){
       team: teamName,
       yr: String(live.grad_year||(teamPlayer&&teamPlayer.yr)||''),
       pos: live.position||(teamPlayer&&teamPlayer.pos)||'',
-      ht: formatHeight(live.height)==='—' ? (teamPlayer&&teamPlayer.ht)||'' : formatHeight(live.height),
+      ht: formatHeight(live.height)==='â€”' ? (teamPlayer&&teamPlayer.ht)||'' : formatHeight(live.height),
       sc: live.school||(teamPlayer&&teamPlayer.sc)||'',
       ph: live.photo_url||(teamPlayer&&teamPlayer.ph)||''
     };
@@ -1700,22 +1700,22 @@ function openTopPerformerCard(ref){
   const p=resolveTopPerformerPlayer(ref||{});
   const root=$('#modalRoot');
   if(!root) return;
-  const photo=p.ph ? `<img src="${esc(p.ph)}" alt="" crossorigin="anonymous">` : '👤';
+  const photo=p.ph ? `<img src="${esc(p.ph)}" alt="" crossorigin="anonymous">` : 'ðŸ‘¤';
   root.innerHTML=`<div class="scrim" id="pmScrim"></div>
     <div class="pmodal" id="tpCard" role="dialog" aria-label="Top Performer card">
       <div class="photo">${photo}
-        <button class="close" type="button" id="pmClose" aria-label="Close">✕</button>
+        <button class="close" type="button" id="pmClose" aria-label="Close">âœ•</button>
         ${p.j?`<div class="jbadge">#${esc(p.j)}</div>`:''}
-        <div class="tpbadge">★ Top Performer</div>
+        <div class="tpbadge">â˜… Top Performer</div>
       </div>
       <div class="info">
         <h3>${esc(p.n)}</h3>
         <div class="team">${esc(p.team||'')}</div>
         <div class="grid">
-          <div><label>Grad Year</label>${esc(p.yr)||'—'}</div>
-          <div><label>Position</label>${esc(p.pos)||'—'}</div>
-          <div><label>Height</label>${esc(formatHeight(p.ht))||'—'}</div>
-          <div><label>School</label>${esc(p.sc)||'—'}</div>
+          <div><label>Grad Year</label>${esc(p.yr)||'â€”'}</div>
+          <div><label>Position</label>${esc(p.pos)||'â€”'}</div>
+          <div><label>Height</label>${esc(formatHeight(p.ht))||'â€”'}</div>
+          <div><label>School</label>${esc(p.sc)||'â€”'}</div>
         </div>
       </div>
       <div class="share-row">
@@ -1729,15 +1729,24 @@ function openTopPerformerCard(ref){
   $('#tpShare').addEventListener('click', ()=>exportTopPerformerCard(p, true));
 }
 function loadImage(src){
-  return new Promise((resolve)=>{
+  return new Promise(async (resolve)=>{
     if(!src){ resolve(null); return; }
+    try{
+      const res=await fetch(src, {mode:'cors', cache:'reload'});
+      if(!res.ok) throw new Error('bad status');
+      const blob=await res.blob();
+      const url=URL.createObjectURL(blob);
+      const img=new Image();
+      img.onload=()=>{ resolve(img); setTimeout(()=>URL.revokeObjectURL(url), 30000); };
+      img.onerror=()=>{ URL.revokeObjectURL(url); resolve(null); };
+      img.src=url;
+      return;
+    }catch(e){}
     const img=new Image();
     img.crossOrigin='anonymous';
     img.onload=()=>resolve(img);
     img.onerror=()=>resolve(null);
-    // cache-bust so CORS + canvas aren't stuck on a tainted cached copy
-    const join=src.includes('?')?'&':'?';
-    img.src=src+(src.includes('t=')?'':join+'t='+Date.now());
+    img.src=src;
   });
 }
 function roundRect(ctx, x, y, w, h, r){
@@ -1753,25 +1762,29 @@ function roundRect(ctx, x, y, w, h, r){
 function drawStar(ctx, cx, cy, r){
   ctx.beginPath();
   for(let i=0;i<5;i++){
-    const a=-Math.PI/2+i*Math.PI*2/5;
+    const a=-Math.PI/2+i*(Math.PI*2/5);
     const b=a+Math.PI/5;
     const x1=cx+Math.cos(a)*r, y1=cy+Math.sin(a)*r;
-    const x2=cx+Math.cos(b)*r*0.45, y2=cy+Math.sin(b)*r*0.45;
+    const x2=cx+Math.cos(b)*r*0.42, y2=cy+Math.sin(b)*r*0.42;
     if(i===0) ctx.moveTo(x1,y1); else ctx.lineTo(x1,y1);
     ctx.lineTo(x2,y2);
   }
   ctx.closePath();
   ctx.fill();
 }
-/** Build a PNG that matches the on-screen Top Performer card layout. */
 async function buildTopPerformerCanvas(p){
+  if(document.fonts && document.fonts.ready){
+    try{ await document.fonts.ready; }catch(e){}
+  }
   const W=760;
   const photoH=520;
   const pad=44;
-  const badgeH=64;
-  const infoTop=photoH+badgeH/2+8;
-  const gridTop=infoTop+120;
-  const cellH=108;
+  const badgeH=68;
+  const badgeOver=badgeH/2;
+  const nameY=photoH+badgeOver+56;
+  const teamY=nameY+42;
+  const gridTop=teamY+36;
+  const cellH=110;
   const gap=16;
   const cellW=(W-pad*2-gap)/2;
   const H=gridTop+cellH*2+gap+pad;
@@ -1779,158 +1792,112 @@ async function buildTopPerformerCanvas(p){
   canvas.width=W; canvas.height=H;
   const ctx=canvas.getContext('2d');
 
-  // Full white card
   ctx.fillStyle='#ffffff';
-  roundRect(ctx, 0, 0, W, H, 32);
-  ctx.fill();
-  ctx.save();
-  roundRect(ctx, 0, 0, W, H, 32);
-  ctx.clip();
+  ctx.fillRect(0, 0, W, H);
 
-  // Photo band (clipped so it never covers name/stats)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, photoH);
+  ctx.clip();
   ctx.fillStyle='#1e2733';
   ctx.fillRect(0, 0, W, photoH);
   const img=await loadImage(p.ph);
-  if(img){
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, W, photoH);
-    ctx.clip();
+  if(img && img.width){
     const scale=Math.max(W/img.width, photoH/img.height);
     const dw=img.width*scale, dh=img.height*scale;
-    const dx=(W-dw)/2;
-    // Bias toward upper body like CSS object-position: center 25%
-    const dy=(photoH-dh)*0.25;
+    const dx=(W-dw)/2, dy=(photoH-dh)*0.22;
     ctx.drawImage(img, dx, dy, dw, dh);
-    ctx.restore();
   } else {
-    ctx.fillStyle='#8b96a4';
-    ctx.font='120px sans-serif';
+    ctx.fillStyle='#9aa4b1';
+    ctx.font='bold 96px sans-serif';
     ctx.textAlign='center';
     ctx.textBaseline='middle';
-    ctx.fillText('👤', W/2, photoH/2);
+    ctx.fillText('ðŸ‘¤', W/2, photoH/2);
   }
+  ctx.restore();
 
-  // White info panel (covers any photo spill past photoH)
   ctx.fillStyle='#ffffff';
   ctx.fillRect(0, photoH, W, H-photoH);
 
-  // Jersey badge — straddles photo / info like the modal
-  const badgeY=photoH-badgeH/2;
+  const badgeY=photoH-badgeOver;
   if(p.j){
     ctx.fillStyle='#e8590c';
-    roundRect(ctx, 40, badgeY, 148, badgeH, 14);
+    roundRect(ctx, 40, badgeY, 150, badgeH, 14);
     ctx.fill();
     ctx.fillStyle='#ffffff';
-    ctx.font='700 40px "Barlow Condensed", Impact, sans-serif';
+    ctx.font='bold 42px "Barlow Condensed", Arial Narrow, sans-serif';
     ctx.textAlign='left';
     ctx.textBaseline='middle';
     ctx.fillText('#'+String(p.j), 58, badgeY+badgeH/2+1);
   }
-
-  // Top Performer badge
-  const tpW=250, tpX=W-40-tpW;
+  const tpW=268, tpX=W-40-tpW;
   ctx.fillStyle='#f5c842';
   roundRect(ctx, tpX, badgeY, tpW, badgeH, 14);
   ctx.fill();
-  ctx.strokeStyle='#e8c56a';
+  ctx.strokeStyle='#e0b83a';
   ctx.lineWidth=2;
   roundRect(ctx, tpX, badgeY, tpW, badgeH, 14);
   ctx.stroke();
   ctx.fillStyle='#141a22';
-  drawStar(ctx, tpX+28, badgeY+badgeH/2, 12);
-  ctx.font='700 24px "Barlow Condensed", Impact, sans-serif';
+  drawStar(ctx, tpX+30, badgeY+badgeH/2, 13);
+  ctx.font='bold 26px "Barlow Condensed", Arial Narrow, sans-serif';
   ctx.textAlign='left';
   ctx.textBaseline='middle';
-  ctx.fillText('TOP PERFORMER', tpX+48, badgeY+badgeH/2+1);
+  ctx.fillText('TOP PERFORMER', tpX+52, badgeY+badgeH/2+1);
 
-  // Name + team in white section (same hierarchy as modal)
   ctx.textAlign='left';
   ctx.textBaseline='alphabetic';
   ctx.fillStyle='#141a22';
-  ctx.font='700 52px "Barlow Condensed", Impact, sans-serif';
+  ctx.font='bold 52px "Barlow Condensed", Arial Narrow, sans-serif';
   const name=String(p.n||'').toUpperCase();
-  ctx.fillText(name.length>24?name.slice(0,23)+'…':name, pad, infoTop+48);
+  ctx.fillText(name.length>24?name.slice(0,23)+'â€¦':name, pad, nameY);
   ctx.fillStyle='#e8590c';
-  ctx.font='700 32px "Barlow Condensed", Impact, sans-serif';
-  ctx.fillText(String(p.team||'').toUpperCase(), pad, infoTop+90);
+  ctx.font='bold 32px "Barlow Condensed", Arial Narrow, sans-serif';
+  ctx.fillText(String(p.team||'').toUpperCase(), pad, teamY);
 
-  // Stats grid
   const cells=[
-    ['GRAD YEAR', p.yr||'—'],
-    ['POSITION', p.pos||'—'],
-    ['HEIGHT', formatHeight(p.ht)||'—'],
-    ['SCHOOL', p.sc||'—']
+    ['GRAD YEAR', p.yr||'â€”'],
+    ['POSITION', p.pos||'â€”'],
+    ['HEIGHT', formatHeight(p.ht)||'â€”'],
+    ['SCHOOL', p.sc||'â€”']
   ];
   cells.forEach((c,i)=>{
     const col=i%2, row=Math.floor(i/2);
-    const x=pad+col*(cellW+gap), y=gridTop+row*(cellH+gap);
+    const x=pad+col*(cellW+gap);
+    const y=gridTop+row*(cellH+gap);
     ctx.fillStyle='#f6f5f2';
     roundRect(ctx, x, y, cellW, cellH, 12);
     ctx.fill();
     ctx.fillStyle='#6b7280';
-    ctx.font='600 18px Barlow, system-ui, sans-serif';
+    ctx.font='600 17px Barlow, Arial, sans-serif';
     ctx.textAlign='left';
     ctx.textBaseline='alphabetic';
-    ctx.fillText(c[0], x+18, y+36);
+    ctx.fillText(c[0], x+18, y+34);
     ctx.fillStyle='#141a22';
-    ctx.font='600 28px Barlow, system-ui, sans-serif';
+    ctx.font='600 28px Barlow, Arial, sans-serif';
     const val=String(c[1]);
-    ctx.fillText(val.length>18?val.slice(0,17)+'…':val, x+18, y+74);
+    ctx.fillText(val.length>18?val.slice(0,17)+'â€¦':val, x+18, y+76);
   });
 
-  ctx.restore();
   return canvas;
-}
-async function captureTopPerformerDom(){
-  const card=$('#tpCard');
-  if(!card || !window.html2canvas) return null;
-  const hide=[card.querySelector('.share-row'), card.querySelector('.close')].filter(Boolean);
-  hide.forEach(el=>{ el.dataset._disp=el.style.display; el.style.display='none'; });
-  try{
-    return await window.html2canvas(card, {
-      useCORS:true,
-      allowTaint:false,
-      backgroundColor:'#ffffff',
-      scale:Math.min(3, window.devicePixelRatio||2),
-      logging:false
-    });
-  }catch(e){
-    return null;
-  }finally{
-    hide.forEach(el=>{ el.style.display=el.dataset._disp||''; delete el.dataset._disp; });
-  }
-}
-function ensureHtml2Canvas(){
-  return new Promise((resolve)=>{
-    if(window.html2canvas){ resolve(true); return; }
-    const s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-    s.onload=()=>resolve(!!window.html2canvas);
-    s.onerror=()=>resolve(false);
-    document.head.appendChild(s);
-  });
 }
 async function exportTopPerformerCard(p, share){
   const btn=$('#tpDownload'), btn2=$('#tpShare');
-  if(btn) btn.disabled=true;
+  if(btn){ btn.disabled=true; btn.textContent='â€¦'; }
   if(btn2) btn2.disabled=true;
   try{
-    let canvas=null;
-    // Prefer a screenshot of the real card so Download matches what you see
-    if(await ensureHtml2Canvas()){
-      canvas=await captureTopPerformerDom();
-    }
-    if(!canvas) canvas=await buildTopPerformerCanvas(p);
-    const blob=await new Promise(res=>canvas.toBlob(res, 'image/png'));
-    if(!blob){ toast('Could not build image — screenshot the card instead'); return; }
+    const canvas=await buildTopPerformerCanvas(p);
+    const blob=await new Promise((res,rej)=>{
+      try{ canvas.toBlob(b=>b?res(b):rej(new Error('empty')), 'image/png'); }
+      catch(err){ rej(err); }
+    });
     const fileName=(String(p.n||'player').replace(/[^\w\-]+/g,'_')||'player')+'_top_performer.png';
     if(share && navigator.share && navigator.canShare){
       const file=new File([blob], fileName, {type:'image/png'});
       if(navigator.canShare({files:[file]})){
         await navigator.share({
           files:[file],
-          title: (p.n||'Player')+' — Top Performer',
+          title: (p.n||'Player')+' â€” Top Performer',
           text: (p.n||'Player')+' is a Top Performer'+(p.team?' on '+p.team:'')+'!'
         });
         return;
@@ -1941,11 +1908,12 @@ async function exportTopPerformerCard(p, share){
     a.href=url; a.download=fileName;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 2000);
-    toast(share?'Downloaded — attach it in your post':'Downloaded Top Performer card');
+    toast(share?'Downloaded â€” attach it in your post':'Downloaded Top Performer card');
   }catch(e){
-    toast('Share failed — screenshot the card instead');
+    console.warn(e);
+    toast('Could not export â€” try a screenshot of the card');
   }finally{
-    if(btn) btn.disabled=false;
+    if(btn){ btn.disabled=false; btn.textContent='Download'; }
     if(btn2) btn2.disabled=false;
   }
 }
@@ -1954,11 +1922,11 @@ function renderList(){
   const wrap=$('#plist');
 
   if(role==='teams'){
-    // Hide search on teams — generation + roster cards
+    // Hide search on teams â€” generation + roster cards
     const search=$('.searchbar'); if(search) search.style.display='none';
     let html=renderTeamsToolbar()+renderGroupTally()+renderWriteUpPanel();
     if(!teams.length){
-      html+='<div class="empty"><b>No teams yet</b>Assign jerseys, then tap Generate Balanced Teams — it syncs to every station on this camp.</div>';
+      html+='<div class="empty"><b>No teams yet</b>Assign jerseys, then tap Generate Balanced Teams â€” it syncs to every station on this camp.</div>';
       wrap.innerHTML=html; bindTeamsToolbar(); bindWriteUpActions(); return;
     }
     const q=query;
@@ -1976,13 +1944,13 @@ function renderList(){
           return `<li>
           <span class="jnum">#${esc(p.j)}</span>
           <span class="pmid">
-            <span class="pname"><b>${esc(p.n)}</b><span class="pschool">${esc(p.sc||'')}${hasNote?' · <span style="color:var(--orange)">noted</span>':''}</span></span>
-            <span class="pmeta">${esc(formatHeight(p.ht))||'—'} · ${esc(p.pos||'—')} · ${esc(p.yr||'')}</span>
+            <span class="pname"><b>${esc(p.n)}</b><span class="pschool">${esc(p.sc||'')}${hasNote?' Â· <span style="color:var(--orange)">noted</span>':''}</span></span>
+            <span class="pmeta">${esc(formatHeight(p.ht))||'â€”'} Â· ${esc(p.pos||'â€”')} Â· ${esc(p.yr||'')}</span>
           </span>
           <span class="li-actions">
-            <button class="tp-btn" type="button" data-tp-j="${esc(p.j)}" data-tp-n="${esc(p.n)}" data-tp-team="${esc(t.name)}" title="Top Performer card" aria-label="Top Performer ${esc(p.n)}">★</button>
-            <button class="note-btn${hasNote?' has-note':''}" type="button" data-note-j="${esc(p.j)}" data-note-n="${esc(p.n)}" title="Scout note" aria-label="Note ${esc(p.n)}">📝</button>
-            <button class="mv" type="button" data-from="${ti}" data-j="${esc(p.j)}" data-n="${esc(p.n)}" title="Move to another team" aria-label="Move ${esc(p.n)}">⇄</button>
+            <button class="tp-btn" type="button" data-tp-j="${esc(p.j)}" data-tp-n="${esc(p.n)}" data-tp-team="${esc(t.name)}" title="Top Performer card" aria-label="Top Performer ${esc(p.n)}">â˜…</button>
+            <button class="note-btn${hasNote?' has-note':''}" type="button" data-note-j="${esc(p.j)}" data-note-n="${esc(p.n)}" title="Scout note" aria-label="Note ${esc(p.n)}">ðŸ“</button>
+            <button class="mv" type="button" data-from="${ti}" data-j="${esc(p.j)}" data-n="${esc(p.n)}" title="Move to another team" aria-label="Move ${esc(p.n)}">â‡„</button>
           </span>
         </li>`;
         }).join('')}</ul>
@@ -2021,7 +1989,7 @@ function renderList(){
       });
   }
   else if(role==='playerdata'){
-    // Jersey assigned → Player Data (photo optional)
+    // Jersey assigned â†’ Player Data (photo optional)
     rows=players.filter(p=>normJersey(p.jersey) && matches(p))
       .sort((a,b)=>(+normJersey(a.jersey)||0)-(+normJersey(b.jersey)||0));
   }
@@ -2038,17 +2006,17 @@ function renderList(){
       body=rows.map(p=>{
         const htShow=formatHeight(p.height)||p.height||'';
         return `<div class="prow${needsHeight(p)?' need-ht-row':''}">
-        <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+        <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} Â· ${esc(p.position)||'â€”'} Â· ${esc(p.school)}${isWalkUp(p)?' Â· Walk-up':''}</small></div>
         ${playerStatusBadges(p)}
         <div class="ht-wrap"><label>Height</label>
-          <input class="htinput${needsHeight(p)?' need':''}" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="5'10" data-ht="${p.id}" value="${esc(htShow==='—'?'':htShow)}">
+          <input class="htinput${needsHeight(p)?' need':''}" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="5'10" data-ht="${p.id}" value="${esc(htShow==='â€”'?'':htShow)}">
         </div>
-        <button class="bigbtn" data-checkin="${p.id}">Check In ✓</button>
+        <button class="bigbtn" data-checkin="${p.id}">Check In âœ“</button>
       </div>`;
       }).join('');
     }
     const miss=players.filter(p=>!p.checked_in && needsHeight(p)).length;
-    const htBanner=miss?`<div style="font-size:13px;color:#92400e;background:#fffbeb;border:1px solid #f5d78e;border-radius:10px;padding:10px 12px;margin-bottom:10px"><span class="badge needht">Need Height</span> <b>${miss}</b> waiting — type height (e.g. 5'10), then Check In.</div>`:'';
+    const htBanner=miss?`<div style="font-size:13px;color:#92400e;background:#fffbeb;border:1px solid #f5d78e;border-radius:10px;padding:10px 12px;margin-bottom:10px"><span class="badge needht">Need Height</span> <b>${miss}</b> waiting â€” type height (e.g. 5'10), then Check In.</div>`:'';
     wrap.innerHTML=walkUpBarHtml()+htBanner+body;
     bindWalkUpBar();
     const readHt=(id)=>{
@@ -2078,14 +2046,14 @@ function renderList(){
     wrap.querySelectorAll('[data-checkin]').forEach(b=>b.addEventListener('click', async ()=>{
       const id=b.dataset.checkin;
       const height=readHt(id);
-      b.disabled=true; b.textContent='…';
+      b.disabled=true; b.textContent='â€¦';
       const fields={ checked_in:true };
       if(height) fields.height=height;
       if(await patchPlayer(id, fields)){
-        toast(height?'Checked in · '+height:'Checked in');
+        toast(height?'Checked in Â· '+height:'Checked in');
         renderList();
       } else {
-        b.disabled=false; b.textContent='Check In ✓';
+        b.disabled=false; b.textContent='Check In âœ“';
       }
     }));
     return;
@@ -2097,15 +2065,15 @@ function renderList(){
       checkin:'Everyone is checked in',
       jersey:'No one waiting on a jersey',
       addons:'No checked-in players yet',
-      photos:'No jersey holders yet — assign numbers on the Jersey tab first',
-      playerdata:'No players with jerseys yet — assign numbers on the Jersey tab'
+      photos:'No jersey holders yet â€” assign numbers on the Jersey tab first',
+      playerdata:'No players with jerseys yet â€” assign numbers on the Jersey tab'
     }[role];
     wrap.innerHTML='<div class="empty"><b>'+msg+'</b></div>'; return;
   }
 
   if(role==='jersey'){
     wrap.innerHTML=rows.map(p=>`<div class="prow${needsHeight(p)?' need-ht-row':''}">
-      <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${needsHeight(p)?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+      <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} Â· ${esc(p.position)||'â€”'} Â· ${needsHeight(p)?'Ht missing':(esc(formatHeight(p.height))||'â€”')} Â· ${esc(p.school)}${isWalkUp(p)?' Â· Walk-up':''}</small></div>
       ${needsHeight(p)?'<span class="badge needht">Need Height</span>':''}${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
       <input class="jinput" type="tel" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="##" data-jin="${p.id}">
       <button class="bigbtn" data-assign="${p.id}">Assign</button>
@@ -2113,7 +2081,7 @@ function renderList(){
     </div>`).join('');
     const assign=async (id)=>{
       const inp=wrap.querySelector(`[data-jin="${CSS.escape?CSS.escape(id):id}"]`) || wrap.querySelector(`[data-jin="${id}"]`);
-      if(!inp){ toast('Could not find jersey field — refresh and try again'); return; }
+      if(!inp){ toast('Could not find jersey field â€” refresh and try again'); return; }
       const j=normJersey(inp.value);
       if(!j){ inp.focus(); return; }
       const owner=jerseyOwner(j, id);
@@ -2121,7 +2089,7 @@ function renderList(){
         const self=players.find(x=>String(x.id)===String(id));
         const sameName=self && playerNameKey(self.first,self.last)===playerNameKey(owner.first,owner.last);
         if(sameName){
-          // Ghost duplicate row (same name, other id) still holding the number — free it
+          // Ghost duplicate row (same name, other id) still holding the number â€” free it
           await patchPlayer(owner.id, {jersey:''});
         } else {
           inp.classList.add('dupe');
@@ -2141,7 +2109,7 @@ function renderList(){
       const p=players.find(x=>String(x.id)===String(id));
       const name=p?(p.first+' '+p.last):'this player';
       if(!confirm('Send '+name+' back to Check-In?\n\nThey will leave the Jersey queue (as if not checked in yet).')) return;
-      b.disabled=true; b.textContent='…';
+      b.disabled=true; b.textContent='â€¦';
       if(await patchPlayer(id, {checked_in:false, jersey:''})){
         toast('Sent back to Check-In');
         renderList();
@@ -2153,7 +2121,7 @@ function renderList(){
     wrap.innerHTML=rows.map(p=>{
       const tags=displayAddOns(p);
       return `<div class="prow">
-        <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)||'—'} · ${esc(p.school)}</small></div>
+        <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)||'â€”'} Â· ${esc(p.school)}</small></div>
         <div>${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')||'<span style="color:var(--mut);font-size:13px">None</span>'}</div>
         <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
       </div>`;
@@ -2161,22 +2129,22 @@ function renderList(){
     wrap.querySelectorAll('[data-pop]').forEach(b=>b.addEventListener('click', ()=>openAddonPopover(b.dataset.pop)));
   } else if(role==='photos'){
     wrap.innerHTML=rows.map(p=>`<div class="prow photo-row">
-      ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)} · ${esc(p.school)}</small></div>
-      <button class="bigbtn" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
+      ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">ðŸ‘¤</div>'}
+      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>#${esc(p.jersey)} Â· ${esc(p.school)}</small></div>
+      <button class="bigbtn" data-photo="${p.id}">${p.photo_url?'Retake ðŸ“·':'Take Photo ðŸ“·'}</button>
     </div>`).join('');
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   } else if(role==='playerdata'){
     const miss=rows.filter(needsHeight).length;
-    const htBanner=miss?`<div style="font-size:13px;color:#92400e;background:#fffbeb;border:1px solid #f5d78e;border-radius:10px;padding:10px 12px;margin-bottom:10px"><span class="badge needht">Need Height</span> <b>${miss}</b> player${miss===1?'':'s'} missing height — tap <b>Edit Ht</b> before teams are generated.</div>`:'';
+    const htBanner=miss?`<div style="font-size:13px;color:#92400e;background:#fffbeb;border:1px solid #f5d78e;border-radius:10px;padding:10px 12px;margin-bottom:10px"><span class="badge needht">Need Height</span> <b>${miss}</b> player${miss===1?'':'s'} missing height â€” tap <b>Edit Ht</b> before teams are generated.</div>`:'';
     wrap.innerHTML=htBanner+rows.map(p=>{
       const tags=displayAddOns(p);
       const missHt=needsHeight(p);
       return `<div class="prow photo-row${missHt?' need-ht-row':''}">
-      ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
+      ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">ðŸ‘¤</div>'}
       <div class="who">
         <b class="${missHt?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>
-        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${missHt?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}${p.email?' · '+esc(p.email):''}</small>
+        <small>#${esc(p.jersey)} Â· ${esc(p.grad_year)} Â· ${esc(p.position)||'â€”'} Â· ${missHt?'Ht missing':(esc(formatHeight(p.height))||'â€”')} Â· ${esc(p.school)}${p.email?' Â· '+esc(p.email):''}</small>
         <div style="margin-top:4px">${tags.length?tags.map(a=>`<span class="tag">${esc(a)}</span>`).join(''):'<span style="color:var(--mut);font-size:12px">No add-ons</span>'}</div>
       </div>
       ${missHt?'<span class="badge needht">Need Height</span>':''}${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
@@ -2185,7 +2153,7 @@ function renderList(){
       <button class="bigbtn ghost" data-edith="${p.id}">Edit Ht</button>
       <button class="bigbtn ghost" data-editj="${p.id}">Edit #</button>
       <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
-      <button class="bigbtn ghost" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
+      <button class="bigbtn ghost" data-photo="${p.id}">${p.photo_url?'Retake ðŸ“·':'Take Photo ðŸ“·'}</button>
     </div>`;
     }).join('');
     wrap.querySelectorAll('[data-editi]').forEach(b=>b.addEventListener('click', ()=>openEditPlayerInfo(b.dataset.editi)));
@@ -2197,7 +2165,7 @@ function renderList(){
       if(v===null) return;
       const raw=String(v).trim();
       if(raw && !heightToInches(raw)){
-        if(!confirm('Couldn’t read that height. Save it anyway as typed?')) return;
+        if(!confirm('Couldnâ€™t read that height. Save it anyway as typed?')) return;
       }
       if(await patchPlayer(id, {height:raw})){ toast(raw?'Height saved':'Height cleared'); renderList(); }
     }));
@@ -2237,7 +2205,7 @@ async function editPlayerJersey(id){
   if(teamChanged){
     pendingLocalTeams=true;
     teamsPosted=false;
-    toast('#'+j+' saved — Sync Teams to update parent page');
+    toast('#'+j+' saved â€” Sync Teams to update parent page');
   } else {
     toast('#'+j+' saved');
   }
@@ -2303,7 +2271,7 @@ function openAddonPopover(id){
         const pre=prepurchased.has(a) && active.has(a);
         return `<label class="addon-opt"><input type="checkbox" data-a="${esc(a)}" ${active.has(a)?'checked':''}> ${esc(a)}${pre?' <small style="color:var(--mut)">(pre-purchased)</small>':''}</label>`;
       }).join('')
-    + `<div class="addon-custom"><input type="text" id="addonCustom" placeholder="Other…"><button class="bigbtn" id="addonCustomBtn">Add</button></div>`
+    + `<div class="addon-custom"><input type="text" id="addonCustom" placeholder="Otherâ€¦"><button class="bigbtn" id="addonCustomBtn">Add</button></div>`
     + `<button class="bigbtn ghost addon-close" id="addonClose">Done</button>`;
   document.body.appendChild(scrim); document.body.appendChild(pop);
   const close=()=>{ pop.remove(); scrim.remove(); };
@@ -2333,7 +2301,7 @@ function openAddonPopover(id){
   });
 }
 
-// PHOTOS — live rear camera (preferred) or gallery upload
+// PHOTOS â€” live rear camera (preferred) or gallery upload
 let camStream=null, camPlayerId=null, camBlob=null, camDeviceIds=[], camDeviceIdx=0;
 
 function stopCamera(){
@@ -2377,7 +2345,7 @@ async function pickRearDeviceId(){
   // Prefer anything that is NOT labeled as front/selfie
   const notFront=cams.find(c=>c.label && !isFrontLabel(c.label));
   if(notFront){ camDeviceIdx=camDeviceIds.indexOf(notFront.deviceId); return notFront.deviceId; }
-  // Multiple cams and no labels: often index 0 is front on phones — try last
+  // Multiple cams and no labels: often index 0 is front on phones â€” try last
   if(cams.length>1){ camDeviceIdx=cams.length-1; return cams[cams.length-1].deviceId; }
   camDeviceIdx=0;
   return cams[0].deviceId;
@@ -2387,7 +2355,7 @@ async function startStreamWithConstraints(videoConstraints){
   const stream=await navigator.mediaDevices.getUserMedia({ audio:false, video:videoConstraints });
   const v=$('#camVideo');
   v.srcObject=stream;
-  // Never mirror — selfie apps flip the preview; we want a normal camera view
+  // Never mirror â€” selfie apps flip the preview; we want a normal camera view
   v.style.transform='none';
   await v.play().catch(()=>{});
   return stream;
@@ -2438,7 +2406,7 @@ async function openCamera(id){
   try{
     camStream=await openRearCamera();
   }catch(err){
-    toast('Rear camera unavailable — use Upload Photo or Flip Camera');
+    toast('Rear camera unavailable â€” use Upload Photo or Flip Camera');
     try{
       camStream=await startStreamWithConstraints(true);
     }catch(err2){
@@ -2475,12 +2443,12 @@ $('#camFlip').addEventListener('click', ()=>flipCamera());
 $('#camFile').addEventListener('click', ()=>{
   closeCameraModal(false);
   $('#photoInput').dataset.forId=camPlayerId;
-  $('#photoInput').click(); // gallery / files — no capture attribute
+  $('#photoInput').click(); // gallery / files â€” no capture attribute
 });
 $('#camShutter').addEventListener('click', async ()=>{
   const v=$('#camVideo'), c=$('#camSnap');
   if(!v.videoWidth){
-    // No live preview — open rear camera via device picker
+    // No live preview â€” open rear camera via device picker
     $('#photoCameraInput').dataset.forId=camPlayerId||$('#photoInput').dataset.forId;
     closeCameraModal(false);
     $('#photoCameraInput').click();
@@ -2529,7 +2497,7 @@ $('#photoCameraInput').addEventListener('change', async e=>{
 });
 
 async function detectFaceBox(source){
-  // Chrome/Edge FaceDetector when available — finds the head so we can crop tight
+  // Chrome/Edge FaceDetector when available â€” finds the head so we can crop tight
   if(typeof FaceDetector==='undefined') return null;
   try{
     const detector=new FaceDetector({fastMode:true, maxDetectedFaces:1});
@@ -2584,7 +2552,7 @@ async function cropHeadFromFile(file){
 
 async function uploadPlayerPhoto(id, blob, ext){
   if(!id || !blob) return;
-  toast('Uploading photo…');
+  toast('Uploading photoâ€¦');
   try{
     const path=campCode+'/'+id+'.'+(ext||'jpg');
     const res=await fetch(SUPABASE_URL+'/storage/v1/object/player-photos/'+path,{
@@ -2592,12 +2560,12 @@ async function uploadPlayerPhoto(id, blob, ext){
       headers:authHeaders({'Content-Type':blob.type||'image/jpeg','x-upsert':'true'}),
       body:blob
     });
-    if(!res.ok){ toast('⚠ Upload failed'); return; }
+    if(!res.ok){ toast('âš  Upload failed'); return; }
     const publicUrl=SUPABASE_URL+'/storage/v1/object/public/player-photos/'+path;
     await patchPlayer(id, {photo_url:publicUrl+'?t='+Date.now()});
-    toast('Photo saved ✓');
+    toast('Photo saved âœ“');
     renderList();
-  }catch(err){ toast('⚠ Upload failed — check connection'); }
+  }catch(err){ toast('âš  Upload failed â€” check connection'); }
 }
 </script>
 </body>
