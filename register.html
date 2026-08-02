@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Walk-Up Registration — AAU Select Tour</title>
+<title>Camp Builder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -27,274 +27,733 @@ header{
 }
 header h1{font-size:clamp(26px,6vw,38px);text-transform:uppercase;letter-spacing:.02em;line-height:1.1}
 header h1 span{color:var(--amber)}
-header p{color:#9aa4b1;font-size:15px;margin-top:8px;max-width:420px;margin-left:auto;margin-right:auto;line-height:1.45}
-main{max-width:520px;margin:0 auto;padding:24px 16px 48px}
+header p{color:#9aa4b1;font-size:15px;margin-top:8px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.45}
+main{max-width:640px;margin:0 auto;padding:24px 16px 48px}
 .card{
   background:var(--card);border:1px solid var(--line);border-radius:14px;
   padding:22px 20px;box-shadow:0 8px 28px rgba(20,26,34,.06);
+  margin-bottom:16px;
 }
 .card h2{font-size:22px;text-transform:uppercase;margin-bottom:4px}
-.card .sub{font-size:14px;color:var(--mut);margin-bottom:18px;line-height:1.45}
+.card .sub{font-size:14px;color:var(--mut);margin-bottom:16px;line-height:1.45}
+.section-title{
+  font-family:'Barlow Condensed',sans-serif;font-size:18px;text-transform:uppercase;
+  letter-spacing:.03em;margin:22px 0 12px;padding-top:8px;border-top:1px solid var(--line);
+  color:var(--ink);
+}
+.section-title:first-of-type{border-top:none;margin-top:0;padding-top:0}
 label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:5px;font-weight:600}
 input,select{
   width:100%;font-family:'Barlow';font-size:16px;padding:12px 14px;
   border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);
 }
 input:focus,select:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+input.err,select.err{border-color:var(--red);background:#fef2f2}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:480px){.grid{grid-template-columns:1fr}}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:540px){
+  .grid,.grid3{grid-template-columns:1fr}
+}
 .span{grid-column:1/-1}
 .field{margin-bottom:2px}
+.camp-cards{display:grid;gap:10px}
+.camp-card{
+  text-align:left;width:100%;cursor:pointer;border:2px solid var(--line);
+  border-radius:12px;padding:16px 18px;background:#fff;font:inherit;color:inherit;
+  transition:border-color .15s, background .15s, box-shadow .15s;
+}
+.camp-card:hover{border-color:#f0a070;background:var(--orange-soft)}
+.camp-card.on{border-color:var(--orange);background:var(--orange-soft);box-shadow:0 0 0 1px var(--orange)}
+.camp-card .cname{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.camp-card .cmeta{font-size:13px;color:var(--mut);margin-top:4px;line-height:1.4}
+.addon-list{display:grid;gap:10px;margin:8px 0 4px}
+.addon-item{border:2px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;transition:border-color .15s,background .15s}
+.addon-item.on{border-color:var(--orange);background:var(--orange-soft)}
+.addon-head{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}
+.addon-head input{width:auto;accent-color:var(--orange);flex-shrink:0}
+.addon-head .aname{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;flex:1;line-height:1.2}
+.addon-head .aprice{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--orange);white-space:nowrap}
+.addon-head .chev{color:var(--mut);font-size:12px;transition:transform .15s;flex-shrink:0}
+.addon-item.open .chev{transform:rotate(180deg)}
+.addon-body{display:none;padding:0 14px 14px 40px;font-size:13px;color:var(--mut);line-height:1.5;border-top:1px solid var(--line);margin:0 0 0;padding-top:12px}
+.addon-item.open .addon-body{display:block}
+.addon-shop{font-size:12px;color:var(--mut);margin-top:8px}
+.addon-shop a{color:var(--orange);font-weight:600;text-decoration:none}
+.pay-summary{margin-top:14px;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:#faf9f6}
+.pay-summary h3{font-family:'Barlow Condensed',sans-serif;font-size:18px;text-transform:uppercase;margin:0 0 10px}
+.pay-summary .row{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:4px 0;color:var(--ink)}
+.pay-summary .row.mut{color:var(--mut)}
+.pay-summary .total{border-top:1px solid var(--line);margin-top:8px;padding-top:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:20px;text-transform:uppercase}
+.pay-summary .total span:last-child{color:var(--orange)}
+.picked{font-size:14px;color:var(--mut);margin-bottom:14px}
+.picked b{color:var(--ink)}
 .actions{margin-top:18px;display:flex;flex-direction:column;gap:10px}
 .btn{
   font-family:'Barlow Condensed';font-size:18px;font-weight:600;text-transform:uppercase;
   letter-spacing:.03em;border:none;border-radius:10px;padding:14px 18px;cursor:pointer;
-  background:var(--orange);color:#fff;
+  background:var(--orange);color:#fff;text-decoration:none;text-align:center;display:block;
 }
 .btn:disabled{opacity:.55;cursor:not-allowed}
 .btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.actions .btn{width:100%;box-sizing:border-box}
 .msg{font-size:14px;min-height:20px;margin-top:10px;line-height:1.4}
 .msg.err{color:var(--red)}
 .msg.ok{color:var(--green)}
-.camp-meta{font-size:13px;color:var(--mut);margin-top:6px;min-height:18px}
-.done{
-  text-align:center;padding:12px 4px;
-}
+.field-err{font-size:12px;color:var(--red);margin-top:4px;min-height:0}
+.done{text-align:center;padding:12px 4px}
 .done .check{
   width:56px;height:56px;border-radius:50%;background:var(--orange-soft);color:var(--orange);
   display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;
   font-weight:700;
 }
-.done h2{font-size:26px;text-transform:uppercase;margin-bottom:8px}
-.done p{color:var(--mut);font-size:15px;line-height:1.5;margin-bottom:8px}
-.done .name{font-size:18px;font-weight:600;color:var(--ink);margin:12px 0}
+.done h2{font-size:28px;text-transform:uppercase;margin-bottom:10px}
+.done p{color:var(--mut);font-size:15px;line-height:1.55;margin-bottom:8px}
+.hidden{display:none!important}
 footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
 </style>
 </head>
 <body>
 <header>
-  <h1>Walk-Up <span>Registration</span></h1>
-  <p>Not on the roster? Pick your camp and fill this out — you’ll show up on the check-in line when you arrive.</p>
+  <h1>Camp <span>Builder</span></h1>
+  <p>Pick your camp, fill out player and parent details, then continue to payment to secure your spot.</p>
 </header>
 
 <main>
-  <div class="card" id="formCard">
-    <h2>Player info</h2>
-    <p class="sub">Same details staff collect at the table. Takes about a minute.</p>
+  <!-- Step 1: camp pick -->
+  <div class="card" id="campStep">
+    <h2>Choose your camp</h2>
+    <p class="sub">Tap a camp below to continue.</p>
+    <div class="camp-cards" id="campCards"></div>
+    <div class="msg err" id="campStepMsg"></div>
+  </div>
 
-    <div class="field span" style="margin-bottom:14px">
-      <label for="campSel">Camp *</label>
-      <select id="campSel"><option value="">Loading camps…</option></select>
-      <div class="camp-meta" id="campMeta"></div>
-    </div>
+  <!-- Step 2: form -->
+  <div class="card hidden" id="formStep">
+    <h2>Player registration</h2>
+    <p class="picked">Signing up for <b id="pickedCampName"></b> · <button type="button" class="btn ghost" id="btnChangeCamp" style="display:inline-block;padding:6px 12px;font-size:14px;width:auto;margin-left:6px;vertical-align:middle">Change camp</button></p>
 
+    <div class="section-title">Player</div>
     <div class="grid">
-      <div class="field"><label for="first">First name *</label><input id="first" autocomplete="given-name" autocapitalize="words"></div>
-      <div class="field"><label for="last">Last name *</label><input id="last" autocomplete="family-name" autocapitalize="words"></div>
-      <div class="field"><label for="year">Grad year *</label><input id="year" type="tel" inputmode="numeric" maxlength="4" placeholder="2030"></div>
-      <div class="field"><label for="height">Height</label><input id="height" placeholder="5'10" autocomplete="off"></div>
+      <div class="field"><label for="first">First name *</label><input id="first" autocomplete="given-name" autocapitalize="words"><div class="field-err" data-for="first"></div></div>
+      <div class="field"><label for="last">Last name *</label><input id="last" autocomplete="family-name" autocapitalize="words"><div class="field-err" data-for="last"></div></div>
+      <div class="field"><label for="birth">Birth date</label><input id="birth" type="date"></div>
+      <div class="field"><label for="year">Grad year *</label><input id="year" type="tel" inputmode="numeric" maxlength="4" placeholder="2030"><div class="field-err" data-for="year"></div></div>
+      <div class="field"><label for="height">Height</label>
+        <select id="height"><option value="">—</option></select>
+      </div>
+      <div class="field"><label for="weight">Weight (lbs)</label><input id="weight" type="tel" inputmode="numeric" placeholder="165"></div>
       <div class="field"><label for="pos">Position</label>
         <select id="pos">
           <option value="">—</option>
-          <option>PG</option><option>SG</option><option>SF</option><option>PF</option><option>C</option>
-          <option>G</option><option>W</option><option>F</option><option>Big</option>
+          <option>Point Guard</option>
+          <option>Shooting Guard</option>
+          <option>Guard/Forward</option>
+          <option>Small Forward</option>
+          <option>Power Forward</option>
+          <option>Forward/Post</option>
+          <option>Center</option>
         </select>
       </div>
-      <div class="field"><label for="school">School</label><input id="school" autocomplete="organization" autocapitalize="words"></div>
-      <div class="field"><label for="city">City</label><input id="city" autocomplete="address-level2" autocapitalize="words"></div>
-      <div class="field"><label for="state">State</label><input id="state" autocomplete="address-level1" autocapitalize="characters" maxlength="2" placeholder="GA"></div>
-      <div class="field span"><label for="email">Parent / player email</label><input id="email" type="email" autocomplete="email" placeholder="optional but helpful"></div>
+      <div class="field"><label for="email">Player email *</label><input id="email" type="email" autocomplete="email"><div class="field-err" data-for="email"></div></div>
+      <div class="field"><label for="phone">Player phone *</label><input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(555) 555-5555" maxlength="14"><div class="field-err" data-for="phone"></div></div>
     </div>
 
-    <div class="msg" id="msg"></div>
+    <div class="section-title">School</div>
+    <div class="grid">
+      <div class="field span"><label for="school">School name</label><input id="school" autocomplete="organization" autocapitalize="words"></div>
+      <div class="field"><label for="schoolCity">School city</label><input id="schoolCity" autocapitalize="words"></div>
+      <div class="field"><label for="schoolState">School state</label><input id="schoolState" maxlength="2" placeholder="GA" autocapitalize="characters"></div>
+      <div class="field"><label for="schoolCoach">School coach name</label><input id="schoolCoach" autocapitalize="words"></div>
+      <div class="field"><label for="schoolCoachEmail">School coach email</label><input id="schoolCoachEmail" type="email"></div>
+    </div>
+
+    <div class="section-title">AAU</div>
+    <div class="grid">
+      <div class="field span"><label for="aauTeam">AAU team name</label><input id="aauTeam" autocapitalize="words"></div>
+      <div class="field"><label for="aauCoach">AAU coach name</label><input id="aauCoach" autocapitalize="words"></div>
+      <div class="field"><label for="aauCoachEmail">AAU coach email</label><input id="aauCoachEmail" type="email"></div>
+    </div>
+
+    <div class="section-title">Home address</div>
+    <div class="grid">
+      <div class="field span"><label for="street1">Street address</label><input id="street1" autocomplete="address-line1"></div>
+      <div class="field span"><label for="street2">Address line 2</label><input id="street2" autocomplete="address-line2"></div>
+      <div class="field"><label for="city">City</label><input id="city" autocomplete="address-level2" autocapitalize="words"></div>
+      <div class="field"><label for="state">State</label><input id="state" maxlength="2" placeholder="GA" autocomplete="address-level1" autocapitalize="characters"></div>
+      <div class="field"><label for="postal">Postal code</label><input id="postal" autocomplete="postal-code"></div>
+    </div>
+
+    <div class="section-title">Parent / guardian</div>
+    <div class="grid">
+      <div class="field span"><label for="parentName">Full name *</label><input id="parentName" autocapitalize="words"><div class="field-err" data-for="parentName"></div></div>
+      <div class="field"><label for="parentPhone">Phone *</label><input id="parentPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(555) 555-5555" maxlength="14"><div class="field-err" data-for="parentPhone"></div></div>
+      <div class="field"><label for="parentEmail">Email *</label><input id="parentEmail" type="email" autocomplete="email"><div class="field-err" data-for="parentEmail"></div></div>
+    </div>
+
+    <div class="msg" id="formMsg"></div>
     <div class="actions">
-      <button class="btn" type="button" id="btnSubmit">Submit registration</button>
+      <button class="btn" type="button" id="btnNextAddon">Next: Add-on</button>
     </div>
   </div>
 
-  <div class="card done" id="doneCard" style="display:none">
+  <!-- Step 3: add-ons -->
+  <div class="card hidden" id="addonStep">
+    <h2>Add-ons</h2>
+    <p class="sub">Optional extras for <b id="addonPlayerName"></b> at <b id="addonCampName"></b>. Tap a row to read the description, check any you’d like — then continue to payment.</p>
+    <div class="addon-list" id="addonList"></div>
+    <div class="pay-summary" id="paySummary"></div>
+    <p class="addon-shop">Secure payment is processed by Stripe. You’ll complete your card details on the next screen.</p>
+    <div class="msg" id="addonMsg"></div>
+    <div class="actions">
+      <button class="btn" type="button" id="btnSubmit">Pay with card</button>
+      <button class="btn ghost" type="button" id="btnBackForm">Back</button>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div class="card done hidden" id="doneStep">
     <div class="check">✓</div>
-    <h2>You’re registered</h2>
-    <p class="name" id="doneName"></p>
-    <p>Head to the check-in table when you arrive. Staff will see your name on the <b>Check-In</b> list for this camp and get you a jersey.</p>
-    <p id="doneCamp" style="font-size:13px;color:var(--mut)"></p>
+    <h2 id="doneTitle">You’re Registered!</h2>
+    <p id="doneCopy"></p>
     <div class="actions" style="margin-top:20px">
+      <button class="btn" type="button" id="btnPay" style="display:none">Complete payment</button>
       <button class="btn ghost" type="button" id="btnAnother">Register another player</button>
     </div>
   </div>
 </main>
-<footer>AAU Select Tour · Camp Team Builder</footer>
+<footer>Camp Builder</footer>
 
 <script>
+/* =====================================================================
+   EDITABLE CAMPS — update names / dates / locations / codes here.
+   `code` must match the camp slug used in admin (Active camp / Camp Code),
+   e.g. "georgia-2026", so Pull Registrations can find these rows.
+===================================================================== */
+const CAMPS = [
+  {
+    code: 'georgia-2026',
+    name: 'Georgia Select Tour Camp 2026',
+    date: 'Sat, Aug 29, 2026',
+    location: 'Suwanee Sports Academy, Suwanee, GA',
+    price: 140
+  },
+  {
+    code: 'mid-atlantic-2026',
+    name: 'Mid-Atlantic Select Tour Camp 2026',
+    date: 'Sat, Jul 25, 2026',
+    location: 'Rowan University, Glassboro, NJ',
+    price: 145
+  }
+];
+/* Keep prices in sync with netlify/functions/pricing.js (Stripe server amounts).
+   From https://aauselecttour.totalcamps.com/shop/GOOD — update when the shop changes.
+   `tag` is what gets saved on the registration (and pulled into admin add-ons). */
+const ADDONS = [
+  {
+    tag: 'Mixtape',
+    name: 'Recruiting Highlight Tape',
+    price: 120,
+    description: 'Video includes every highlight from your 2 games played at camp, posted on the @AAUSelectTour YouTube page. A professionally produced highlight tape helps market your game to college coaches — camp footage is from a 1-day event with limited substitutions, so coaches know the clips are concentrated. Standard turnaround is 2–4 weeks. Can also be purchased the day of camp.'
+  },
+  {
+    tag: 'Eval',
+    name: 'Digital In-Depth Player Evaluation',
+    price: 90,
+    description: 'NBA skills coach and talent evaluator Gabe Blair assesses camp performance (games film + coach feedback). Includes: thorough evaluation of camp game footage; strengths and areas to improve; customized written comments; camp analytics (shot chart & stats); college trajectory notes; and integrated game footage. Turnaround about 2–4 weeks, emailed when complete. Can also be purchased the day of camp.'
+  },
+  {
+    tag: 'Zoom',
+    name: 'Player Zoom Meeting',
+    price: 75,
+    priceLabel: '$75–$130',
+    description: '1-on-1 Zoom with Coach Bollwage (former D-1 coach; recruiting compliance & strategy) to review game film and/or academics. Parents are welcome. Options: Recruiting Workshop $75 · Game Breakdown $75 · Workshop & Game Breakdown $130. Can also be purchased the day of camp.'
+  }
+];
+/* ===================================================================== */
+
 const SUPABASE_URL = "https://nxncasbkrcermftbviuw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54bmNhc2JrcmNlcm1mdGJ2aXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY3NjYsImV4cCI6MjA5OTc5Mjc2Nn0.XdcpcrTLhWeJWf6DXS2PPkXOGjYy8m9nFtagbFoqt9I";
 
 const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const urlParams=new URLSearchParams(location.search);
+const preselect=(urlParams.get('camp')||'').trim().toLowerCase();
+let selectedCamp=null;
+
 function anonHeaders(extra){
   return Object.assign({
     apikey: SUPABASE_ANON_KEY,
     Authorization: 'Bearer '+SUPABASE_ANON_KEY
   }, extra||{});
 }
-function formatCampDate(d){
-  if(!d) return '';
-  const dt=new Date(String(d).includes('T')?d:d+'T12:00:00');
-  if(isNaN(dt)) return String(d);
-  return dt.toLocaleDateString(undefined,{weekday:'short',month:'long',day:'numeric',year:'numeric'});
-}
 
-let camps=[];
-const urlParams=new URLSearchParams(location.search);
-const preselect=(urlParams.get('camp')||'').trim().toLowerCase();
-
-function setMsg(text, ok){
-  const el=$('#msg');
-  el.textContent=text||'';
-  el.className='msg'+(text?(ok?' ok':' err'):'');
-}
-
-function selectedCamp(){
-  const id=$('#campSel').value;
-  return camps.find(c=>c.id===id)||null;
-}
-
-function updateCampMeta(){
-  const c=selectedCamp();
-  const el=$('#campMeta');
-  if(!c){ el.textContent=''; return; }
-  const bits=[];
-  if(c.location) bits.push(c.location);
-  if(c.camp_date) bits.push(formatCampDate(c.camp_date));
-  el.textContent=bits.join(' · ');
-}
-
-async function loadCamps(){
-  const sel=$('#campSel');
-  try{
-    const res=await fetch(
-      SUPABASE_URL+'/rest/v1/camps?status=eq.active&select=id,slug,name,location,camp_date&order=camp_date.desc.nullslast,name.asc',
-      { headers: anonHeaders() }
-    );
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    camps=(await res.json()).filter(c=>c.slug && c.slug!=='admin-cleared');
-    if(!camps.length){
-      sel.innerHTML='<option value="">No active camps</option>';
-      setMsg('No active camps are open for registration right now.');
-      $('#btnSubmit').disabled=true;
-      return;
-    }
-    sel.innerHTML='<option value="">Select a camp…</option>'+
-      camps.map(c=>`<option value="${esc(c.id)}">${esc(c.name||c.slug)}</option>`).join('');
-    const match=preselect && camps.find(c=>c.slug===preselect);
-    if(match) sel.value=match.id;
-    updateCampMeta();
-  }catch(e){
-    sel.innerHTML='<option value="">Could not load camps</option>';
-    setMsg('Could not load camps — check your connection and try again.');
-    $('#btnSubmit').disabled=true;
+function fillHeightSelect(){
+  const sel=$('#height');
+  for(let inches=48; inches<=84; inches++){ // 4'0" through 7'0"
+    const f=Math.floor(inches/12), n=inches%12;
+    const label=f+"'"+n+'"';
+    const o=document.createElement('option');
+    o.value=label; o.textContent=label;
+    sel.appendChild(o);
   }
 }
 
-async function nameAlreadyOnRoster(campId, first, last){
-  const q='camp_id=eq.'+encodeURIComponent(campId)
-    +'&first=ilike.'+encodeURIComponent(first)
-    +'&last=ilike.'+encodeURIComponent(last)
-    +'&select=id&limit=5';
-  const res=await fetch(SUPABASE_URL+'/rest/v1/players?'+q, { headers: anonHeaders() });
-  if(!res.ok) return false;
-  const rows=await res.json();
-  return !!(rows && rows.length);
+function renderCampCards(){
+  const wrap=$('#campCards');
+  if(!CAMPS.length){
+    wrap.innerHTML='<p class="sub">No camps listed yet — ask staff to update the CAMPS list in register.html.</p>';
+    return;
+  }
+  wrap.innerHTML=CAMPS.map(c=>`
+    <button type="button" class="camp-card" data-code="${esc(c.code)}">
+      <div class="cname">${esc(c.name)}</div>
+      <div class="cmeta">${esc([c.date, c.location].filter(Boolean).join(' · '))}</div>
+    </button>
+  `).join('');
+  wrap.querySelectorAll('.camp-card').forEach(btn=>{
+    btn.addEventListener('click', ()=>pickCamp(btn.dataset.code));
+  });
+  if(preselect && CAMPS.some(c=>c.code===preselect)) pickCamp(preselect);
 }
 
-async function submit(){
-  setMsg('');
-  const camp=selectedCamp();
-  if(!camp){ setMsg('Choose your camp first.'); return; }
+function pickCamp(code){
+  selectedCamp=CAMPS.find(c=>c.code===code)||null;
+  if(!selectedCamp) return;
+  $$('.camp-card').forEach(b=>b.classList.toggle('on', b.dataset.code===code));
+  $('#pickedCampName').textContent=selectedCamp.name;
+  $('#campStepMsg').textContent='';
+  $('#campStep').classList.add('hidden');
+  $('#formStep').classList.remove('hidden');
+  $('#addonStep').classList.add('hidden');
+  $('#doneStep').classList.add('hidden');
+  setTimeout(()=>$('#first').focus(), 50);
+}
+
+function showCampStep(){
+  selectedCamp=null;
+  $$('.camp-card').forEach(b=>b.classList.remove('on'));
+  $('#formStep').classList.add('hidden');
+  $('#addonStep').classList.add('hidden');
+  $('#doneStep').classList.add('hidden');
+  $('#campStep').classList.remove('hidden');
+  clearErrors();
+  $('#formMsg').textContent='';
+  $('#formMsg').className='msg';
+  $('#addonMsg').textContent='';
+  $('#addonMsg').className='msg';
+}
+
+function showAddonStep(){
+  if(!validate()) return;
+  $('#addonPlayerName').textContent=val('first')+' '+val('last');
+  $('#addonCampName').textContent=selectedCamp.name;
+  $('#formStep').classList.add('hidden');
+  $('#addonStep').classList.remove('hidden');
+  $('#doneStep').classList.add('hidden');
+  renderPaySummary();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+const DRAFT_KEY='ctb_reg_draft_v1';
+function saveDraft(){
+  try{
+    const draft={
+      camp: selectedCamp && selectedCamp.code,
+      fields:{},
+      addons: selectedAddons(),
+      pending: pendingCheckout
+    };
+    ['first','last','birth','year','weight','email','phone','school','schoolCity','schoolState',
+     'schoolCoach','schoolCoachEmail','aauTeam','aauCoach','aauCoachEmail','street1','street2',
+     'city','state','postal','parentName','parentPhone','parentEmail','pos','height'].forEach(id=>{
+      draft.fields[id]=val(id);
+    });
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }catch(e){}
+}
+function restoreDraft(){
+  try{
+    const raw=sessionStorage.getItem(DRAFT_KEY);
+    if(!raw) return null;
+    const draft=JSON.parse(raw);
+    if(draft.camp && CAMPS.some(c=>c.code===draft.camp)){
+      selectedCamp=CAMPS.find(c=>c.code===draft.camp);
+    }
+    Object.entries(draft.fields||{}).forEach(([id,v])=>{
+      const el=$('#'+id); if(el) el.value=v||'';
+    });
+    document.querySelectorAll('input[name="addon"]').forEach(c=>{
+      c.checked=(draft.addons||[]).includes(c.value);
+      c.closest('.addon-item')?.classList.toggle('on', c.checked);
+    });
+    pendingCheckout=draft.pending||null;
+    return draft;
+  }catch(e){ return null; }
+}
+function clearDraft(){
+  try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
+}
+
+function showFormStep(){
+  $('#addonStep').classList.add('hidden');
+  $('#doneStep').classList.add('hidden');
+  $('#formStep').classList.remove('hidden');
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function digitsOnly(s){ return String(s||'').replace(/\D/g,''); }
+
+/** Format as (XXX) XXX-XXXX while typing (US 10-digit). */
+function formatPhone(value){
+  const d=digitsOnly(value).slice(0,10);
+  if(d.length===0) return '';
+  if(d.length<4) return '('+d;
+  if(d.length<7) return '('+d.slice(0,3)+') '+d.slice(3);
+  return '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6);
+}
+
+function wirePhoneInput(id){
+  const el=$('#'+id);
+  if(!el) return;
+  el.addEventListener('input', ()=>{
+    const next=formatPhone(el.value);
+    if(el.value!==next) el.value=next;
+  });
+  el.addEventListener('blur', ()=>{
+    const d=digitsOnly(el.value);
+    if(d.length===10) el.value=formatPhone(d);
+  });
+}
+
+function selectedAddons(){
+  return [...document.querySelectorAll('input[name="addon"]:checked')].map(c=>c.value);
+}
+
+function renderAddonList(){
+  const wrap=$('#addonList');
+  if(!wrap) return;
+  wrap.innerHTML=ADDONS.map((a,i)=>`
+    <div class="addon-item" data-i="${i}">
+      <div class="addon-head">
+        <input type="checkbox" name="addon" value="${esc(a.tag)}" aria-label="Select ${esc(a.name)}">
+        <span class="aname">${esc(a.name)}</span>
+        <span class="aprice">${esc(a.priceLabel || ('$'+Number(a.price).toFixed(0)))}</span>
+        <span class="chev" aria-hidden="true">▼</span>
+      </div>
+      <div class="addon-body">${esc(a.description)}</div>
+    </div>
+  `).join('');
+  wrap.querySelectorAll('.addon-item').forEach(item=>{
+    const head=item.querySelector('.addon-head');
+    const cb=item.querySelector('input[type=checkbox]');
+    head.addEventListener('click', e=>{
+      if(e.target===cb) return;
+      item.classList.toggle('open');
+    });
+    cb.addEventListener('click', e=>e.stopPropagation());
+    cb.addEventListener('change', ()=>{
+      item.classList.toggle('on', cb.checked);
+      renderPaySummary();
+    });
+  });
+  renderPaySummary();
+}
+
+function money(n){ return '$'+Number(n||0).toFixed(0); }
+
+function renderPaySummary(){
+  const wrap=$('#paySummary');
+  if(!wrap || !selectedCamp) return;
+  const campFee=Number(selectedCamp.price)||0;
+  const tags=selectedAddons();
+  const lines=tags.map(tag=>{
+    const a=ADDONS.find(x=>x.tag===tag);
+    return a ? { name:a.name, price:Number(a.price)||0 } : null;
+  }).filter(Boolean);
+  const addonTotal=lines.reduce((s,l)=>s+l.price, 0);
+  const total=campFee+addonTotal;
+  wrap.innerHTML=`<h3>Order summary</h3>
+    <div class="row"><span>Camp registration</span><span>${money(campFee)}</span></div>
+    ${lines.map(l=>`<div class="row mut"><span>${esc(l.name)}</span><span>${money(l.price)}</span></div>`).join('')}
+    <div class="row total"><span>Total due</span><span>${money(total)}</span></div>`;
+}
+
+function clearErrors(){
+  $$('input.err,select.err').forEach(el=>el.classList.remove('err'));
+  $$('.field-err').forEach(el=>el.textContent='');
+}
+
+function markErr(id, msg){
+  const el=$('#'+id);
+  if(el) el.classList.add('err');
+  const tip=document.querySelector('.field-err[data-for="'+id+'"]');
+  if(tip) tip.textContent=msg||'Required';
+}
+
+function validate(){
+  clearErrors();
+  const missing=[];
+  if(!selectedCamp){ $('#campStepMsg').textContent='Please choose a camp first.'; return false; }
   const first=$('#first').value.trim();
   const last=$('#last').value.trim();
   const year=$('#year').value.trim();
-  if(!first || !last){ setMsg('First and last name are required.'); return; }
-  if(!/^(19|20)\d{2}$/.test(year)){ setMsg('Enter a 4-digit grad year (e.g. 2030).'); return; }
+  const email=$('#email').value.trim();
+  const phone=$('#phone').value.trim();
+  const parentName=$('#parentName').value.trim();
+  const parentPhone=$('#parentPhone').value.trim();
+  const parentEmail=$('#parentEmail').value.trim();
 
+  if(!first){ markErr('first','First name is required'); missing.push('First name'); }
+  if(!last){ markErr('last','Last name is required'); missing.push('Last name'); }
+  if(!year){ markErr('year','Grad year is required'); missing.push('Grad year'); }
+  else if(!/^(19|20)\d{2}$/.test(year)){ markErr('year','Enter a 4-digit year (e.g. 2030)'); missing.push('Grad year'); }
+  if(!email){ markErr('email','Player email is required'); missing.push('Player email'); }
+  if(!phone){ markErr('phone','Player phone is required'); missing.push('Player phone'); }
+  else if(digitsOnly(phone).length!==10){ markErr('phone','Use (XXX) XXX-XXXX'); missing.push('Player phone'); }
+  if(!parentName){ markErr('parentName','Parent name is required'); missing.push('Parent name'); }
+  if(!parentPhone){ markErr('parentPhone','Parent phone is required'); missing.push('Parent phone'); }
+  else if(digitsOnly(parentPhone).length!==10){ markErr('parentPhone','Use (XXX) XXX-XXXX'); missing.push('Parent phone'); }
+  if(!parentEmail){ markErr('parentEmail','Parent email is required'); missing.push('Parent email'); }
+
+  if(missing.length){
+    $('#formMsg').textContent='Please fill in: '+missing.join(', ')+'.';
+    $('#formMsg').className='msg err';
+    const firstBad=document.querySelector('input.err,select.err');
+    if(firstBad) firstBad.focus();
+    return false;
+  }
+  $('#formMsg').textContent='';
+  $('#formMsg').className='msg';
+  return true;
+}
+
+function val(id){ return String(($('#'+id)||{}).value||'').trim(); }
+
+let pendingCheckout=null; // { registrationId, campCode, addons, email, playerName }
+
+function checkoutUrls(campCode){
+  const base=location.origin+location.pathname;
+  const camp=encodeURIComponent(campCode||'');
+  return {
+    successUrl: base+'?camp='+camp+'&pay=success&session_id={CHECKOUT_SESSION_ID}',
+    cancelUrl: base+'?camp='+camp+'&pay=cancel'
+  };
+}
+
+async function startStripeCheckout(payload){
+  const urls=checkoutUrls(payload.campCode);
+  const res=await fetch('/.netlify/functions/create-checkout',{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      registrationId: payload.registrationId,
+      campCode: payload.campCode,
+      addons: payload.addons,
+      email: payload.email,
+      parentEmail: payload.parentEmail,
+      playerName: payload.playerName,
+      successUrl: urls.successUrl,
+      cancelUrl: urls.cancelUrl
+    })
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok || !data.url){
+    throw new Error(data.error || ('Checkout failed ('+res.status+')'));
+  }
+  location.href=data.url;
+}
+
+function showPaidDone(first, campName){
+  $('#campStep').classList.add('hidden');
+  $('#formStep').classList.add('hidden');
+  $('#addonStep').classList.add('hidden');
+  $('#doneStep').classList.remove('hidden');
+  $('#doneTitle').textContent='You’re all set!';
+  $('#doneCopy').textContent=
+    'Thanks'+(first?', '+first:'')+' — payment received for '+campName+
+    '. You’re registered. We’ll email details before camp day.';
+  const payBtn=$('#btnPay');
+  if(payBtn) payBtn.style.display='none';
+}
+
+function showCancelResume(){
+  $('#addonMsg').textContent='Payment was canceled — you can tap Pay with card again when you’re ready.';
+  $('#addonMsg').className='msg err';
+}
+
+async function submit(){
+  if(!validate()){ showFormStep(); return; }
   const btn=$('#btnSubmit');
-  btn.disabled=true; btn.textContent='Submitting…';
+  btn.disabled=true; btn.textContent='Starting checkout…';
+  $('#addonMsg').textContent='';
+  $('#addonMsg').className='msg';
+  const addons=selectedAddons();
+  const campFee=Number(selectedCamp.price)||0;
+  const addonCents=addons.reduce((s,tag)=>{
+    const a=ADDONS.find(x=>x.tag===tag);
+    return s+Math.round((a?Number(a.price):0)*100);
+  },0);
+  const amountCents=Math.round(campFee*100)+addonCents;
+  const row={
+    camp_code: selectedCamp.code,
+    first: val('first'),
+    last: val('last'),
+    birth_date: val('birth'),
+    grad_year: val('year'),
+    street1: val('street1'),
+    street2: val('street2'),
+    city: val('city'),
+    state: val('state').toUpperCase(),
+    postal: val('postal'),
+    email: val('email'),
+    phone: val('phone'),
+    school: val('school'),
+    school_city: val('schoolCity'),
+    school_state: val('schoolState').toUpperCase(),
+    height: val('height'),
+    weight: val('weight'),
+    position: val('pos'),
+    school_coach_name: val('schoolCoach'),
+    school_coach_email: val('schoolCoachEmail'),
+    aau_team: val('aauTeam'),
+    aau_coach_name: val('aauCoach'),
+    aau_coach_email: val('aauCoachEmail'),
+    parent_name: val('parentName'),
+    parent_phone: val('parentPhone'),
+    parent_email: val('parentEmail'),
+    addons: addons.join(', ')
+    // payment_status / amount_cents are set by Stripe functions (service role) — not the browser
+  };
+  void amountCents;
   try{
-    if(await nameAlreadyOnRoster(camp.id, first, last)){
-      setMsg('That name is already on this camp’s roster. Go to the check-in table — staff can look you up.');
-      return;
-    }
-    const id=(crypto.randomUUID ? crypto.randomUUID() : ('walk-'+Date.now()+'-'+Math.random().toString(16).slice(2)));
-    const row={
-      id,
-      camp_id: camp.id,
-      camp_code: camp.slug,
-      first, last,
-      grad_year: year,
-      height: ($('#height').value||'').trim(),
-      position: ($('#pos').value||'').trim(),
-      school: ($('#school').value||'').trim(),
-      city: ($('#city').value||'').trim(),
-      state: ($('#state').value||'').trim().toUpperCase(),
-      email: ($('#email').value||'').trim(),
-      pay_status: '',
-      balance: '',
-      items: 'Walk-up',
-      jersey: '',
-      checked_in: false,
-      addons_manual: [],
-      addons_removed: [],
-      photo_url: ''
-    };
-    const res=await fetch(SUPABASE_URL+'/rest/v1/players',{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/registrations',{
       method:'POST',
       headers: anonHeaders({
         'Content-Type':'application/json',
-        'Prefer':'return=minimal'
+        'Prefer':'return=representation'
       }),
       body: JSON.stringify(row)
     });
     if(!res.ok){
       const t=await res.text();
-      if(/permission|policy|42501|RLS/i.test(t) || res.status===401 || res.status===403){
-        setMsg('Registration isn’t enabled yet — ask staff to run migration 005 in Supabase.');
+      if(/payment_status|amount_cents/i.test(t) && /column|schema|PGRST/i.test(t)){
+        $('#addonMsg').textContent='Payment columns missing — ask staff to run migrations/009_registration_payments.sql in Supabase.';
+      } else if(/addons/i.test(t) && /column|schema|PGRST/i.test(t)){
+        $('#addonMsg').textContent='Add-ons column missing — ask staff to run migrations/008_registration_addons.sql in Supabase.';
+      } else if(/permission|policy|42501|RLS|not find|PGRST/i.test(t) || res.status===401 || res.status===403 || res.status===404){
+        $('#addonMsg').textContent='Registration isn’t enabled yet — ask staff to run migrations/007_registrations.sql in Supabase.';
       } else {
-        setMsg('Save failed ('+res.status+'). Try again in a moment.');
+        $('#addonMsg').textContent='Save failed ('+res.status+'). Try again in a moment.';
       }
+      $('#addonMsg').className='msg err';
       return;
     }
-    $('#formCard').style.display='none';
-    $('#doneCard').style.display='block';
-    $('#doneName').textContent=first+' '+last;
-    const bits=[camp.name];
-    if(camp.location) bits.push(camp.location);
-    if(camp.camp_date) bits.push(formatCampDate(camp.camp_date));
-    $('#doneCamp').textContent=bits.join(' · ');
+    const saved=(await res.json())[0];
+    if(!saved || !saved.id){
+      $('#addonMsg').textContent='Saved, but couldn’t start payment — contact camp staff.';
+      $('#addonMsg').className='msg err';
+      return;
+    }
+    pendingCheckout={
+      registrationId: saved.id,
+      campCode: selectedCamp.code,
+      addons,
+      email: row.parent_email || row.email,
+      parentEmail: row.parent_email,
+      playerName: (row.first+' '+row.last).trim()
+    };
+    saveDraft();
+    try{
+      await startStripeCheckout(pendingCheckout);
+    }catch(payErr){
+      $('#addonStep').classList.add('hidden');
+      $('#doneStep').classList.remove('hidden');
+      $('#doneTitle').textContent='Registration saved';
+      $('#doneCopy').textContent=
+        'Thanks, '+row.first+' — you’re on the list for '+selectedCamp.name+
+        ', but checkout couldn’t start: '+(payErr.message||'payment error')+
+        '. Tap Complete payment to try again, or contact camp staff.';
+      const payBtn=$('#btnPay');
+      if(payBtn){
+        payBtn.style.display='';
+        payBtn.textContent='Complete payment';
+      }
+    }
   }catch(e){
-    setMsg('Could not reach the server — check your connection.');
+    $('#addonMsg').textContent='Could not reach the server — check your connection.';
+    $('#addonMsg').className='msg err';
   }finally{
-    btn.disabled=false; btn.textContent='Submit registration';
+    btn.disabled=false; btn.textContent='Pay with card';
   }
 }
 
-function resetForm(){
-  ['first','last','year','height','school','city','state','email'].forEach(id=>{ const el=$('#'+id); if(el) el.value=''; });
+function resetAll(){
+  ['first','last','birth','year','weight','email','phone','school','schoolCity','schoolState',
+   'schoolCoach','schoolCoachEmail','aauTeam','aauCoach','aauCoachEmail','street1','street2',
+   'city','state','postal','parentName','parentPhone','parentEmail'].forEach(id=>{
+    const el=$('#'+id); if(el) el.value='';
+  });
   $('#pos').value='';
-  setMsg('');
-  $('#doneCard').style.display='none';
-  $('#formCard').style.display='block';
-  $('#first').focus();
+  $('#height').value='';
+  document.querySelectorAll('input[name="addon"]').forEach(c=>{ c.checked=false; });
+  document.querySelectorAll('.addon-item').forEach(el=>{ el.classList.remove('on','open'); });
+  clearErrors();
+  showCampStep();
 }
 
-$('#campSel').addEventListener('change', updateCampMeta);
+fillHeightSelect();
+renderCampCards();
+renderAddonList();
+wirePhoneInput('phone');
+wirePhoneInput('parentPhone');
+$('#btnChangeCamp').addEventListener('click', showCampStep);
+$('#btnNextAddon').addEventListener('click', showAddonStep);
+$('#btnBackForm').addEventListener('click', showFormStep);
 $('#btnSubmit').addEventListener('click', submit);
-$('#btnAnother').addEventListener('click', resetForm);
-['first','last','year','height','school','city','state','email'].forEach(id=>{
-  const el=$('#'+id); if(!el) return;
-  el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); submit(); } });
+$('#btnAnother').addEventListener('click', ()=>{ clearDraft(); resetAll(); });
+$('#btnPay').addEventListener('click', async ()=>{
+  if(!pendingCheckout){ restoreDraft(); }
+  if(!pendingCheckout){
+    $('#doneCopy').textContent='Start registration again to pay.';
+    return;
+  }
+  const b=$('#btnPay');
+  b.disabled=true; b.textContent='Opening Stripe…';
+  try{ await startStripeCheckout(pendingCheckout); }
+  catch(e){ $('#doneCopy').textContent=e.message||'Could not open payment.'; }
+  finally{ b.disabled=false; b.textContent='Complete payment'; }
 });
 
-loadCamps();
+(function handlePayReturn(){
+  const pay=urlParams.get('pay');
+  if(!pay) return;
+  const code=(urlParams.get('camp')||preselect||'').toLowerCase();
+  const camp=CAMPS.find(c=>c.code===code);
+  if(pay==='success'){
+    clearDraft();
+    showPaidDone('', (camp&&camp.name)||'your camp');
+    history.replaceState({},'', location.pathname+(code?('?camp='+encodeURIComponent(code)):''));
+    return;
+  }
+  if(pay==='cancel'){
+    const draft=restoreDraft();
+    if(draft && selectedCamp){
+      $('#campStep').classList.add('hidden');
+      $('#formStep').classList.add('hidden');
+      $('#addonStep').classList.remove('hidden');
+      $('#addonPlayerName').textContent=val('first')+' '+val('last');
+      $('#addonCampName').textContent=selectedCamp.name;
+      renderPaySummary();
+      showCancelResume();
+    } else if(code){
+      pickCamp(code);
+      $('#campStepMsg').textContent='Payment canceled — continue when you’re ready to pay.';
+    }
+    history.replaceState({},'', location.pathname+(code?('?camp='+encodeURIComponent(code)):''));
+  }
+})();
 </script>
 </body>
 </html>

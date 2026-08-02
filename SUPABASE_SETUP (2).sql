@@ -48,3 +48,42 @@ create policy "Authenticated update" on camp_live
 --    with the email/password you just created
 -- 5. Click "Save & Sync Now"
 -- ============================================================
+
+-- ============================================================
+-- Advance camp registrations (register.html)
+-- Full copy also lives in migrations/007_registrations.sql
+-- ============================================================
+create table if not exists public.registrations (
+  id uuid primary key default gen_random_uuid(),
+  camp_code text not null,
+  first text, last text,
+  birth_date text, grad_year text,
+  street1 text, street2 text, city text, state text, postal text,
+  email text, phone text,
+  school text, school_city text, school_state text,
+  height text, weight text, position text,
+  school_coach_name text, school_coach_email text,
+  aau_team text, aau_coach_name text, aau_coach_email text,
+  parent_name text, parent_phone text, parent_email text,
+  addons text,
+  submitted_at timestamptz not null default now()
+);
+create index if not exists registrations_camp_code_idx on public.registrations (camp_code);
+alter table public.registrations enable row level security;
+grant insert on public.registrations to anon, authenticated;
+grant select on public.registrations to authenticated;
+drop policy if exists "Public insert registrations" on public.registrations;
+drop policy if exists "Authenticated read registrations" on public.registrations;
+create policy "Public insert registrations" on public.registrations
+  for insert to anon, authenticated with check (true);
+create policy "Authenticated read registrations" on public.registrations
+  for select to authenticated using (true);
+
+-- Stripe payment fields (also migrations/009_registration_payments.sql)
+alter table public.registrations
+  add column if not exists payment_status text not null default 'pending',
+  add column if not exists amount_cents integer,
+  add column if not exists currency text not null default 'usd',
+  add column if not exists stripe_session_id text,
+  add column if not exists stripe_payment_intent text,
+  add column if not exists paid_at timestamptz;

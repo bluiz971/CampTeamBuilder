@@ -233,7 +233,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel on" id="panel-camps">
   <div class="panel-head">
     <div><h2>Camps</h2>
-    <p>Create and manage camps. Public links use the slug: <code>?camp=your-slug</code>. Share the <b>Walk-up form</b> link so day-of players can register themselves — they appear on that camp’s station Check-In list. All roster/team work below applies only to the <b>Active camp</b> in the header.</p></div>
+    <p>Create and manage camps. Public links use the slug: <code>?camp=your-slug</code>. Share the <b>Camp registration</b> link for advance sign-ups (<code>register.html</code>), and the <b>Walk-up form</b> for day-of players (<code>walkup.html</code>) — walk-ups appear on that camp’s station Check-In list. All roster/team work below applies only to the <b>Active camp</b> in the header.</p></div>
   </div>
   <div class="mapping" style="margin-bottom:16px">
     <h3 style="margin-bottom:10px">Create camp</h3>
@@ -279,6 +279,14 @@ dialog select{width:100%;margin:10px 0 16px}
     <div><h2>Master Roster</h2>
     <p>Upload the registration export (.xlsx, .xlsm or .csv). Columns are detected automatically — confirm the mapping below, then load. <b>Walk-ups and public sign-ups already on this camp are kept</b> — they won’t be wiped by a re-upload. Stay signed in and on the correct Active camp before loading.</p></div>
     <button class="btn btn-ghost btn-sm" id="btnReset">Reset All Data</button>
+  </div>
+  <div class="mapping" style="margin-bottom:14px">
+    <h3 style="margin-bottom:6px">Pull From Camp Registration</h3>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">If people are signing up through the public <code>register.html</code> form, pull their submissions straight in — no Excel export/import needed. Requires Live Sync to be signed in (Publish tab). Uses the Camp Code set there.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-dark btn-sm" type="button" id="btnPullReg">📥 Pull Registrations</button>
+      <span id="pullRegNote" style="font-size:13px;color:var(--mut)"></span>
+    </div>
   </div>
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload roster file">
     <div class="ball">🏀</div>
@@ -773,6 +781,7 @@ function renderCampsTable(){
       const parent=base+'/?camp='+encodeURIComponent(c.slug);
       const station=base+'/station.html?camp='+encodeURIComponent(c.slug);
       const register=base+'/register.html?camp='+encodeURIComponent(c.slug);
+      const walkup=base+'/walkup.html?camp='+encodeURIComponent(c.slug);
       return `<tr>
         <td><b>${esc(c.name)}</b>${c.location?'<br><small style="color:var(--mut)">'+esc(c.location)+'</small>':''}</td>
         <td><code>${esc(c.slug)}</code></td>
@@ -781,7 +790,8 @@ function renderCampsTable(){
         <td style="font-size:12px;line-height:1.6">
           <a href="${esc(parent)}" target="_blank" rel="noopener">Parent</a> ·
           <a href="${esc(station)}" target="_blank" rel="noopener">Station</a> ·
-          <a href="${esc(register)}" target="_blank" rel="noopener">Walk-up form</a>
+          <a href="${esc(register)}" target="_blank" rel="noopener">Register</a> ·
+          <a href="${esc(walkup)}" target="_blank" rel="noopener">Walk-up</a>
         </td>
         <td class="row-actions">
           <button class="btn btn-ghost btn-sm" data-use="${esc(c.id)}">Use</button>
@@ -1067,14 +1077,15 @@ function playerStatusBadges(p){
 }
 function addOns(items){
   const s=String(items||''), out=[];
-  if(/recruiting tape/i.test(s)) out.push('Mixtape');
-  if(/player evaluation/i.test(s)) out.push('Eval');
+  if(/recruiting tape|highlight tape|mixtape/i.test(s)) out.push('Mixtape');
+  if(/player evaluation|in-depth/i.test(s)) out.push('Eval');
   if(/game breakdown/i.test(s)) out.push('Film');
   if(/workshop/i.test(s)) out.push('Academic');
+  if(/zoom meeting|\bzoom\b/i.test(s)) out.push('Zoom');
   return out;
 }
 // Standard add-ons a coach can toggle on any player
-const ADDON_MENU=['Mixtape','Eval','Film','Academic'];
+const ADDON_MENU=['Mixtape','Eval','Film','Academic','Zoom'];
 // All add-ons for a player = parsed from registration + manually added, de-duped
 function allAddOns(p){
   const set=new Set(addOns(p.items));
@@ -3315,6 +3326,129 @@ setInterval(()=>{
 if(authSession && authSession.access_token){
   refreshAdminSession().then(()=>pullLiveTeams(true));
 }
+async function pullRegistrations(){
+  const note=$('#pullRegNote');
+  if(!(S.syncUrl && S.syncKey && S.syncCode)){
+    note.innerHTML='<span style="color:var(--red)">Set Live Sync (Project URL, anon key) and select an Active camp first (Publish / header).</span>';
+    return;
+  }
+  if(!(authSession && authSession.access_token)){
+    note.innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>';
+    return;
+  }
+  note.textContent='Pulling…';
+  try{
+    const res=await fetch(
+      S.syncUrl+'/rest/v1/registrations?camp_code=eq.'+encodeURIComponent(S.syncCode)
+        +'&select=*&order=submitted_at.asc',
+      { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+    );
+    if(!res.ok){
+      const body=await res.text();
+      if(res.status===404 || /relation|does not exist|PGRST/i.test(body)){
+        note.innerHTML='<span style="color:var(--red)">No <code>registrations</code> table yet — run <code>migrations/007_registrations.sql</code> in Supabase.</span>';
+      } else if(res.status===401 || res.status===403 || /row-level security|42501/i.test(body)){
+        note.innerHTML='<span style="color:var(--red)">Can’t read registrations — sign in again, or re-run migration 007 (authenticated SELECT + grants).</span>';
+      } else {
+        note.innerHTML='<span style="color:var(--red)">Pull failed ('+res.status+'): '+esc(body.slice(0,160))+'</span>';
+      }
+      return;
+    }
+    const rows=await res.json();
+    if(!rows.length){
+      note.innerHTML='No registrations found for camp code <code>'+esc(S.syncCode)+'</code>.';
+      return;
+    }
+
+    const emailKey=e=>String(e||'').trim().toLowerCase();
+    const byEmail={};
+    const byName={};
+    S.players.forEach(p=>{
+      const em=emailKey(p.email);
+      if(em) byEmail[em]=p;
+      const nk=playerNameKey(p.first,p.last);
+      if(nk!=='|') byName[nk]=p;
+    });
+
+    let added=0, matched=0;
+    rows.forEach(r=>{
+      const first=String(r.first||'').trim();
+      const last=String(r.last||'').trim();
+      if(!first && !last) return;
+
+      const emails=[emailKey(r.email), emailKey(r.parent_email)].filter(Boolean);
+      let p=null;
+      for(const em of emails){ if(byEmail[em]){ p=byEmail[em]; break; } }
+      if(!p){
+        const nk=playerNameKey(first, last);
+        if(nk!=='|') p=byName[nk]||null;
+      }
+
+      const htRaw=String(r.height||'').trim();
+      const height=normalizeHeightValue(htRaw) || htRaw;
+      const year=String(r.grad_year||'').trim();
+      const position=String(r.position||'').trim();
+      const school=String(r.school||'').trim();
+      const city=String(r.school_city||r.city||'').trim();
+      const state=String(r.school_state||r.state||'').trim().toUpperCase();
+      const email=String(r.email||r.parent_email||'').trim();
+      const addonList=String(r.addons||'').split(/[,;/|]+/).map(s=>s.trim()).filter(Boolean)
+        .filter(a=>['Mixtape','Eval','Film','Academic','Zoom'].includes(a) || a.length);
+
+      if(p){
+        if(year) p.year=year;
+        if(height){ p.height=height; p.hin=heightToInches(height); }
+        if(position) p.position=position;
+        if(school) p.school=school;
+        if(city) p.city=city;
+        if(state) p.state=state;
+        if(email) p.email=email;
+        if(addonList.length){
+          p.addonsManual=p.addonsManual||[];
+          addonList.forEach(a=>{ if(!p.addonsManual.includes(a)) p.addonsManual.push(a); });
+        }
+        if(r.payment_status==='paid'){
+          p.payStatus='Paid';
+          p.balance='0';
+        } else if(r.payment_status && !p.payStatus){
+          p.payStatus=r.payment_status;
+          if(r.amount_cents!=null) p.balance=(r.amount_cents/100).toFixed(2);
+        }
+        // Never overwrite check-in-day fields: checkedIn, jersey, photoUrl
+        matched++;
+        const em=emailKey(p.email); if(em) byEmail[em]=p;
+        byName[playerNameKey(p.first,p.last)]=p;
+      } else {
+        const uid=crypto.randomUUID ? crypto.randomUUID() : ('reg-'+Date.now()+'-'+Math.random().toString(16).slice(2));
+        const np={
+          id:S.players.length, uid,
+          first, last, year, height, hin:heightToInches(height),
+          position, school, city, state,
+          payStatus: r.payment_status==='paid' ? 'Paid' : (r.payment_status||''),
+          balance: r.payment_status==='paid' ? '0' : (r.amount_cents!=null ? (r.amount_cents/100).toFixed(2) : ''),
+          items: r.addons||'', email,
+          checkedIn:false, jersey:'',
+          addonsManual:addonList.slice(), addonsRemoved:[], photoUrl:''
+        };
+        S.players.push(np);
+        added++;
+        const em=emailKey(np.email); if(em) byEmail[em]=np;
+        byName[playerNameKey(first, last)]=np;
+      }
+    });
+
+    S.players.forEach((p,i)=>p.id=i);
+    store.save();
+    renderAll();
+    pushRosterLive();
+    note.innerHTML='<b style="color:var(--green)">✓ Pulled '+rows.length+' registration'+(rows.length===1?'':'s')
+      +'</b> — '+added+' new, '+matched+' matched to existing players.';
+  }catch(e){
+    note.innerHTML='<span style="color:var(--red)">Could not reach Supabase — check connection.</span>';
+  }
+}
+
+$('#btnPullReg').addEventListener('click', ()=>pullRegistrations());
 $('#btnPushRoster').addEventListener('click', async ()=>{
   if(!(S.syncUrl && S.syncKey && S.campId)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Select an Active camp and set up Live Sync on the Publish tab first.</span>'; return; }
   if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
@@ -3385,15 +3519,19 @@ function renderSiteLink(){
   const link=base+'/?camp='+encodeURIComponent(S.syncCode);
   const station=base+'/station.html?camp='+encodeURIComponent(S.syncCode);
   const register=base+'/register.html?camp='+encodeURIComponent(S.syncCode);
+  const walkup=base+'/walkup.html?camp='+encodeURIComponent(S.syncCode);
   note.innerHTML='<div style="line-height:1.8">'
     +'<div><b>Staff login:</b> <a href="'+esc(base+'/login.html')+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600;text-decoration:none">'+esc(base+'/login.html')+'</a></div>'
     +'<div><b>Parent:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(link)+'</code> '
     +'<button class="btn btn-dark btn-sm" id="btnCopyLink" style="margin-left:6px">Copy</button> '
     +'<a href="'+esc(link)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a></div>'
     +'<div><b>Station:</b> <a href="'+esc(station)+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600;text-decoration:none">'+esc(station)+'</a></div>'
-    +'<div><b>Walk-up form:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(register)+'</code> '
+    +'<div><b>Camp registration:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(register)+'</code> '
     +'<button class="btn btn-dark btn-sm" id="btnCopyReg" style="margin-left:6px">Copy</button> '
     +'<a href="'+esc(register)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a></div>'
+    +'<div><b>Walk-up form:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(walkup)+'</code> '
+    +'<button class="btn btn-dark btn-sm" id="btnCopyWalkup" style="margin-left:6px">Copy</button> '
+    +'<a href="'+esc(walkup)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a></div>'
     +'</div>';
   const b=document.getElementById('btnCopyLink');
   if(b) b.addEventListener('click', ()=>{
@@ -3402,6 +3540,10 @@ function renderSiteLink(){
   const r=document.getElementById('btnCopyReg');
   if(r) r.addEventListener('click', ()=>{
     navigator.clipboard?.writeText(register).then(()=>{ r.textContent='Copied!'; setTimeout(()=>r.textContent='Copy',1500); });
+  });
+  const w=document.getElementById('btnCopyWalkup');
+  if(w) w.addEventListener('click', ()=>{
+    navigator.clipboard?.writeText(walkup).then(()=>{ w.textContent='Copied!'; setTimeout(()=>w.textContent='Copy',1500); });
   });
 }
 
