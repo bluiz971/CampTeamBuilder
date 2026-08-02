@@ -1729,13 +1729,15 @@ function openTopPerformerCard(ref){
   $('#tpShare').addEventListener('click', ()=>exportTopPerformerCard(p, true));
 }
 function loadImage(src){
-  return new Promise((resolve, reject)=>{
+  return new Promise((resolve)=>{
     if(!src){ resolve(null); return; }
     const img=new Image();
     img.crossOrigin='anonymous';
     img.onload=()=>resolve(img);
     img.onerror=()=>resolve(null);
-    img.src=src;
+    // cache-bust so CORS + canvas aren't stuck on a tainted cached copy
+    const join=src.includes('?')?'&':'?';
+    img.src=src+(src.includes('t=')?'':join+'t='+Date.now());
   });
 }
 function roundRect(ctx, x, y, w, h, r){
@@ -1748,99 +1750,178 @@ function roundRect(ctx, x, y, w, h, r){
   ctx.arcTo(x, y, x+w, y, rr);
   ctx.closePath();
 }
+function drawStar(ctx, cx, cy, r){
+  ctx.beginPath();
+  for(let i=0;i<5;i++){
+    const a=-Math.PI/2+i*Math.PI*2/5;
+    const b=a+Math.PI/5;
+    const x1=cx+Math.cos(a)*r, y1=cy+Math.sin(a)*r;
+    const x2=cx+Math.cos(b)*r*0.45, y2=cy+Math.sin(b)*r*0.45;
+    if(i===0) ctx.moveTo(x1,y1); else ctx.lineTo(x1,y1);
+    ctx.lineTo(x2,y2);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+/** Build a PNG that matches the on-screen Top Performer card layout. */
 async function buildTopPerformerCanvas(p){
-  const W=760, H=980;
+  const W=760;
+  const photoH=520;
+  const pad=44;
+  const badgeH=64;
+  const infoTop=photoH+badgeH/2+8;
+  const gridTop=infoTop+120;
+  const cellH=108;
+  const gap=16;
+  const cellW=(W-pad*2-gap)/2;
+  const H=gridTop+cellH*2+gap+pad;
   const canvas=document.createElement('canvas');
   canvas.width=W; canvas.height=H;
   const ctx=canvas.getContext('2d');
-  // card bg
+
+  // Full white card
   ctx.fillStyle='#ffffff';
-  roundRect(ctx, 0, 0, W, H, 36);
+  roundRect(ctx, 0, 0, W, H, 32);
   ctx.fill();
-  // photo area
-  const photoH=520;
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, 32);
+  ctx.clip();
+
+  // Photo band (clipped so it never covers name/stats)
   ctx.fillStyle='#1e2733';
   ctx.fillRect(0, 0, W, photoH);
   const img=await loadImage(p.ph);
   if(img){
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, photoH);
+    ctx.clip();
     const scale=Math.max(W/img.width, photoH/img.height);
     const dw=img.width*scale, dh=img.height*scale;
-    const dx=(W-dw)/2, dy=(photoH-dh)*0.15;
+    const dx=(W-dw)/2;
+    // Bias toward upper body like CSS object-position: center 25%
+    const dy=(photoH-dh)*0.25;
     ctx.drawImage(img, dx, dy, dw, dh);
+    ctx.restore();
   } else {
     ctx.fillStyle='#8b96a4';
-    ctx.font='bold 120px Barlow, sans-serif';
+    ctx.font='120px sans-serif';
     ctx.textAlign='center';
-    ctx.fillText('👤', W/2, photoH/2+40);
+    ctx.textBaseline='middle';
+    ctx.fillText('👤', W/2, photoH/2);
   }
-  // jersey badge
+
+  // White info panel (covers any photo spill past photoH)
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0, photoH, W, H-photoH);
+
+  // Jersey badge — straddles photo / info like the modal
+  const badgeY=photoH-badgeH/2;
   if(p.j){
     ctx.fillStyle='#e8590c';
-    roundRect(ctx, 40, photoH-36, 150, 72, 16);
+    roundRect(ctx, 40, badgeY, 148, badgeH, 14);
     ctx.fill();
-    ctx.fillStyle='#fff';
-    ctx.font='bold 42px "Barlow Condensed", sans-serif';
+    ctx.fillStyle='#ffffff';
+    ctx.font='700 40px "Barlow Condensed", Impact, sans-serif';
     ctx.textAlign='left';
-    ctx.fillText('#'+String(p.j), 58, photoH+14);
+    ctx.textBaseline='middle';
+    ctx.fillText('#'+String(p.j), 58, badgeY+badgeH/2+1);
   }
-  // top performer badge
+
+  // Top Performer badge
+  const tpW=250, tpX=W-40-tpW;
   ctx.fillStyle='#f5c842';
-  roundRect(ctx, W-250, photoH-36, 210, 72, 16);
+  roundRect(ctx, tpX, badgeY, tpW, badgeH, 14);
   ctx.fill();
   ctx.strokeStyle='#e8c56a';
   ctx.lineWidth=2;
-  roundRect(ctx, W-250, photoH-36, 210, 72, 16);
+  roundRect(ctx, tpX, badgeY, tpW, badgeH, 14);
   ctx.stroke();
   ctx.fillStyle='#141a22';
-  ctx.font='bold 26px "Barlow Condensed", sans-serif';
-  ctx.textAlign='center';
-  ctx.fillText('★ TOP PERFORMER', W-145, photoH+12);
-
-  // name / team
+  drawStar(ctx, tpX+28, badgeY+badgeH/2, 12);
+  ctx.font='700 24px "Barlow Condensed", Impact, sans-serif';
   ctx.textAlign='left';
-  ctx.fillStyle='#141a22';
-  ctx.font='bold 54px "Barlow Condensed", sans-serif';
-  const name=String(p.n||'').toUpperCase();
-  ctx.fillText(name.length>22?name.slice(0,21)+'…':name, 44, photoH+110);
-  ctx.fillStyle='#e8590c';
-  ctx.font='bold 34px "Barlow Condensed", sans-serif';
-  ctx.fillText(String(p.team||'').toUpperCase(), 44, photoH+156);
+  ctx.textBaseline='middle';
+  ctx.fillText('TOP PERFORMER', tpX+48, badgeY+badgeH/2+1);
 
-  // stats grid
+  // Name + team in white section (same hierarchy as modal)
+  ctx.textAlign='left';
+  ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#141a22';
+  ctx.font='700 52px "Barlow Condensed", Impact, sans-serif';
+  const name=String(p.n||'').toUpperCase();
+  ctx.fillText(name.length>24?name.slice(0,23)+'…':name, pad, infoTop+48);
+  ctx.fillStyle='#e8590c';
+  ctx.font='700 32px "Barlow Condensed", Impact, sans-serif';
+  ctx.fillText(String(p.team||'').toUpperCase(), pad, infoTop+90);
+
+  // Stats grid
   const cells=[
     ['GRAD YEAR', p.yr||'—'],
     ['POSITION', p.pos||'—'],
     ['HEIGHT', formatHeight(p.ht)||'—'],
     ['SCHOOL', p.sc||'—']
   ];
-  const gap=18, pad=44, cellW=(W-pad*2-gap)/2, cellH=100;
-  const startY=photoH+190;
   cells.forEach((c,i)=>{
     const col=i%2, row=Math.floor(i/2);
-    const x=pad+col*(cellW+gap), y=startY+row*(cellH+gap);
+    const x=pad+col*(cellW+gap), y=gridTop+row*(cellH+gap);
     ctx.fillStyle='#f6f5f2';
-    roundRect(ctx, x, y, cellW, cellH, 14);
+    roundRect(ctx, x, y, cellW, cellH, 12);
     ctx.fill();
     ctx.fillStyle='#6b7280';
-    ctx.font='600 18px Barlow, sans-serif';
+    ctx.font='600 18px Barlow, system-ui, sans-serif';
     ctx.textAlign='left';
-    ctx.fillText(c[0], x+18, y+34);
+    ctx.textBaseline='alphabetic';
+    ctx.fillText(c[0], x+18, y+36);
     ctx.fillStyle='#141a22';
-    ctx.font='600 28px Barlow, sans-serif';
+    ctx.font='600 28px Barlow, system-ui, sans-serif';
     const val=String(c[1]);
-    ctx.fillText(val.length>16?val.slice(0,15)+'…':val, x+18, y+72);
+    ctx.fillText(val.length>18?val.slice(0,17)+'…':val, x+18, y+74);
   });
 
-  // footer brand
-  ctx.fillStyle='#6b7280';
-  ctx.font='600 20px Barlow, sans-serif';
-  ctx.textAlign='center';
-  ctx.fillText('AAU Select Tour', W/2, H-36);
+  ctx.restore();
   return canvas;
 }
-async function exportTopPerformerCard(p, share){
+async function captureTopPerformerDom(){
+  const card=$('#tpCard');
+  if(!card || !window.html2canvas) return null;
+  const hide=[card.querySelector('.share-row'), card.querySelector('.close')].filter(Boolean);
+  hide.forEach(el=>{ el.dataset._disp=el.style.display; el.style.display='none'; });
   try{
-    const canvas=await buildTopPerformerCanvas(p);
+    return await window.html2canvas(card, {
+      useCORS:true,
+      allowTaint:false,
+      backgroundColor:'#ffffff',
+      scale:Math.min(3, window.devicePixelRatio||2),
+      logging:false
+    });
+  }catch(e){
+    return null;
+  }finally{
+    hide.forEach(el=>{ el.style.display=el.dataset._disp||''; delete el.dataset._disp; });
+  }
+}
+function ensureHtml2Canvas(){
+  return new Promise((resolve)=>{
+    if(window.html2canvas){ resolve(true); return; }
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    s.onload=()=>resolve(!!window.html2canvas);
+    s.onerror=()=>resolve(false);
+    document.head.appendChild(s);
+  });
+}
+async function exportTopPerformerCard(p, share){
+  const btn=$('#tpDownload'), btn2=$('#tpShare');
+  if(btn) btn.disabled=true;
+  if(btn2) btn2.disabled=true;
+  try{
+    let canvas=null;
+    // Prefer a screenshot of the real card so Download matches what you see
+    if(await ensureHtml2Canvas()){
+      canvas=await captureTopPerformerDom();
+    }
+    if(!canvas) canvas=await buildTopPerformerCanvas(p);
     const blob=await new Promise(res=>canvas.toBlob(res, 'image/png'));
     if(!blob){ toast('Could not build image — screenshot the card instead'); return; }
     const fileName=(String(p.n||'player').replace(/[^\w\-]+/g,'_')||'player')+'_top_performer.png';
@@ -1863,6 +1944,9 @@ async function exportTopPerformerCard(p, share){
     toast(share?'Downloaded — attach it in your post':'Downloaded Top Performer card');
   }catch(e){
     toast('Share failed — screenshot the card instead');
+  }finally{
+    if(btn) btn.disabled=false;
+    if(btn2) btn2.disabled=false;
   }
 }
 
