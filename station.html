@@ -177,6 +177,15 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 #regDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
 #regDlg .dlg-actions .bigbtn{min-width:110px}
 
+#editPlayerDlg{border:none;border-radius:14px;padding:20px;max-width:400px;width:calc(100% - 24px);box-shadow:0 16px 40px rgba(20,26,34,.3)}
+#editPlayerDlg::backdrop{background:rgba(20,26,34,.45)}
+#editPlayerDlg h3{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase;margin-bottom:6px}
+#editPlayerDlg .edit-fld{margin:0 0 12px}
+#editPlayerDlg .edit-fld label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:4px}
+#editPlayerDlg .edit-fld input,#editPlayerDlg .edit-fld select{width:100%;font-size:16px;padding:11px 12px;border:1.5px solid var(--line);border-radius:9px;box-sizing:border-box}
+#editPlayerDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+#editPlayerDlg .dlg-actions .bigbtn{min-width:110px}
+
 /* ---------- Live camera modal ---------- */
 #camModal{display:none;position:fixed;inset:0;z-index:400;background:rgba(20,26,34,.92);flex-direction:column;align-items:center;justify-content:center;padding:16px}
 #camModal.on{display:flex}
@@ -323,6 +332,20 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   <div class="dlg-actions">
     <button class="bigbtn ghost" type="button" id="regCancel">Cancel</button>
     <button class="bigbtn" type="button" id="regSave">Check In ✓</button>
+  </div>
+</dialog>
+
+<dialog id="editPlayerDlg">
+  <h3>Edit player info</h3>
+  <p id="editPlayerWho" class="reg-sub" style="margin-bottom:14px"></p>
+  <input type="hidden" id="editPlayerId">
+  <div class="edit-fld"><label for="editPlayerYear">Grad Year</label><input type="tel" id="editPlayerYear" inputmode="numeric" placeholder="e.g. 2028" maxlength="4" autocomplete="off"></div>
+  <div class="edit-fld"><label for="editPlayerPos">Position</label><input type="text" id="editPlayerPos" list="editPosList" placeholder="e.g. Guard, Wing, Big" autocomplete="off"></div>
+  <datalist id="editPosList"><option value="PG"><option value="SG"><option value="SF"><option value="PF"><option value="C"><option value="G"><option value="W"><option value="F"><option value="Big"></datalist>
+  <div class="edit-fld"><label for="editPlayerEmail">Email</label><input type="email" id="editPlayerEmail" placeholder="parent@example.com" autocomplete="off"></div>
+  <div class="dlg-actions">
+    <button class="bigbtn ghost" type="button" id="editPlayerCancel">Cancel</button>
+    <button class="bigbtn" type="button" id="editPlayerOk">Save</button>
   </div>
 </dialog>
 
@@ -1191,6 +1214,8 @@ function toast(msg){
 // focused jersey input and dismisses the keypad — skip redraw while typing.
 let deferredListRender=false;
 function isEditingList(){
+  const dlg=$('#editPlayerDlg');
+  if(dlg && dlg.open) return true;
   const a=document.activeElement;
   if(!a) return false;
   const wrap=$('#plist');
@@ -1316,6 +1341,11 @@ async function saveWalkUp(){
 }
 $('#regCancel').addEventListener('click', closeWalkUpDialog);
 $('#regSave').addEventListener('click', saveWalkUp);
+$('#editPlayerCancel').addEventListener('click', closeEditPlayerInfo);
+$('#editPlayerOk').addEventListener('click', ()=>{ saveEditPlayerInfo(); });
+$('#editPlayerDlg').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && e.target && e.target.tagName==='INPUT'){ e.preventDefault(); saveEditPlayerInfo(); }
+});
 ['regFirst','regLast','regYear','regHeight','regSchool','regCity','regState','regEmail','regBalance'].forEach(id=>{
   const el=$('#'+id); if(!el) return;
   el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); saveWalkUp(); } });
@@ -1809,17 +1839,19 @@ function renderList(){
       ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
       <div class="who">
         <b class="${missHt?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>
-        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${missHt?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}</small>
+        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${missHt?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}${p.email?' · '+esc(p.email):''}</small>
         <div style="margin-top:4px">${tags.length?tags.map(a=>`<span class="tag">${esc(a)}</span>`).join(''):'<span style="color:var(--mut);font-size:12px">No add-ons</span>'}</div>
       </div>
       ${missHt?'<span class="badge needht">Need Height</span>':''}${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
       ${p.photo_url?'<span class="badge done">Ready</span>':'<span class="badge due">Needs photo</span>'}
+      <button class="bigbtn ghost" data-editi="${p.id}">Edit Info</button>
       <button class="bigbtn ghost" data-edith="${p.id}">Edit Ht</button>
       <button class="bigbtn ghost" data-editj="${p.id}">Edit #</button>
       <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
       <button class="bigbtn ghost" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
     </div>`;
     }).join('');
+    wrap.querySelectorAll('[data-editi]').forEach(b=>b.addEventListener('click', ()=>openEditPlayerInfo(b.dataset.editi)));
     wrap.querySelectorAll('[data-edith]').forEach(b=>b.addEventListener('click', async ()=>{
       const id=b.dataset.edith;
       const p=players.find(x=>String(x.id)===String(id));
@@ -1872,6 +1904,52 @@ async function editPlayerJersey(id){
   } else {
     toast('#'+j+' saved');
   }
+  renderList();
+}
+
+function openEditPlayerInfo(id){
+  const p=players.find(x=>String(x.id)===String(id)); if(!p) return;
+  $('#editPlayerId').value=String(id);
+  $('#editPlayerWho').textContent=(normJersey(p.jersey)?'#'+normJersey(p.jersey)+' ':'')+p.first+' '+p.last;
+  $('#editPlayerYear').value=p.grad_year||'';
+  $('#editPlayerPos').value=p.position||'';
+  $('#editPlayerEmail').value=p.email||'';
+  const dlg=$('#editPlayerDlg');
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
+  setTimeout(()=>$('#editPlayerYear').focus(), 50);
+}
+function closeEditPlayerInfo(){
+  const dlg=$('#editPlayerDlg');
+  if(dlg.close) dlg.close(); else dlg.removeAttribute('open');
+}
+async function saveEditPlayerInfo(){
+  const id=$('#editPlayerId').value;
+  const p=players.find(x=>String(x.id)===String(id));
+  if(!p){ closeEditPlayerInfo(); return; }
+  const year=String($('#editPlayerYear').value||'').trim();
+  const position=String($('#editPlayerPos').value||'').trim();
+  const email=String($('#editPlayerEmail').value||'').trim();
+  const yearChanged=String(p.grad_year||'')!==year;
+  const posChanged=String(p.position||'')!==position;
+  if(!(await patchPlayer(id, {grad_year:year, position, email}))) return;
+  // Keep assigned team cards in sync for year/position display
+  if(yearChanged || posChanged){
+    const j=normJersey(p.jersey);
+    const name=((p.first||'')+' '+(p.last||'')).trim().toLowerCase();
+    let teamChanged=false;
+    teams.forEach(t=>{
+      (t.players||[]).forEach(tp=>{
+        if(String(tp.j)===String(j) && String(tp.n||'').trim().toLowerCase()===name){
+          if(yearChanged) tp.yr=year;
+          if(posChanged) tp.pos=position;
+          teamChanged=true;
+        }
+      });
+    });
+    if(teamChanged){ pendingLocalTeams=true; teamsPosted=false; }
+  }
+  closeEditPlayerInfo();
+  toast('Player info saved');
   renderList();
 }
 
