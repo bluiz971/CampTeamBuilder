@@ -52,6 +52,10 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .badge.due{background:var(--red-soft);color:var(--red)}
 .badge.paid{background:var(--green-soft);color:var(--green)}
 .badge.done{background:var(--green-soft);color:var(--green)}
+.badge.needht{background:#fff3cd;color:#92400e}
+.badge.walk{background:var(--orange-soft);color:var(--orange)}
+.need-ht-name{color:#92400e}
+.prow.need-ht-row{background:#fffbeb;border-color:#f5d78e;box-shadow:inset 3px 0 0 #d97706}
 .bigbtn{font-family:'Barlow Condensed';font-size:16px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;padding:12px 18px;border-radius:9px;border:none;background:var(--orange);color:#fff;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center}
 .bigbtn:active{filter:brightness(.92)}
 .bigbtn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
@@ -168,7 +172,6 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 #regDlg .reg-msg{font-size:13px;color:var(--red);min-height:18px;margin:8px 0 4px}
 #regDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
 #regDlg .dlg-actions .bigbtn{min-width:110px}
-.badge.walk{background:var(--orange-soft);color:var(--orange)}
 
 /* ---------- Live camera modal ---------- */
 #camModal{display:none;position:fixed;inset:0;z-index:400;background:rgba(20,26,34,.92);flex-direction:column;align-items:center;justify-content:center;padding:16px}
@@ -1095,6 +1098,18 @@ $$('.roletabs button').forEach(b=>b.addEventListener('click', ()=>{
 $('#q').addEventListener('input', e=>{ query=e.target.value.toLowerCase().trim(); renderList(); });
 
 function hasDue(p){ return (parseFloat(p.balance)||0)>0 || (p.pay_status && !/paid/i.test(p.pay_status)); }
+function needsHeight(p){
+  if(!p) return true;
+  return !heightToInches(p.height);
+}
+function playerStatusBadges(p){
+  const bits=[];
+  if(isWalkUp(p)) bits.push('<span class="badge walk">Walk-up</span>');
+  if(needsHeight(p)) bits.push('<span class="badge needht">Need Height</span>');
+  if(hasDue(p)) bits.push(`<span class="badge due">Owes${p.balance?' $'+esc(p.balance):''}</span>`);
+  else bits.push('<span class="badge paid">Paid</span>');
+  return bits.join(' ');
+}
 function matches(p){
   if(!query) return true;
   return (`${p.first} ${p.last} ${p.school}`).toLowerCase().includes(query);
@@ -1603,14 +1618,15 @@ function renderList(){
     } else if(!rows.length){
       body='<div class="empty"><b>Everyone is checked in</b>Need someone who wasn\'t on the list? Register them as a walk-up.</div>';
     } else {
-      body=rows.map(p=>`<div class="prow">
-        <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
-        ${hasDue(p)?`<span class="badge due">Owes${p.balance?' $'+esc(p.balance):''}</span>`:'<span class="badge paid">Paid</span>'}
-        ${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
+      body=rows.map(p=>`<div class="prow${needsHeight(p)?' need-ht-row':''}">
+        <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${needsHeight(p)?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+        ${playerStatusBadges(p)}
         <button class="bigbtn" data-checkin="${p.id}">Check In ✓</button>
       </div>`).join('');
     }
-    wrap.innerHTML=walkUpBarHtml()+body;
+    const miss=players.filter(p=>!p.checked_in && needsHeight(p)).length;
+    const htBanner=miss?`<div style="font-size:13px;color:#92400e;background:#fffbeb;border:1px solid #f5d78e;border-radius:10px;padding:10px 12px;margin-bottom:10px"><span class="badge needht">Need Height</span> <b>${miss}</b> waiting player${miss===1?'':'s'} missing height — fill on Player Data after jersey.</div>`:'';
+    wrap.innerHTML=walkUpBarHtml()+htBanner+body;
     bindWalkUpBar();
     wrap.querySelectorAll('[data-checkin]').forEach(b=>b.addEventListener('click', async ()=>{
       b.disabled=true; b.textContent='…';
@@ -1632,11 +1648,12 @@ function renderList(){
   }
 
   if(role==='jersey'){
-    wrap.innerHTML=rows.map(p=>`<div class="prow">
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
-      ${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
+    wrap.innerHTML=rows.map(p=>`<div class="prow${needsHeight(p)?' need-ht-row':''}">
+      <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${needsHeight(p)?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+      ${needsHeight(p)?'<span class="badge needht">Need Height</span>':''}${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
       <input class="jinput" type="tel" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="##" data-jin="${p.id}">
       <button class="bigbtn" data-assign="${p.id}">Assign</button>
+      <button class="bigbtn ghost" data-uncheck="${p.id}" title="Send back to Check-In">Undo</button>
     </div>`).join('');
     const assign=async (id)=>{
       const inp=wrap.querySelector(`[data-jin="${CSS.escape?CSS.escape(id):id}"]`) || wrap.querySelector(`[data-jin="${id}"]`);
@@ -1663,6 +1680,19 @@ function renderList(){
     wrap.querySelectorAll('[data-jin]').forEach(inp=>{
       inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); assign(inp.dataset.jin); } });
     });
+    wrap.querySelectorAll('[data-uncheck]').forEach(b=>b.addEventListener('click', async ()=>{
+      const id=b.dataset.uncheck;
+      const p=players.find(x=>String(x.id)===String(id));
+      const name=p?(p.first+' '+p.last):'this player';
+      if(!confirm('Send '+name+' back to Check-In?\n\nThey will leave the Jersey queue (as if not checked in yet).')) return;
+      b.disabled=true; b.textContent='…';
+      if(await patchPlayer(id, {checked_in:false, jersey:''})){
+        toast('Sent back to Check-In');
+        renderList();
+      } else {
+        b.disabled=false; b.textContent='Undo';
+      }
+    }));
   } else if(role==='addons'){
     wrap.innerHTML=rows.map(p=>{
       const tags=displayAddOns(p);
@@ -1681,21 +1711,38 @@ function renderList(){
     </div>`).join('');
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
   } else if(role==='playerdata'){
-    wrap.innerHTML=rows.map(p=>{
+    const miss=rows.filter(needsHeight).length;
+    const htBanner=miss?`<div style="font-size:13px;color:#92400e;background:#fffbeb;border:1px solid #f5d78e;border-radius:10px;padding:10px 12px;margin-bottom:10px"><span class="badge needht">Need Height</span> <b>${miss}</b> player${miss===1?'':'s'} missing height — tap <b>Edit Ht</b> before teams are generated.</div>`:'';
+    wrap.innerHTML=htBanner+rows.map(p=>{
       const tags=displayAddOns(p);
-      return `<div class="prow photo-row">
+      const missHt=needsHeight(p);
+      return `<div class="prow photo-row${missHt?' need-ht-row':''}">
       ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
       <div class="who">
-        <b>${esc(p.first)} ${esc(p.last)}</b>
-        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))||'—'} · ${esc(p.school)}</small>
+        <b class="${missHt?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>
+        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${missHt?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}</small>
         <div style="margin-top:4px">${tags.length?tags.map(a=>`<span class="tag">${esc(a)}</span>`).join(''):'<span style="color:var(--mut);font-size:12px">No add-ons</span>'}</div>
       </div>
+      ${missHt?'<span class="badge needht">Need Height</span>':''}${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
       ${p.photo_url?'<span class="badge done">Ready</span>':'<span class="badge due">Needs photo</span>'}
+      <button class="bigbtn ghost" data-edith="${p.id}">Edit Ht</button>
       <button class="bigbtn ghost" data-editj="${p.id}">Edit #</button>
       <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
       <button class="bigbtn ghost" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
     </div>`;
     }).join('');
+    wrap.querySelectorAll('[data-edith]').forEach(b=>b.addEventListener('click', async ()=>{
+      const id=b.dataset.edith;
+      const p=players.find(x=>String(x.id)===String(id));
+      if(!p) return;
+      const v=prompt('Height for '+p.first+' '+p.last+' (e.g. 5\'10 or 70):', p.height||'');
+      if(v===null) return;
+      const raw=String(v).trim();
+      if(raw && !heightToInches(raw)){
+        if(!confirm('Couldn’t read that height. Save it anyway as typed?')) return;
+      }
+      if(await patchPlayer(id, {height:raw})){ toast(raw?'Height saved':'Height cleared'); renderList(); }
+    }));
     wrap.querySelectorAll('[data-editj]').forEach(b=>b.addEventListener('click', ()=>editPlayerJersey(b.dataset.editj)));
     wrap.querySelectorAll('[data-pop]').forEach(b=>b.addEventListener('click', ()=>openAddonPopover(b.dataset.pop)));
     wrap.querySelectorAll('[data-photo]').forEach(b=>b.addEventListener('click', ()=>openCamera(b.dataset.photo)));
