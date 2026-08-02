@@ -88,6 +88,11 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--orange);ou
 .badge{font-family:'Barlow Condensed';font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:6px;white-space:nowrap}
 .badge.paid{background:var(--green-soft);color:var(--green)}
 .badge.due{background:var(--red-soft);color:var(--red)}
+.badge.needht{background:#fff3cd;color:#92400e}
+.badge.walk{background:var(--orange-soft);color:var(--orange)}
+.need-ht-name{color:#92400e}
+.need-ht-row{background:#fffbeb}
+.need-ht-row td.tcol,tr.need-ht-row td:first-child{box-shadow:inset 3px 0 0 #d97706}
 .jersey-in{width:78px;text-align:center;font-weight:700;font-size:17px}
 .ci-check{width:26px;height:26px;accent-color:var(--green);cursor:pointer}
 .ci-num{font-family:'Barlow Condensed';font-size:15px;font-weight:600;color:var(--mut);min-width:26px;text-align:right}
@@ -303,7 +308,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-checkin">
   <div class="panel-head">
     <div><h2>Check-In</h2>
-    <p>Everyone from the roster starts here. Confirm any balance owed, then tap <b>Check In</b> — the player moves to the Jersey page.</p></div>
+    <p>Everyone from the roster starts here. Confirm any balance owed, then tap <b>Check In</b> — the player moves to the Jersey page. Walk-ups missing height show a <b>Need Height</b> note (same idea as Balance Due).</p></div>
   </div>
   <div class="toolbar">
     <input type="search" id="ciSearch" placeholder="Search name, school or city…">
@@ -311,6 +316,7 @@ dialog select{width:100%;margin:10px 0 16px}
       <button class="pill on" data-f="pending">Waiting</button>
       <button class="pill" data-f="done">Checked In</button>
       <button class="pill" data-f="due">Balance Due</button>
+      <button class="pill" data-f="needht">Need Height</button>
       <button class="pill" data-f="all">All</button>
     </div>
   </div>
@@ -333,9 +339,10 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-players">
   <div class="panel-head">
     <div><h2>Player Data</h2>
-    <p>Everyone who is checked in with a jersey number. Use <b>Edit #</b> to change a number, or <b>Clear #</b> to send them back to the Jersey page.</p></div>
+    <p>Everyone who is checked in with a jersey number. Use <b>Edit #</b> to change a number, or <b>Clear #</b> to send them back to the Jersey page. Players missing height (especially walk-ups) are highlighted — tap <b>Edit Ht</b> so team balancing can use them.</p></div>
     <button class="btn btn-dark btn-sm" id="btnCsvPlayers">Export CSV</button>
   </div>
+  <div class="balance-note" id="pdHtNote" style="margin-bottom:10px"></div>
   <div class="tbl-wrap" style="max-height:560px;overflow:auto"><table id="pdTbl"></table></div>
 </section>
 
@@ -971,6 +978,20 @@ function teamsForCount(n){
   return n>112 ? 14 : 3;   // above the top bracket, cap at 14
 }
 function hasDue(p){ return (parseFloat(p.balance)||0) > 0 || (p.payStatus && !/paid/i.test(p.payStatus)); }
+function isWalkUp(p){ return /walk-?up/i.test(String((p&&p.items)||'')); }
+function needsHeight(p){
+  if(!p) return true;
+  if(p.hin && +p.hin>0) return false;
+  return !heightToInches(p.height);
+}
+function playerStatusBadges(p){
+  const bits=[];
+  if(isWalkUp(p)) bits.push('<span class="badge walk">Walk-up</span>');
+  if(needsHeight(p)) bits.push('<span class="badge needht">Need Height</span>');
+  if(hasDue(p)) bits.push(`<span class="badge due">Owes ${p.balance?'$'+esc(p.balance):''}</span>`);
+  else bits.push('<span class="badge paid">Paid</span>');
+  return bits.join(' ');
+}
 function addOns(items){
   const s=String(items||''), out=[];
   if(/recruiting tape/i.test(s)) out.push('Mixtape');
@@ -1247,7 +1268,7 @@ function renderRosterTbl(){
   if(!S.players.length){ t.innerHTML=''; $('#rosterLoaded').hidden=true; return; }
   $('#rosterLoaded').hidden=false;
   t.innerHTML='<tr><th>#</th><th>Name</th><th>Year</th><th>Ht</th><th>Position</th><th>School</th><th>City</th><th>Status</th></tr>'+
-    S.players.map((p,i)=>`<tr><td>${i+1}</td><td><b>${esc(p.first)} ${esc(p.last)}</b></td><td>${esc(p.year)}</td><td>${esc(formatHeight(p.height))}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td><td>${hasDue(p)?'<span class="badge due">Balance Due</span>':'<span class="badge paid">Paid</span>'}</td></tr>`).join('');
+    S.players.map((p,i)=>`<tr class="${needsHeight(p)?'need-ht-row':''}"><td>${i+1}</td><td><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b></td><td>${esc(p.year)}</td><td>${needsHeight(p)?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td><td>${playerStatusBadges(p)}</td></tr>`).join('');
 }
 
 /* =============================================================
@@ -1271,16 +1292,17 @@ function renderCheckin(){
       if(ciFilter==='pending') return !p.checkedIn;
       if(ciFilter==='done') return p.checkedIn;
       if(ciFilter==='due') return hasDue(p);
+      if(ciFilter==='needht') return needsHeight(p);
       return true;
     });
-  list.innerHTML = rows.length ? rows.map(({p,i})=>`<div class="ci-row ${p.checkedIn?'done':''}">
+  list.innerHTML = rows.length ? rows.map(({p,i})=>`<div class="ci-row ${p.checkedIn?'done':''}${needsHeight(p)?' need-ht-row':''}">
       <span class="ci-num">${i+1}</span>
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))} · ${esc(p.school)}</small></div>
-      ${hasDue(p)?`<span class="badge due">Owes ${p.balance?'$'+esc(p.balance):''}</span>`:'<span class="badge paid">Paid</span>'}
+      <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${needsHeight(p)?'Ht missing':esc(formatHeight(p.height))} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+      ${playerStatusBadges(p)}
       ${p.checkedIn
         ?`<span class="badge paid">✓ In${p.jersey?' · #'+esc(p.jersey):''}</span><button class="btn btn-ghost btn-sm" data-undo="${i}">Undo</button>`
         :`<button class="btn btn-orange btn-sm" data-in="${i}">Check In ✓</button>`}
-    </div>`).join('') : '<div class="empty"><b>'+(ciFilter==='pending'?'Everyone is checked in':'No matches')+'</b>'+(ciFilter==='pending'?'Head to the Jersey page for the next step.':'Try a different search or filter.')+'</div>';
+    </div>`).join('') : '<div class="empty"><b>'+(ciFilter==='pending'?'Everyone is checked in':ciFilter==='needht'?'Everyone has a height':'No matches')+'</b>'+(ciFilter==='pending'?'Head to the Jersey page for the next step.':ciFilter==='needht'?'Heights are filled in — ready for team balancing.':'Try a different search or filter.')+'</div>';
 
   list.querySelectorAll('[data-in]').forEach(b=>b.addEventListener('click',()=>{
     S.players[+b.dataset.in].checkedIn=true;
@@ -1307,9 +1329,10 @@ function renderJersey(){
     list.innerHTML=`<div class="empty"><b>${anyIn?'No one waiting on a number':'No players checked in yet'}</b>${anyIn?'Every checked-in player has a jersey — see Player Data.':'Check players in first, then assign jerseys here.'}</div>`;
     return;
   }
-  list.innerHTML=rows.map(({p,i})=>`<div class="ci-row">
+  list.innerHTML=rows.map(({p,i})=>`<div class="ci-row${needsHeight(p)?' need-ht-row':''}">
       <span class="ci-num">${i+1}</span>
-      <div class="who"><b>${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${esc(formatHeight(p.height))} · ${esc(p.school)}</small></div>
+      <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${needsHeight(p)?'Ht missing':esc(formatHeight(p.height))} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+      ${needsHeight(p)?'<span class="badge needht">Need Height</span>':''}${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
       <input class="jersey-in" type="text" inputmode="numeric" placeholder="##" data-i="${i}" aria-label="Jersey number">
       <button class="btn btn-orange btn-sm" data-assign="${i}">Assign</button>
       <button class="btn btn-ghost btn-sm" data-undo="${i}" title="Send back to Check-In">Undo</button>
@@ -1385,15 +1408,51 @@ function renderTally(){
 
 function renderPlayers(){
   const t=$('#pdTbl'), pool=eligible();
+  const htNote=$('#pdHtNote');
+  const missingHt=pool.filter(needsHeight);
+  const missingWalk=missingHt.filter(isWalkUp);
+  if(htNote){
+    if(missingHt.length){
+      htNote.innerHTML='<span class="badge needht">Need Height</span> <b>'+missingHt.length+'</b> numbered player'+(missingHt.length===1?'':'s')+' missing height'
+        +(missingWalk.length?' ('+missingWalk.length+' walk-up'+(missingWalk.length===1?'':'s')+')':'')
+        +' — fill these in before generating teams so balancing works. Tap <b>Edit Ht</b> on a row.';
+    } else {
+      htNote.innerHTML=pool.length?'<span style="color:var(--green)">✓ All numbered players have a height.</span>':'';
+    }
+  }
   if(!pool.length){ t.innerHTML='<tr><td style="padding:30px;text-align:center;color:var(--mut)">No players yet — they appear here once checked in with a jersey number.</td></tr>'; return; }
   t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Ht</th><th>Position</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
     pool.sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>{
       const g=groupOf(p.year), i=S.players.indexOf(p);
       const tags=displayAddOns(p);
-      return `<tr><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b>${esc(p.first)} ${esc(p.last)}</b></td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${esc(formatHeight(p.height))}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
+      const miss=needsHeight(p);
+      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
       <td class="addon-cell">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}<button class="addon-add" data-addon="${i}" title="Add / edit add-ons">+ Add</button></td>
-      <td class="row-actions"><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
+      <td class="row-actions"><button class="btn btn-ghost btn-sm" data-eh="${i}" title="Edit height">Edit Ht</button><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
     }).join('');
+  t.querySelectorAll('[data-eh]').forEach(b=>b.addEventListener('click', async ()=>{
+    const p=S.players[+b.dataset.eh];
+    const v=prompt('Height for '+p.first+' '+p.last+' (e.g. 5\'10 or 70):', p.height||'');
+    if(v===null) return;
+    const raw=String(v).trim();
+    const inches=heightToInches(raw);
+    if(raw && !inches){
+      if(!confirm('Couldn’t read that height. Save it anyway as typed?')) return;
+    }
+    p.height=raw;
+    p.hin=inches||0;
+    store.save();
+    refresh();
+    if(authSession && authSession.access_token && p.uid){
+      try{
+        await fetch(S.syncUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.uid),{
+          method:'PATCH',
+          headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+          body:JSON.stringify({ height: raw })
+        });
+      }catch(e){}
+    }
+  }));
   t.querySelectorAll('[data-ej]').forEach(b=>b.addEventListener('click', async ()=>{
     const p=S.players[+b.dataset.ej];
     const j=prompt('New jersey number for '+p.first+' '+p.last+':',p.jersey);
@@ -1491,6 +1550,11 @@ function openAddOnMenu(p, anchor){
 function generateTeams(){
   const pool=eligible();
   if(!pool.length){ alert('No checked-in players with jersey numbers.'); return; }
+  const missHt=pool.filter(needsHeight);
+  if(missHt.length){
+    const names=missHt.slice(0,10).map(p=>p.first+' '+p.last+(isWalkUp(p)?' (walk-up)':'')).join('\n• ');
+    if(!confirm(missHt.length+' player'+(missHt.length===1?'':'s')+' missing height — team balancing can’t use them for height:\n\n• '+names+(missHt.length>10?'\n• …':'')+'\n\nFill heights on Player Data (Edit Ht), or Generate anyway?')) return;
+  }
   S.gA1=+$('#gA1').value||S.gA1; S.gA2=+$('#gA2').value||S.gA2;
   S.gB1=+$('#gB1').value||S.gB1; S.gB2=+$('#gB2').value||S.gB2;
   if(S.gA2<S.gA1){ const x=S.gA1; S.gA1=S.gA2; S.gA2=x; }
@@ -1610,7 +1674,16 @@ function renderTeams(){
   $('#gA1').value=S.gA1; $('#gA2').value=S.gA2; $('#gB1').value=S.gB1; $('#gB2').value=S.gB2;
   renderTally();
   $('#grpDesc').textContent=`Group A = ${S.gA1}–${S.gA2} (Teams 1–${S.numA}), Group B = ${S.gB1}–${S.gB2} (Teams ${S.numA+1}–${S.numA+S.numB})`;
-  if(!S.teams){ out.innerHTML='<div class="empty"><b>No teams yet</b>Check players in, then press Generate.</div>'; sum.innerHTML=''; $('#balNote').innerHTML=''; updateScoreboard(); return; }
+  if(!S.teams){
+    out.innerHTML='<div class="empty"><b>No teams yet</b>Check players in, then press Generate.</div>';
+    sum.innerHTML='';
+    const miss=eligible().filter(needsHeight);
+    $('#balNote').innerHTML=miss.length
+      ? `<span class="badge needht">Need Height</span> <b>${miss.length}</b> numbered player${miss.length===1?'':'s'} missing height — fill on <b>Player Data</b> (Edit Ht) before generating for best balance.`
+      : '';
+    updateScoreboard();
+    return;
+  }
 
   const allTeams=[...S.teams.A,...S.teams.B];
   const card=t=>{
@@ -1623,7 +1696,7 @@ function renderTeams(){
       <ul>${ps.sort((a,b)=>b.hin-a.hin).map(p=>`<li>
         <span class="jnum">#${esc(p.jersey)}</span>
         <span><b>${esc(p.first)} ${esc(p.last)}</b><br><span style="color:var(--mut);font-size:12px">${esc(p.school)}</span></span>
-        <span class="pmeta">${esc(formatHeight(p.height))}<br>${esc(p.position)} · ${esc(p.year)}</span>
+        <span class="pmeta">${needsHeight(p)?'<span class="badge needht">Need Ht</span>':esc(formatHeight(p.height))}<br>${esc(p.position)} · ${esc(p.year)}</span>
         <button class="mv" data-id="${p.id}" title="Move to another team" aria-label="Move ${esc(p.first)} ${esc(p.last)}">⇄</button>
       </li>`).join('')}</ul>
       <footer><span>Guards: ${cats.Guard}</span><span>Wings: ${cats.Wing}</span><span>Bigs: ${cats.Big}</span></footer>
