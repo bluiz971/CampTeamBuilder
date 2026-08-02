@@ -92,13 +92,37 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .team-card header h3{font-size:18px;text-transform:uppercase;margin:0}
 .team-card header small{font-family:'Barlow Condensed';color:var(--amber);font-size:13px;font-weight:600;white-space:nowrap}
 .team-card ul{list-style:none;margin:0;padding:0}
-.team-card li{display:grid;grid-template-columns:42px 1fr auto auto auto;gap:6px;align-items:center;padding:8px 14px;border-top:1px solid var(--line);font-size:14px}
+.team-card li{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:6px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);font-size:14px}
 .team-card li:first-child{border-top:none}
 .team-card .jnum{font-family:'Barlow Condensed';font-weight:700;font-size:16px;color:var(--orange)}
 .team-card .pmeta{color:var(--mut);font-size:12px;text-align:right;line-height:1.3}
-.team-card .mv,.team-card .note-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1}
-.team-card .mv:active,.team-card .note-btn:active{background:var(--orange-soft)}
+.team-card .li-actions{display:flex;gap:4px;align-items:center;flex-shrink:0}
+.team-card .mv,.team-card .note-btn,.team-card .tp-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 8px;cursor:pointer;font-size:15px;line-height:1;min-width:34px;min-height:34px;display:inline-flex;align-items:center;justify-content:center}
+.team-card .mv:active,.team-card .note-btn:active,.team-card .tp-btn:active{background:var(--orange-soft)}
 .team-card .note-btn.has-note{border-color:var(--orange);background:var(--orange-soft)}
+.team-card .tp-btn{font-size:18px;color:#8a6a00;border-color:#e8c56a;background:linear-gradient(180deg,#ffe9a8,#f5c842);box-shadow:0 1px 0 rgba(0,0,0,.06)}
+.team-card .tp-btn:active{background:linear-gradient(180deg,#f5c842,#e8b020)}
+.team-card .pname b{display:block;line-height:1.2}
+.team-card .pname .pschool{color:var(--mut);font-size:12px}
+.team-card .pmid{display:flex;flex-direction:column;gap:2px;min-width:0}
+.team-card .pmid .pmeta{text-align:left}
+
+/* Top Performer share card */
+.scrim{position:fixed;inset:0;background:rgba(20,26,34,.55);z-index:400}
+.pmodal{position:fixed;z-index:410;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;width:92%;max-width:380px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35);max-height:calc(100vh - 32px);display:flex;flex-direction:column}
+.pmodal .photo{width:100%;height:260px;background:linear-gradient(135deg,#1e2733,#3a4a5c);display:flex;align-items:center;justify-content:center;color:#8b96a4;font-size:70px;position:relative;flex-shrink:0}
+.pmodal .photo img{width:100%;height:100%;object-fit:cover;object-position:center 25%}
+.pmodal .close{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;background:rgba(20,26,34,.55);color:#fff;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+.pmodal .jbadge{position:absolute;bottom:-18px;left:20px;background:var(--orange);color:#fff;font-family:'Barlow Condensed';font-weight:700;font-size:26px;padding:6px 16px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.2);z-index:1}
+.pmodal .tpbadge{position:absolute;bottom:-18px;right:16px;background:linear-gradient(180deg,#ffe9a8,#f5c842);color:#141a22;font-family:'Barlow Condensed';font-weight:700;font-size:15px;padding:7px 12px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.2);text-transform:uppercase;letter-spacing:.03em;z-index:1;border:1px solid #e8c56a}
+.pmodal .info{padding:32px 22px 18px;overflow:auto}
+.pmodal .info h3{font-size:24px;text-transform:uppercase;margin-bottom:4px;line-height:1.15}
+.pmodal .info .team{font-family:'Barlow Condensed';font-size:17px;font-weight:600;color:var(--orange);text-transform:uppercase;margin-bottom:14px}
+.pmodal .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:14px}
+.pmodal .grid div{background:var(--paper);border-radius:8px;padding:8px 10px}
+.pmodal .grid label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:2px}
+.pmodal .share-row{display:flex;gap:8px;padding:0 22px 18px;flex-wrap:wrap}
+.pmodal .share-row .bigbtn{flex:1;min-width:120px}
 .writeup-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:16px 0 8px}
 .writeup-box h3{font-family:'Barlow Condensed';font-size:20px;text-transform:uppercase;margin:0 0 8px}
 .writeup-box .wu-sub{font-size:13px;color:var(--mut);margin:0 0 12px;line-height:1.4}
@@ -348,6 +372,8 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
     <button class="bigbtn" type="button" id="editPlayerOk">Save</button>
   </div>
 </dialog>
+
+<div id="modalRoot"></div>
 
 <script>
 /* =====================================================================
@@ -1190,10 +1216,11 @@ function matches(p){
 // Parse pre-purchased add-ons from registration "items" text (same rules as admin)
 function addOnsFromItems(items){
   const s=String(items||''), out=[];
-  if(/recruiting tape/i.test(s)) out.push('Mixtape');
-  if(/player evaluation/i.test(s)) out.push('Eval');
+  if(/recruiting tape|highlight tape|mixtape/i.test(s)) out.push('Mixtape');
+  if(/player evaluation|in-depth/i.test(s)) out.push('Eval');
   if(/game breakdown/i.test(s)) out.push('Film');
   if(/workshop/i.test(s)) out.push('Academic');
+  if(/zoom meeting|\bzoom\b/i.test(s)) out.push('Zoom');
   return out;
 }
 function allAddOns(p){
@@ -1260,7 +1287,7 @@ function isWalkUp(p){
 }
 function walkUpBarHtml(){
   return `<div class="walkup-bar"><button type="button" class="bigbtn" id="btnWalkUp">＋ Register walk-up</button>
-    <p style="font-size:12px;color:var(--mut);margin:8px 0 0;line-height:1.4">Or send parents the public form: <code style="font-size:11px">register.html?camp=${esc(campSlug||campCode)}</code> — they land here on Check-In.</p>
+    <p style="font-size:12px;color:var(--mut);margin:8px 0 0;line-height:1.4">Or send parents the public form: <code style="font-size:11px">walkup.html?camp=${esc(campSlug||campCode)}</code> — they land here on Check-In.</p>
   </div>`;
 }
 function bindWalkUpBar(){
@@ -1625,6 +1652,220 @@ $('#noteText').addEventListener('input', ()=>{
   if(!ta.value.trim()){ ta.value='• '; ta.setSelectionRange(2,2); }
 });
 
+function findLivePlayerByJerseyName(j, n){
+  const jj=String(j||'').trim();
+  const nn=String(n||'').trim().toLowerCase();
+  return players.find(p=>{
+    if(jj && String(p.jersey||'').trim()===jj) return true;
+    const full=((p.first||'')+' '+(p.last||'')).trim().toLowerCase();
+    return nn && full===nn;
+  }) || null;
+}
+function resolveTopPerformerPlayer(ref){
+  const live=findLivePlayerByJerseyName(ref.j, ref.n);
+  let teamPlayer=null;
+  for(const t of teams){
+    const hit=(t.players||[]).find(p=>String(p.j)===String(ref.j) || (p.n||'').toLowerCase()===(ref.n||'').toLowerCase());
+    if(hit){ teamPlayer={...hit, team:t.name}; break; }
+  }
+  const teamName=ref.team || (teamPlayer && teamPlayer.team) || '';
+  if(live){
+    return {
+      j: String(live.jersey||ref.j||''),
+      n: ((live.first||'')+' '+(live.last||'')).trim() || ref.n || '',
+      team: teamName,
+      yr: String(live.grad_year||(teamPlayer&&teamPlayer.yr)||''),
+      pos: live.position||(teamPlayer&&teamPlayer.pos)||'',
+      ht: formatHeight(live.height)==='—' ? (teamPlayer&&teamPlayer.ht)||'' : formatHeight(live.height),
+      sc: live.school||(teamPlayer&&teamPlayer.sc)||'',
+      ph: live.photo_url||(teamPlayer&&teamPlayer.ph)||''
+    };
+  }
+  return {
+    j: String((teamPlayer&&teamPlayer.j)||ref.j||''),
+    n: (teamPlayer&&teamPlayer.n)||ref.n||'',
+    team: teamName,
+    yr: (teamPlayer&&teamPlayer.yr)||'',
+    pos: (teamPlayer&&teamPlayer.pos)||'',
+    ht: (teamPlayer&&teamPlayer.ht)||'',
+    sc: (teamPlayer&&teamPlayer.sc)||'',
+    ph: (teamPlayer&&teamPlayer.ph)||''
+  };
+}
+function closeTopPerformerCard(){
+  const root=$('#modalRoot');
+  if(root) root.innerHTML='';
+}
+function openTopPerformerCard(ref){
+  const p=resolveTopPerformerPlayer(ref||{});
+  const root=$('#modalRoot');
+  if(!root) return;
+  const photo=p.ph ? `<img src="${esc(p.ph)}" alt="" crossorigin="anonymous">` : '👤';
+  root.innerHTML=`<div class="scrim" id="pmScrim"></div>
+    <div class="pmodal" id="tpCard" role="dialog" aria-label="Top Performer card">
+      <div class="photo">${photo}
+        <button class="close" type="button" id="pmClose" aria-label="Close">✕</button>
+        ${p.j?`<div class="jbadge">#${esc(p.j)}</div>`:''}
+        <div class="tpbadge">★ Top Performer</div>
+      </div>
+      <div class="info">
+        <h3>${esc(p.n)}</h3>
+        <div class="team">${esc(p.team||'')}</div>
+        <div class="grid">
+          <div><label>Grad Year</label>${esc(p.yr)||'—'}</div>
+          <div><label>Position</label>${esc(p.pos)||'—'}</div>
+          <div><label>Height</label>${esc(formatHeight(p.ht))||'—'}</div>
+          <div><label>School</label>${esc(p.sc)||'—'}</div>
+        </div>
+      </div>
+      <div class="share-row">
+        <button class="bigbtn ghost" type="button" id="tpDownload">Download</button>
+        <button class="bigbtn" type="button" id="tpShare">Share</button>
+      </div>
+    </div>`;
+  $('#pmScrim').addEventListener('click', closeTopPerformerCard);
+  $('#pmClose').addEventListener('click', closeTopPerformerCard);
+  $('#tpDownload').addEventListener('click', ()=>exportTopPerformerCard(p, false));
+  $('#tpShare').addEventListener('click', ()=>exportTopPerformerCard(p, true));
+}
+function loadImage(src){
+  return new Promise((resolve, reject)=>{
+    if(!src){ resolve(null); return; }
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>resolve(img);
+    img.onerror=()=>resolve(null);
+    img.src=src;
+  });
+}
+function roundRect(ctx, x, y, w, h, r){
+  const rr=Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+async function buildTopPerformerCanvas(p){
+  const W=760, H=980;
+  const canvas=document.createElement('canvas');
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  // card bg
+  ctx.fillStyle='#ffffff';
+  roundRect(ctx, 0, 0, W, H, 36);
+  ctx.fill();
+  // photo area
+  const photoH=520;
+  ctx.fillStyle='#1e2733';
+  ctx.fillRect(0, 0, W, photoH);
+  const img=await loadImage(p.ph);
+  if(img){
+    const scale=Math.max(W/img.width, photoH/img.height);
+    const dw=img.width*scale, dh=img.height*scale;
+    const dx=(W-dw)/2, dy=(photoH-dh)*0.15;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  } else {
+    ctx.fillStyle='#8b96a4';
+    ctx.font='bold 120px Barlow, sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('👤', W/2, photoH/2+40);
+  }
+  // jersey badge
+  if(p.j){
+    ctx.fillStyle='#e8590c';
+    roundRect(ctx, 40, photoH-36, 150, 72, 16);
+    ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.font='bold 42px "Barlow Condensed", sans-serif';
+    ctx.textAlign='left';
+    ctx.fillText('#'+String(p.j), 58, photoH+14);
+  }
+  // top performer badge
+  ctx.fillStyle='#f5c842';
+  roundRect(ctx, W-250, photoH-36, 210, 72, 16);
+  ctx.fill();
+  ctx.strokeStyle='#e8c56a';
+  ctx.lineWidth=2;
+  roundRect(ctx, W-250, photoH-36, 210, 72, 16);
+  ctx.stroke();
+  ctx.fillStyle='#141a22';
+  ctx.font='bold 26px "Barlow Condensed", sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('★ TOP PERFORMER', W-145, photoH+12);
+
+  // name / team
+  ctx.textAlign='left';
+  ctx.fillStyle='#141a22';
+  ctx.font='bold 54px "Barlow Condensed", sans-serif';
+  const name=String(p.n||'').toUpperCase();
+  ctx.fillText(name.length>22?name.slice(0,21)+'…':name, 44, photoH+110);
+  ctx.fillStyle='#e8590c';
+  ctx.font='bold 34px "Barlow Condensed", sans-serif';
+  ctx.fillText(String(p.team||'').toUpperCase(), 44, photoH+156);
+
+  // stats grid
+  const cells=[
+    ['GRAD YEAR', p.yr||'—'],
+    ['POSITION', p.pos||'—'],
+    ['HEIGHT', formatHeight(p.ht)||'—'],
+    ['SCHOOL', p.sc||'—']
+  ];
+  const gap=18, pad=44, cellW=(W-pad*2-gap)/2, cellH=100;
+  const startY=photoH+190;
+  cells.forEach((c,i)=>{
+    const col=i%2, row=Math.floor(i/2);
+    const x=pad+col*(cellW+gap), y=startY+row*(cellH+gap);
+    ctx.fillStyle='#f6f5f2';
+    roundRect(ctx, x, y, cellW, cellH, 14);
+    ctx.fill();
+    ctx.fillStyle='#6b7280';
+    ctx.font='600 18px Barlow, sans-serif';
+    ctx.textAlign='left';
+    ctx.fillText(c[0], x+18, y+34);
+    ctx.fillStyle='#141a22';
+    ctx.font='600 28px Barlow, sans-serif';
+    const val=String(c[1]);
+    ctx.fillText(val.length>16?val.slice(0,15)+'…':val, x+18, y+72);
+  });
+
+  // footer brand
+  ctx.fillStyle='#6b7280';
+  ctx.font='600 20px Barlow, sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('AAU Select Tour', W/2, H-36);
+  return canvas;
+}
+async function exportTopPerformerCard(p, share){
+  try{
+    const canvas=await buildTopPerformerCanvas(p);
+    const blob=await new Promise(res=>canvas.toBlob(res, 'image/png'));
+    if(!blob){ toast('Could not build image — screenshot the card instead'); return; }
+    const fileName=(String(p.n||'player').replace(/[^\w\-]+/g,'_')||'player')+'_top_performer.png';
+    if(share && navigator.share && navigator.canShare){
+      const file=new File([blob], fileName, {type:'image/png'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({
+          files:[file],
+          title: (p.n||'Player')+' — Top Performer',
+          text: (p.n||'Player')+' is a Top Performer'+(p.team?' on '+p.team:'')+'!'
+        });
+        return;
+      }
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    toast(share?'Downloaded — attach it in your post':'Downloaded Top Performer card');
+  }catch(e){
+    toast('Share failed — screenshot the card instead');
+  }
+}
+
 function renderList(){
   const wrap=$('#plist');
 
@@ -1650,10 +1891,15 @@ function renderList(){
           const hasNote=!!scoutNoteFor(p.j, p.n);
           return `<li>
           <span class="jnum">#${esc(p.j)}</span>
-          <span><b>${esc(p.n)}</b><br><span style="color:var(--mut);font-size:12px">${esc(p.sc||'')}${hasNote?' · <span style="color:var(--orange)">noted</span>':''}</span></span>
-          <span class="pmeta">${esc(formatHeight(p.ht))||'—'}<br>${esc(p.pos||'—')} · ${esc(p.yr||'')}</span>
-          <button class="note-btn${hasNote?' has-note':''}" type="button" data-note-j="${esc(p.j)}" data-note-n="${esc(p.n)}" title="Scout note" aria-label="Note ${esc(p.n)}">📝</button>
-          <button class="mv" type="button" data-from="${ti}" data-j="${esc(p.j)}" data-n="${esc(p.n)}" title="Move to another team" aria-label="Move ${esc(p.n)}">⇄</button>
+          <span class="pmid">
+            <span class="pname"><b>${esc(p.n)}</b><span class="pschool">${esc(p.sc||'')}${hasNote?' · <span style="color:var(--orange)">noted</span>':''}</span></span>
+            <span class="pmeta">${esc(formatHeight(p.ht))||'—'} · ${esc(p.pos||'—')} · ${esc(p.yr||'')}</span>
+          </span>
+          <span class="li-actions">
+            <button class="tp-btn" type="button" data-tp-j="${esc(p.j)}" data-tp-n="${esc(p.n)}" data-tp-team="${esc(t.name)}" title="Top Performer card" aria-label="Top Performer ${esc(p.n)}">★</button>
+            <button class="note-btn${hasNote?' has-note':''}" type="button" data-note-j="${esc(p.j)}" data-note-n="${esc(p.n)}" title="Scout note" aria-label="Note ${esc(p.n)}">📝</button>
+            <button class="mv" type="button" data-from="${ti}" data-j="${esc(p.j)}" data-n="${esc(p.n)}" title="Move to another team" aria-label="Move ${esc(p.n)}">⇄</button>
+          </span>
         </li>`;
         }).join('')}</ul>
       </div>`;
@@ -1665,6 +1911,13 @@ function renderList(){
     }));
     wrap.querySelectorAll('[data-note-j]').forEach(b=>b.addEventListener('click', ()=>{
       openScoutNote(b.dataset.noteJ, b.dataset.noteN);
+    }));
+    wrap.querySelectorAll('[data-tp-j]').forEach(b=>b.addEventListener('click', ()=>{
+      openTopPerformerCard({
+        j: b.dataset.tpJ,
+        n: b.dataset.tpN,
+        team: b.dataset.tpTeam
+      });
     }));
     return;
   }
@@ -1953,7 +2206,7 @@ async function saveEditPlayerInfo(){
   renderList();
 }
 
-const ADDON_MENU=['Mixtape','Eval','Film','Academic'];
+const ADDON_MENU=['Mixtape','Eval','Film','Academic','Zoom'];
 function openAddonPopover(id){
   document.querySelectorAll('.addon-pop,.scrim').forEach(x=>x.remove());
   const p=players.find(x=>x.id===id); if(!p) return;
