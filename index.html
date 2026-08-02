@@ -564,8 +564,7 @@ function renderSched(){
   };
   wrap.innerHTML=Object.entries(byDate).map(([d,gs])=>{
     const {courts,times,cell}=gridFor(gs);
-    const nGames=gs.filter(g=>g.k!=='note' && (g.h||g.a||/\bv\b/i.test(g.x||''))).length;
-    return `<div class="gday"><h3>${esc(d)}${nGames?` <span>· ${nGames} games</span>`:''}</h3>
+    return `<div class="gday"><h3>${esc(d)}</h3>
     <div class="tbl-wrap"><table><tr><th>Time</th>${courts.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>
     ${times.map(t=>`<tr><td class="tcol">${esc(t.raw)}</td>${courts.map(c=>{
       const cg=cell[t.raw+'|'+c];
