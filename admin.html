@@ -268,7 +268,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-roster">
   <div class="panel-head">
     <div><h2>Master Roster</h2>
-    <p>Upload the registration export (.xlsx, .xlsm or .csv). Columns are detected automatically — confirm the mapping below, then load. <b>Walk-ups and public sign-ups already on this camp are kept</b> — they won’t be wiped by a re-upload.</p></div>
+    <p>Upload the registration export (.xlsx, .xlsm or .csv). Columns are detected automatically — confirm the mapping below, then load. <b>Walk-ups and public sign-ups already on this camp are kept</b> — they won’t be wiped by a re-upload. Stay signed in and on the correct Active camp before loading.</p></div>
     <button class="btn btn-ghost btn-sm" id="btnReset">Reset All Data</button>
   </div>
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload roster file">
@@ -1198,13 +1198,56 @@ async function fetchRemotePlayersByName(){
 
 $('#btnLoad').addEventListener('click', async ()=>{
   if(!requireCamp()) return;
+  // Must be signed in so we can pull remote walk-ups before replacing the local roster.
+  if(S.syncUrl && S.syncKey && !(authSession && authSession.access_token)){
+    alert('Sign in first so walk-ups / self-registers already on this camp are kept when you update the spreadsheet.\n\nOpen login.html or sign in on the Publish tab, then try Load Roster again.');
+    return;
+  }
   const map={};
   $$('#mapGrid select').forEach(s=>map[s.dataset.k]=+s.value);
   if(map.first<0||map.last<0){ alert('First Name and Last Name are required.'); return; }
-  // Preserve existing check-in state on re-upload (match by name).
-  // Also reuse Supabase ids by name so a re-upload doesn't create duplicate station rows.
+
   const prev={}; S.players.forEach(p=>prev[playerNameKey(p.first,p.last)]=p);
   const remoteByName=await fetchRemotePlayersByName();
+  if(S.syncUrl && S.syncKey && authSession && authSession.access_token && !Object.keys(remoteByName).length && S.players.some(p=>isWalkUp(p)||p.uid)){
+    // Remote came back empty while we still have local players — don’t silently drop walk-ups
+    if(!confirm('Could not load the current camp roster from Supabase (0 remote players returned).\n\nIf you Continue, only walk-ups already open in this browser can be kept.\n\nCancel, check Active camp + sign-in, then try again.\n\nContinue anyway?')) return;
+  }
+
+  // Names on the spreadsheet
+  const sheetKeys=new Set();
+  rawRows.forEach(r=>{
+    const g=k=>map[k]>=0?String(r[map[k]]??'').trim():'';
+    const first=g('first'), last=g('last');
+    if(!first && !last) return;
+    sheetKeys.add(playerNameKey(first, last));
+  });
+
+  // Anyone already on this camp (or local) who is NOT on the new sheet
+  const keepPreview=[];
+  Object.keys(remoteByName).forEach(key=>{
+    if(key==='|' || sheetKeys.has(key)) return;
+    const r=remoteByName[key];
+    keepPreview.push({ key, label:(r.first||'')+' '+(r.last||''), walk:isWalkUp(r), src:'camp' });
+  });
+  Object.keys(prev).forEach(key=>{
+    if(key==='|' || sheetKeys.has(key) || keepPreview.some(x=>x.key===key)) return;
+    const p=prev[key];
+    keepPreview.push({ key, label:(p.first||'')+' '+(p.last||''), walk:isWalkUp(p), src:'local' });
+  });
+
+  if(keepPreview.length){
+    const sample=keepPreview.slice(0,12).map(x=>'• '+x.label.trim()+(x.walk?' (walk-up)':'')).join('\n');
+    if(!confirm(
+      'Updating the roster for this camp.\n\n'+
+      keepPreview.length+' existing sign-up'+(keepPreview.length===1?'':'s')+' not on the spreadsheet will be KEPT:\n\n'+
+      sample+(keepPreview.length>12?'\n• …': '')+
+      '\n\nSpreadsheet players: ~'+sheetKeys.size+'\n\nContinue?'
+    )) return;
+  }
+
+  // Preserve existing check-in state on re-upload (match by name).
+  // Also reuse Supabase ids by name so a re-upload doesn't create duplicate station rows.
   const seen={};
   let dupesInFile=0;
   const mapped=[];
@@ -1222,12 +1265,13 @@ $('#btnLoad').addEventListener('click', async ()=>{
     // A jersey number means the player was checked in (same rule as the
     // Player Data tab formula), or an explicit check-in mark, or prior state
     const checkedIn=!!(old.checkedIn||remote.checked_in||g('checkin')||extra.checkin||jersey);
+    const items=g('items')||old.items||remote.items||'';
     mapped.push({
       id:mapped.length, uid: old.uid || remote.id || (crypto.randomUUID ? crypto.randomUUID() : (key+'-'+Date.now()+'-'+i)),
-      first, last, year:g('year')||remote.grad_year||'', height:g('height')||remote.height||'',
-      hin:heightToInches(g('height')||remote.height||''), position:g('position')||remote.position||'', school:g('school')||remote.school||'',
-      city:g('city')||remote.city||'', state:g('state')||remote.state||'', payStatus:g('payStatus')||remote.pay_status||'',
-      balance:g('balance')||remote.balance||'', items:g('items')||remote.items||'', email:g('email')||remote.email||'',
+      first, last, year:g('year')||old.year||remote.grad_year||'', height:g('height')||old.height||remote.height||'',
+      hin:heightToInches(g('height')||old.height||remote.height||''), position:g('position')||old.position||remote.position||'', school:g('school')||old.school||remote.school||'',
+      city:g('city')||old.city||remote.city||'', state:g('state')||old.state||remote.state||'', payStatus:g('payStatus')||old.payStatus||remote.pay_status||'',
+      balance:g('balance')||old.balance||remote.balance||'', items, email:g('email')||old.email||remote.email||'',
       checkedIn, jersey,
       addonsManual:old.addonsManual||remote.addons_manual||[],
       addonsRemoved:old.addonsRemoved||remote.addons_removed||[],
@@ -1256,10 +1300,12 @@ $('#btnLoad').addEventListener('click', async ()=>{
   $('#rosterLoaded').hidden=false;
   const withJ=S.players.filter(p=>p.jersey).length;
   const withC=S.players.filter(p=>p.checkedIn).length;
-  $('#loadMsg').textContent=S.players.length+' players loaded'
+  const walkKept=S.players.filter(p=>isWalkUp(p)).length;
+  $('#loadMsg').innerHTML='<b style="color:var(--green)">✓</b> '+S.players.length+' players loaded'
     +(withJ?' · '+withJ+' jersey numbers carried over':'')
     +(withC?' · '+withC+' already checked in':'')
-    +(keptExtra?' · '+keptExtra+' walk-up/prior sign-up'+(keptExtra===1?'':'s')+' kept':'')
+    +(keptExtra?' · <b style="color:var(--green)">'+keptExtra+' walk-up/prior sign-up'+(keptExtra===1?'':'s')+' kept</b>':'')
+    +(walkKept?' · '+walkKept+' tagged Walk-up':'')
     +(dupesInFile?' · '+dupesInFile+' duplicate name'+(dupesInFile===1?'':'s')+' skipped in file':'');
 });
 
@@ -2855,8 +2901,10 @@ async function pushRosterLive(){
       });
       // Orphans with a name already on the new roster = leftover duplicate UUID — safe to delete.
       // Orphans with a unique name = walk-up / self-register — keep them.
+      // Never delete anyone tagged Walk-up (belt-and-suspenders).
       const orphanDupes=existing.filter(r=>{
         if(keep.has(r.id)) return false;
+        if(/walk-?up/i.test(String(r.items||''))) return false;
         const key=playerNameKey(r.first,r.last);
         return key!=='|' && keepNames.has(key);
       }).map(r=>r.id);
