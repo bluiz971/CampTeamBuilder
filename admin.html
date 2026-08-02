@@ -94,6 +94,10 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--orange);ou
 .need-ht-row{background:#fffbeb}
 .need-ht-row td.tcol,tr.need-ht-row td:first-child{box-shadow:inset 3px 0 0 #d97706}
 .jersey-in{width:78px;text-align:center;font-weight:700;font-size:17px}
+.ht-in{width:78px;text-align:center;font-weight:700;font-size:16px}
+.ht-in.need{border-color:#d97706;background:#fffbeb}
+.ci-ht{display:flex;flex-direction:column;align-items:center;gap:2px}
+.ci-ht label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
 .ci-check{width:26px;height:26px;accent-color:var(--green);cursor:pointer}
 .ci-num{font-family:'Barlow Condensed';font-size:15px;font-weight:600;color:var(--mut);min-width:26px;text-align:right}
 .dupe{border-color:var(--red)!important;background:var(--red-soft)!important}
@@ -173,9 +177,9 @@ dialog select{width:100%;margin:10px 0 16px}
 .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
 
 @media(max-width:640px){
-  .ci-row{grid-template-columns:auto 1fr auto;grid-template-areas:"num who check" "num badge jersey"}
+  .ci-row{grid-template-columns:auto 1fr auto;grid-template-areas:"num who check" "num badge ht"}
   .ci-num{grid-area:num}.ci-row .who{grid-area:who}.ci-row .badge{grid-area:badge;justify-self:start}
-  .jersey-in{grid-area:jersey;justify-self:end}.ci-check{grid-area:check}
+  .ci-ht{grid-area:ht;justify-self:end}.jersey-in{grid-area:ht;justify-self:end}.ci-check{grid-area:check}
 }
 @media print{
   header nav,.toolbar,.gen-bar,.btn,.mv,.panel-head p{display:none!important}
@@ -308,7 +312,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-checkin">
   <div class="panel-head">
     <div><h2>Check-In</h2>
-    <p>Everyone from the roster starts here. Confirm any balance owed, then tap <b>Check In</b> — the player moves to the Jersey page. Walk-ups missing height show a <b>Need Height</b> note (same idea as Balance Due).</p></div>
+    <p>Everyone from the roster starts here. Confirm any balance owed, edit <b>Height</b> when you ask them, then tap <b>Check In</b> — the player moves to the Jersey page.</p></div>
   </div>
   <div class="toolbar">
     <input type="search" id="ciSearch" placeholder="Search name, school or city…">
@@ -1394,18 +1398,65 @@ function renderCheckin(){
       if(ciFilter==='needht') return needsHeight(p);
       return true;
     });
-  list.innerHTML = rows.length ? rows.map(({p,i})=>`<div class="ci-row ${p.checkedIn?'done':''}${needsHeight(p)?' need-ht-row':''}">
+  list.innerHTML = rows.length ? rows.map(({p,i})=>{
+    const htShow=formatHeight(p.height);
+    const htVal=(htShow && htShow!=='—')?htShow:(p.height||'');
+    return `<div class="ci-row ${p.checkedIn?'done':''}${needsHeight(p)?' need-ht-row':''}">
       <span class="ci-num">${i+1}</span>
-      <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${needsHeight(p)?'Ht missing':esc(formatHeight(p.height))} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
+      <div class="who"><b class="${needsHeight(p)?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b><small>${esc(p.year)} · ${esc(p.position)||'—'} · ${esc(p.school)}${isWalkUp(p)?' · Walk-up':''}</small></div>
       ${playerStatusBadges(p)}
+      <div class="ci-ht"><label>Height</label>
+        <input class="ht-in${needsHeight(p)?' need':''}" type="text" data-ht="${i}" placeholder="5'10" value="${esc(htVal)}">
+      </div>
       ${p.checkedIn
         ?`<span class="badge paid">✓ In${p.jersey?' · #'+esc(p.jersey):''}</span><button class="btn btn-ghost btn-sm" data-undo="${i}">Undo</button>`
         :`<button class="btn btn-orange btn-sm" data-in="${i}">Check In ✓</button>`}
-    </div>`).join('') : '<div class="empty"><b>'+(ciFilter==='pending'?'Everyone is checked in':ciFilter==='needht'?'Everyone has a height':'No matches')+'</b>'+(ciFilter==='pending'?'Head to the Jersey page for the next step.':ciFilter==='needht'?'Heights are filled in — ready for team balancing.':'Try a different search or filter.')+'</div>';
+    </div>`;
+  }).join('') : '<div class="empty"><b>'+(ciFilter==='pending'?'Everyone is checked in':ciFilter==='needht'?'Everyone has a height':'No matches')+'</b>'+(ciFilter==='pending'?'Head to the Jersey page for the next step.':ciFilter==='needht'?'Heights are filled in — ready for team balancing.':'Try a different search or filter.')+'</div>';
 
-  list.querySelectorAll('[data-in]').forEach(b=>b.addEventListener('click',()=>{
-    S.players[+b.dataset.in].checkedIn=true;
-    store.save(); refresh();
+  const applyHt=(i, raw)=>{
+    const p=S.players[i]; if(!p) return;
+    const height=normalizeHeightValue(raw)||String(raw||'').trim();
+    p.height=height;
+    p.hin=heightToInches(height);
+    store.save();
+    return height;
+  };
+  list.querySelectorAll('[data-ht]').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const i=+inp.dataset.ht;
+      const height=applyHt(i, inp.value);
+      const p=S.players[i];
+      if(authSession && authSession.access_token && p && p.uid){
+        try{
+          await fetch(S.syncUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.uid),{
+            method:'PATCH',
+            headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+            body:JSON.stringify({ height: height||'' })
+          });
+        }catch(e){}
+      }
+      refresh();
+    });
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } });
+  });
+  list.querySelectorAll('[data-in]').forEach(b=>b.addEventListener('click', async ()=>{
+    const i=+b.dataset.in;
+    const htInp=list.querySelector(`[data-ht="${i}"]`);
+    if(htInp) applyHt(i, htInp.value);
+    const p=S.players[i];
+    p.checkedIn=true;
+    store.save();
+    if(authSession && authSession.access_token && p.uid){
+      try{
+        await fetch(S.syncUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.uid),{
+          method:'PATCH',
+          headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+          body:JSON.stringify({ checked_in:true, height:p.height||'' })
+        });
+      }catch(e){}
+    }
+    refresh();
   }));
   list.querySelectorAll('[data-undo]').forEach(b=>b.addEventListener('click',()=>{
     const p=S.players[+b.dataset.undo];
