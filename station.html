@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Camp Check-In Station</title>
+<title>Camp Builder — Check-In Station</title>
+<meta name="theme-color" content="#1a4a9e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Camp Builder">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="pwa.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -228,8 +235,11 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 
 <div id="gate">
   <div class="card">
-    <h1>Check-In Station</h1>
-    <p>Sign in once per tablet for the day</p>
+    <div style="text-align:center;margin-bottom:14px">
+      <img src="assets/camp-builder-logo.png" alt="Camp Builder" style="width:72px;height:72px;border-radius:16px;object-fit:cover">
+    </div>
+    <h1>Camp Builder</h1>
+    <p>Station sign-in — or use the <a href="login.html?next=station.html" style="color:var(--orange);font-weight:600">Camp Builder app login</a></p>
     <label>Email</label><input type="text" id="gEmail" autocomplete="username">
     <label>Password</label><input type="password" id="gPass" autocomplete="current-password">
     <button class="btn" id="gBtn">Sign In</button>
@@ -240,9 +250,10 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 <div id="app" style="display:none">
   <header>
     <div class="hrow">
-      <h1>Check-In <span>Station</span></h1>
+      <h1><img src="assets/camp-builder-logo.png" alt="" style="width:28px;height:28px;border-radius:7px;vertical-align:middle;margin-right:6px;object-fit:cover">Check-In <span>Station</span></h1>
       <div class="campfield">
         Camp: <input type="text" id="campCodeInput" placeholder="fall-2026">
+        <a class="signoutbtn" href="account.html" style="text-decoration:none;display:inline-flex;align-items:center">Account</a>
         <button class="signoutbtn" id="btnSignOut">Sign Out</button>
       </div>
     </div>

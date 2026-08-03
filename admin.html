@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Camp Team Builder — AAU Select Tour</title>
+<title>Camp Builder — AAU Select Tour</title>
+<meta name="theme-color" content="#1a4a9e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="pwa.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -201,7 +206,7 @@ dialog select{width:100%;margin:10px 0 16px}
 
 <header>
   <div class="brand">
-    <h1>Camp Team <span>Builder</span></h1>
+    <h1><img src="assets/camp-builder-logo.png" alt="" width="36" height="36" style="width:36px;height:36px;border-radius:8px;vertical-align:middle;margin-right:8px;object-fit:cover">Camp <span>Builder</span></h1>
     <small>AAU Select Tour · Check-in → Jerseys → Balanced Teams</small>
     <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v8 · Select 360, Instagram & website tiles</small>
   </div>
@@ -214,6 +219,9 @@ dialog select{width:100%;margin:10px 0 16px}
     <div class="sb-cell"><b id="sbIn">0</b><span>Checked In</span></div>
     <div class="sb-cell alert"><b id="sbDue">0</b><span>Balance Due</span></div>
     <div class="sb-cell"><b id="sbTeams">0</b><span>Teams Set</span></div>
+    <div class="sb-cell" style="min-width:auto;padding:8px 10px">
+      <a href="account.html" style="display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#fff;text-decoration:none;border:1px solid #3a4a5c;border-radius:8px;padding:8px 12px;background:#1e2733">Account</a>
+    </div>
   </div>
   <nav>
     <button data-p="camps" class="on"><span class="step">1</span>Camps</button>

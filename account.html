@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a4a9e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Camp Builder">
+<title>Account — Camp Builder</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="pwa.js" defer></script>
+<style>
+:root{
+  --ink:#141a22;--ink-2:#1e2733;--paper:#f0f4fa;--card:#fff;--line:#d7dee8;
+  --blue:#1a4a9e;--blue-deep:#12367a;--orange:#e8590c;--amber:#ffb63d;
+  --mut:#6b7280;--red:#c92a2a;--green:#15803d;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Barlow',system-ui,sans-serif;color:var(--ink);min-height:100vh;
+  background:
+    radial-gradient(900px 480px at 0% -10%, rgba(26,74,158,.18), transparent 55%),
+    radial-gradient(700px 400px at 100% 0%, rgba(232,89,12,.12), transparent 50%),
+    var(--paper);
+}
+header.appbar{
+  background:linear-gradient(135deg,var(--blue-deep),var(--blue));
+  color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;
+  border-bottom:4px solid var(--orange);
+}
+header.appbar img{width:44px;height:44px;border-radius:10px;background:#fff;object-fit:cover}
+header.appbar h1{font-family:'Barlow Condensed',sans-serif;font-size:22px;text-transform:uppercase;letter-spacing:.02em;line-height:1.1}
+header.appbar h1 span{color:var(--amber)}
+header.appbar .spacer{flex:1}
+header.appbar a.back{
+  color:#fff;text-decoration:none;font-size:13px;font-weight:600;
+  border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:7px 12px;
+}
+main{max-width:520px;margin:0 auto;padding:20px 16px 40px}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:22px 20px;margin-bottom:14px;box-shadow:0 8px 24px rgba(20,26,34,.06);
+}
+.card h2{font-family:'Barlow Condensed',sans-serif;font-size:20px;text-transform:uppercase;margin-bottom:6px}
+.card .sub{color:var(--mut);font-size:13px;line-height:1.45;margin-bottom:14px}
+.avatar{
+  width:72px;height:72px;border-radius:18px;object-fit:cover;display:block;
+  margin:0 auto 12px;border:3px solid var(--blue);background:var(--blue);
+}
+.who{text-align:center;margin-bottom:16px}
+.who .email{font-size:17px;font-weight:700;word-break:break-all}
+.who .role{font-size:13px;color:var(--mut);margin-top:4px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.row:first-of-type{border-top:none}
+.row .k{color:var(--mut)}
+.row .v{font-weight:600;text-align:right}
+.actions{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.btn{
+  font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.03em;border:none;border-radius:10px;
+  padding:13px 16px;cursor:pointer;text-align:center;text-decoration:none;display:block;
+}
+.btn.primary{background:var(--orange);color:#fff}
+.btn.blue{background:var(--blue);color:#fff}
+.btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.install-box{
+  background:linear-gradient(135deg,#eef3fb,#fff8f2);border:1.5px dashed #b8c7e0;
+  border-radius:14px;padding:16px;margin-top:4px;
+}
+.install-box h3{font-family:'Barlow Condensed',sans-serif;font-size:18px;text-transform:uppercase;margin-bottom:6px}
+.install-box p{font-size:13px;color:var(--mut);line-height:1.45;margin-bottom:12px}
+.msg{font-size:13px;min-height:18px;margin-top:8px;text-align:center;color:var(--mut)}
+.msg.ok{color:var(--green)}.msg.err{color:var(--red)}
+.hint{font-size:12px;color:var(--mut);line-height:1.45;margin-top:10px}
+</style>
+</head>
+<body>
+<header class="appbar">
+  <img src="assets/camp-builder-logo.png" alt="Camp Builder">
+  <h1>Camp <span>Builder</span></h1>
+  <div class="spacer"></div>
+  <a class="back" id="btnBack" href="login.html">Back</a>
+</header>
+<main>
+  <div class="card">
+    <h2>Account</h2>
+    <p class="sub">Your coach / station sign-in details for this device.</p>
+    <div class="who">
+      <img class="avatar" src="assets/camp-builder-logo.png" alt="">
+      <div class="email" id="accEmail">Not signed in</div>
+      <div class="role" id="accRole">Sign in to manage camps and check-in</div>
+    </div>
+    <div class="row"><span class="k">Status</span><span class="v" id="accStatus">—</span></div>
+    <div class="row"><span class="k">App mode</span><span class="v" id="accMode">Browser</span></div>
+    <div class="actions">
+      <a class="btn blue" id="btnAdmin" href="admin.html">Open Admin</a>
+      <a class="btn primary" id="btnStation" href="station.html">Open Station</a>
+      <a class="btn ghost" id="btnLogin" href="login.html" style="display:none">Sign in</a>
+      <button class="btn ghost" type="button" id="btnSignOut">Sign out</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Install app</h2>
+    <p class="sub">Add Camp Builder to your home screen for faster coach and tablet access.</p>
+    <div class="install-box">
+      <h3>Camp Builder</h3>
+      <p id="installCopy">Install this app for a full-screen experience — same login for Admin and Station.</p>
+      <button class="btn primary" type="button" id="btnInstall" disabled>Install Camp Builder</button>
+      <div class="msg" id="installMsg"></div>
+      <p class="hint" id="installHint">
+        On iPhone/iPad: Safari → Share → <b>Add to Home Screen</b>.<br>
+        On Android/Chrome: use the Install button when it appears, or the browser menu → Install app.
+      </p>
+    </div>
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const PWA=window.CampBuilderPWA;
+
+function boot(){
+  const session=PWA?PWA.readSession():null;
+  const standalone=PWA&&PWA.isStandalone();
+  $('#accMode').textContent=standalone?'Installed app':'Browser tab';
+
+  if(session && session.email){
+    $('#accEmail').textContent=session.email;
+    $('#accRole').textContent='Coach / station account';
+    $('#accStatus').textContent='Signed in';
+    $('#btnLogin').style.display='none';
+    $('#btnSignOut').style.display='';
+    const ref=document.referrer||'';
+    if(/station\.html/i.test(ref)) $('#btnBack').href='station.html';
+    else if(/admin\.html/i.test(ref)) $('#btnBack').href='admin.html';
+    else $('#btnBack').href='admin.html';
+  } else {
+    $('#accEmail').textContent='Not signed in';
+    $('#accRole').textContent='Sign in to manage camps and check-in';
+    $('#accStatus').textContent='Signed out';
+    $('#btnLogin').style.display='';
+    $('#btnSignOut').style.display='none';
+    $('#btnBack').href='login.html';
+  }
+
+  if(!PWA) return;
+  if(standalone){
+    $('#btnInstall').disabled=true;
+    $('#btnInstall').textContent='Already installed';
+    $('#installCopy').textContent='You’re using the installed Camp Builder app.';
+    $('#installHint').style.display='none';
+  } else {
+    PWA.onInstallAvailability((ok)=>{
+      $('#btnInstall').disabled=!ok;
+      $('#btnInstall').textContent=ok?'Install Camp Builder':'Install not available yet';
+      if(ok){
+        $('#installMsg').textContent='';
+        $('#installMsg').className='msg';
+      }
+    });
+  }
+}
+
+$('#btnInstall').addEventListener('click', async ()=>{
+  const msg=$('#installMsg');
+  if(!PWA){ msg.className='msg err'; msg.textContent='Install is not supported in this browser.'; return; }
+  if(PWA.isStandalone()){ msg.className='msg ok'; msg.textContent='Already running as an app.'; return; }
+  const result=await PWA.promptInstall();
+  if(result.ok){
+    msg.className='msg ok'; msg.textContent='Installed — you can open Camp Builder from your home screen.';
+  } else if(result.reason==='unavailable'){
+    msg.className='msg';
+    msg.textContent='Use your browser menu → Install app, or on iOS: Share → Add to Home Screen.';
+  } else {
+    msg.className='msg'; msg.textContent='Install dismissed.';
+  }
+});
+
+$('#btnSignOut').addEventListener('click', ()=>{
+  if(PWA) PWA.clearSession();
+  location.replace('login.html');
+});
+
+boot();
+</script>
+</body>
+</html>
