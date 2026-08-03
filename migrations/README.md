@@ -12,6 +12,7 @@ Run these in Supabase → **SQL Editor**, in order:
 8. **`007_registrations.sql`** — advance camp registration (`register.html`) → `registrations` table (public insert, authenticated read).
 9. **`008_registration_addons.sql`** — adds `addons` column if you already ran 007 before add-ons.
 10. **`009_registration_payments.sql`** — Stripe payment fields (`payment_status`, `amount_cents`, session ids) for `register.html` checkout.
+11. **`010_registration_deposit_balance.sql`** — deposit / balance fields (`pay_status`, `amount_total`, `amount_paid`, `balance_charge_error`). Auto-charge is one attempt only (`deposit_paid` → `balance_charged` or `charge_failed`).
 
 After that:
 

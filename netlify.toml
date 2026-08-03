@@ -9,3 +9,8 @@
 # Stripe webhooks need the raw body for signature verification
 [functions."stripe-webhook"]
   included_files = []
+
+# One-time balance charges for deposit_paid rows when camp is 7 days out.
+# Failures become charge_failed and are never retried (query is deposit_paid only).
+[functions."charge-balances"]
+  schedule = "@daily"

@@ -1061,6 +1061,57 @@ function teamsForCount(n){
   return n>112 ? 14 : 3;   // above the top bracket, cap at 14
 }
 function hasDue(p){ return (parseFloat(p.balance)||0) > 0 || (p.payStatus && !/paid/i.test(p.payStatus)); }
+/** Map registration payment fields → roster balance / payStatus for check-in.
+ *  Uses the EXISTING hasDue() / "Owes $X" badge — no separate failed-payment UI.
+ *  pay_status: unpaid|deposit_paid|charge_failed → Balance Due
+ *              paid_in_full|balance_charged|(legacy paid) → Paid
+ */
+function registrationToRosterPayment(r){
+  const st=String(r.pay_status||r.payment_status||'unpaid').toLowerCase().trim();
+  const totalCents=Number(r.amount_total!=null?r.amount_total:r.amount_cents)||0;
+  let paidCents=Number(r.amount_paid)||0;
+  if(paidCents===0 && (st==='paid'||st==='paid_in_full'||st==='balance_charged') && totalCents>0){
+    paidCents=totalCents;
+  }
+  const dueCents=Math.max(0, totalCents-paidCents);
+  const isPaid=st==='paid_in_full'||st==='balance_charged'||st==='paid';
+  if(isPaid || (dueCents===0 && totalCents>0 && (st==='paid_in_full'||st==='balance_charged'||st==='paid'))){
+    return {
+      payStatus:'Paid',
+      balance:'0',
+      regPayStatus:st||'paid_in_full',
+      balanceChargeError:String(r.balance_charge_error||'')
+    };
+  }
+  // unpaid | deposit_paid | charge_failed | pending | failed | …
+  let balance='';
+  if(totalCents>0) balance=(dueCents/100).toFixed(2);
+  else if(r.amount_cents!=null && Number(r.amount_cents)>0 && !isPaid){
+    balance=(Number(r.amount_cents)/100).toFixed(2);
+  }
+  return {
+    payStatus:'Balance Due',
+    balance,
+    regPayStatus:st||'unpaid',
+    balanceChargeError:String(r.balance_charge_error||'')
+  };
+}
+function paymentDetailNote(p){
+  const st=String(p.regPayStatus||'').toLowerCase();
+  if(!st && !p.balanceChargeError) return '';
+  const labels={
+    unpaid:'Never charged',
+    pending:'Never charged',
+    deposit_paid:'Deposit paid — balance still owed',
+    charge_failed:'Auto balance charge failed',
+    paid_in_full:'Paid in full at registration',
+    balance_charged:'Deposit + balance charged',
+    paid:'Paid'
+  };
+  let tip=labels[st]||st;
+  if(p.balanceChargeError) tip+=(tip?': ':'')+p.balanceChargeError;
+  return tip;
+}
 function isWalkUp(p){ return /walk-?up/i.test(String((p&&p.items)||'')); }
 function needsHeight(p){
   if(!p) return true;
@@ -1600,12 +1651,17 @@ function renderPlayers(){
     }
   }
   if(!pool.length){ t.innerHTML='<tr><td style="padding:30px;text-align:center;color:var(--mut)">No players yet — they appear here once checked in with a jersey number.</td></tr>'; return; }
-  t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Ht</th><th>Position</th><th>Email</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
+  t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Ht</th><th>Position</th><th>Pay</th><th>Email</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
     pool.sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>{
       const g=groupOf(p.year), i=S.players.indexOf(p);
       const tags=displayAddOns(p);
       const miss=needsHeight(p);
-      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)||'—'}</td><td style="font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(p.email||'')}">${esc(p.email)||'—'}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
+      const payTip=paymentDetailNote(p);
+      const payCell=hasDue(p)
+        ? `<span class="badge due" title="${esc(payTip||'Balance due')}">Owes${p.balance?' $'+esc(p.balance):''}</span>`
+        : `<span class="badge paid" title="${esc(payTip||'Paid')}">Paid</span>`;
+      const payNote=payTip?`<div style="font-size:11px;color:var(--mut);margin-top:3px;max-width:140px;line-height:1.3" title="${esc(payTip)}">${esc(payTip.length>48?payTip.slice(0,47)+'…':payTip)}</div>`:'';
+      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)||'—'}</td><td>${payCell}${payNote}</td><td style="font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(p.email||'')}">${esc(p.email)||'—'}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
       <td class="addon-cell">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}<button class="addon-add" data-addon="${i}" title="Add / edit add-ons">+ Add</button></td>
       <td class="row-actions"><button class="btn btn-ghost btn-sm" data-ei="${i}" title="Edit year, email, position">Edit Info</button><button class="btn btn-ghost btn-sm" data-eh="${i}" title="Edit height">Edit Ht</button><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
     }).join('');
@@ -3407,25 +3463,26 @@ async function pullRegistrations(){
           p.addonsManual=p.addonsManual||[];
           addonList.forEach(a=>{ if(!p.addonsManual.includes(a)) p.addonsManual.push(a); });
         }
-        if(r.payment_status==='paid'){
-          p.payStatus='Paid';
-          p.balance='0';
-        } else if(r.payment_status && !p.payStatus){
-          p.payStatus=r.payment_status;
-          if(r.amount_cents!=null) p.balance=(r.amount_cents/100).toFixed(2);
-        }
+        const pay=registrationToRosterPayment(r);
+        p.payStatus=pay.payStatus;
+        p.balance=pay.balance;
+        p.regPayStatus=pay.regPayStatus;
+        p.balanceChargeError=pay.balanceChargeError;
         // Never overwrite check-in-day fields: checkedIn, jersey, photoUrl
         matched++;
         const em=emailKey(p.email); if(em) byEmail[em]=p;
         byName[playerNameKey(p.first,p.last)]=p;
       } else {
         const uid=crypto.randomUUID ? crypto.randomUUID() : ('reg-'+Date.now()+'-'+Math.random().toString(16).slice(2));
+        const pay=registrationToRosterPayment(r);
         const np={
           id:S.players.length, uid,
           first, last, year, height, hin:heightToInches(height),
           position, school, city, state,
-          payStatus: r.payment_status==='paid' ? 'Paid' : (r.payment_status||''),
-          balance: r.payment_status==='paid' ? '0' : (r.amount_cents!=null ? (r.amount_cents/100).toFixed(2) : ''),
+          payStatus: pay.payStatus,
+          balance: pay.balance,
+          regPayStatus: pay.regPayStatus,
+          balanceChargeError: pay.balanceChargeError,
           items: r.addons||'', email,
           checkedIn:false, jersey:'',
           addonsManual:addonList.slice(), addonsRemoved:[], photoUrl:''
