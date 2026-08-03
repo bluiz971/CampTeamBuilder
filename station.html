@@ -29,6 +29,9 @@ button,input{font-family:inherit}
 #gate input{width:100%;font-size:17px;padding:13px 14px;border:1.5px solid var(--line);border-radius:9px}
 #gate .btn{width:100%;margin-top:18px;padding:14px;font-size:17px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;background:var(--orange);color:#fff;border:none;border-radius:9px;cursor:pointer}
 #gate .msg{margin-top:12px;font-size:13px;text-align:center;color:var(--red)}
+#gate .pass-wrap{position:relative}
+#gate .pass-wrap input{padding-right:72px}
+#gate .pass-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--orange);background:transparent;border:none;padding:6px 8px;cursor:pointer;border-radius:6px}
 
 /* ---------- Header / role tabs ---------- */
 header{background:var(--ink);color:#fff;padding:14px 16px;border-bottom:4px solid var(--orange)}
@@ -242,7 +245,11 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
     <h1>Camp Builder</h1>
     <p>Station sign-in — or use the <a href="login.html?next=station.html" style="color:var(--orange);font-weight:600">Camp Builder app login</a></p>
     <label>Email</label><input type="text" id="gEmail" autocomplete="username">
-    <label>Password</label><input type="password" id="gPass" autocomplete="current-password">
+    <label>Password</label>
+    <div class="pass-wrap">
+      <input type="password" id="gPass" autocomplete="current-password">
+      <button type="button" class="pass-toggle" id="gShowPass" aria-pressed="false">Show</button>
+    </div>
     <button class="btn" id="gBtn">Sign In</button>
     <div class="msg" id="gMsg"></div>
   </div>
@@ -645,6 +652,15 @@ async function showApp(){
   setInterval(()=>{ refreshAuthSession(); }, 10*60*1000);
 }
 if(authSession && authSession.access_token) showApp();
+
+$('#gShowPass').addEventListener('click', ()=>{
+  const input=$('#gPass');
+  const btn=$('#gShowPass');
+  const show=input.type==='password';
+  input.type=show?'text':'password';
+  btn.textContent=show?'Hide':'Show';
+  btn.setAttribute('aria-pressed', show?'true':'false');
+});
 
 $('#gBtn').addEventListener('click', async ()=>{
   const email=$('#gEmail').value.trim(), pass=$('#gPass').value;

@@ -48,6 +48,15 @@ input[type=email],input[type=password],input[type=text]{
   width:100%;font-family:'Barlow',system-ui,sans-serif;font-size:16px;padding:12px 14px;
   border:1.5px solid var(--line);border-radius:10px;margin-bottom:14px;background:#fff;
 }
+.pass-wrap{position:relative;margin-bottom:14px}
+.pass-wrap input{margin-bottom:0;padding-right:88px}
+.pass-toggle{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--blue);
+  background:transparent;border:none;padding:6px 8px;cursor:pointer;border-radius:6px;
+}
+.pass-toggle:hover{background:#eef2f8}
 input:focus{outline:2px solid var(--orange);border-color:var(--orange)}
 .dest{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 16px}
 .dest label.opt{
@@ -99,7 +108,10 @@ input:focus{outline:2px solid var(--orange);border-color:var(--orange)}
       <label for="email">Email</label>
       <input id="email" name="username" type="email" autocomplete="username" required placeholder="coach@example.com">
       <label for="pass">Password</label>
-      <input id="pass" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+      <div class="pass-wrap">
+        <input id="pass" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+        <button type="button" class="pass-toggle" id="btnShowPass" aria-pressed="false">Show</button>
+      </div>
       <label>Open after sign-in</label>
       <div class="dest">
         <label class="opt"><input type="radio" name="dest" value="admin.html"><span>Admin</span></label>
@@ -167,6 +179,15 @@ function readExisting(){
   const next=safeNext(params.get('next') || ($('input[name="dest"]:checked')||{}).value || 'station.html');
   location.replace(next);
 })();
+
+$('#btnShowPass').addEventListener('click', ()=>{
+  const input=$('#pass');
+  const btn=$('#btnShowPass');
+  const show=input.type==='password';
+  input.type=show?'text':'password';
+  btn.textContent=show?'Hide':'Show';
+  btn.setAttribute('aria-pressed', show?'true':'false');
+});
 
 $('#loginForm').addEventListener('submit', async (e)=>{
   e.preventDefault();

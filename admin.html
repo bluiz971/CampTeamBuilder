@@ -487,7 +487,13 @@ dialog select{width:100%;margin:10px 0 16px}
     <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Sign in to push live updates. Parents don’t need an account. Prefer the dedicated page: <a href="login.html?next=admin.html" style="color:var(--orange);font-weight:600">login.html</a>.</p>
     <div id="signedOutRow" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
       <div><label>Email</label><input type="text" id="authEmail" placeholder="coach@example.com" style="width:220px" autocomplete="username"></div>
-      <div><label>Password</label><input type="password" id="authPass" placeholder="••••••••" style="width:180px" autocomplete="current-password"></div>
+      <div>
+        <label>Password</label>
+        <div style="position:relative;display:inline-block">
+          <input type="password" id="authPass" placeholder="••••••••" style="width:180px;padding-right:58px" autocomplete="current-password">
+          <button type="button" id="btnShowAuthPass" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--orange);background:transparent;border:none;padding:4px 6px;cursor:pointer">Show</button>
+        </div>
+      </div>
       <button class="btn btn-orange btn-sm" id="btnSignIn">Sign In</button>
     </div>
     <div id="signedInRow" style="display:none;align-items:center;gap:12px">
@@ -2389,6 +2395,14 @@ function updateAuthUI(){
   if(signedIn) $('#authWhoami').textContent = authSession.email || '';
 }
 updateAuthUI();
+
+$('#btnShowAuthPass').addEventListener('click', ()=>{
+  const input=$('#authPass');
+  const btn=$('#btnShowAuthPass');
+  const show=input.type==='password';
+  input.type=show?'text':'password';
+  btn.textContent=show?'Hide':'Show';
+});
 
 $('#btnSignIn').addEventListener('click', async ()=>{
   const email=$('#authEmail').value.trim(), pass=$('#authPass').value;
