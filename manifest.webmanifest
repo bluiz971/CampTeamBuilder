@@ -2,7 +2,7 @@
   "name": "Camp Builder",
   "short_name": "Camp Builder",
   "description": "AAU Select Tour camp admin and check-in station",
-  "start_url": "/login.html",
+  "start_url": "/station.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

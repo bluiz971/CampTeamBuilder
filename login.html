@@ -102,8 +102,8 @@ input:focus{outline:2px solid var(--orange);border-color:var(--orange)}
       <input id="pass" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
       <label>Open after sign-in</label>
       <div class="dest">
-        <label class="opt"><input type="radio" name="dest" value="admin.html" checked><span>Admin</span></label>
-        <label class="opt"><input type="radio" name="dest" value="station.html"><span>Station</span></label>
+        <label class="opt"><input type="radio" name="dest" value="admin.html"><span>Admin</span></label>
+        <label class="opt"><input type="radio" name="dest" value="station.html" checked><span>Station</span></label>
       </div>
       <button class="btn" type="submit" id="btnGo">Sign In</button>
     </form>
@@ -127,12 +127,12 @@ const $=s=>document.querySelector(s);
 
 function safeNext(raw){
   try{
-    const u=new URL(String(raw||'admin.html'), location.href);
-    if(u.origin!==location.origin) return 'admin.html';
+    const u=new URL(String(raw||'station.html'), location.href);
+    if(u.origin!==location.origin) return 'station.html';
     const file=(u.pathname.split('/').pop()||'').toLowerCase();
-    if(file!=='admin.html' && file!=='station.html') return 'admin.html';
+    if(file!=='admin.html' && file!=='station.html') return 'station.html';
     return file + u.search + u.hash;
-  }catch(e){ return 'admin.html'; }
+  }catch(e){ return 'station.html'; }
 }
 
 function persistSession(session){
@@ -153,7 +153,7 @@ function readExisting(){
 }
 
 (function initDest(){
-  const next=safeNext(params.get('next')||'admin.html');
+  const next=safeNext(params.get('next')||'station.html');
   const file=next.split(/[?#]/)[0];
   const radio=document.querySelector('input[name="dest"][value="'+file+'"]');
   if(radio) radio.checked=true;
@@ -164,7 +164,7 @@ function readExisting(){
   if(!existing) return;
   // If user asked for account, don't auto-skip
   if((params.get('next')||'').toLowerCase().includes('account')) return;
-  const next=safeNext(params.get('next') || ($('input[name="dest"]:checked')||{}).value || 'admin.html');
+  const next=safeNext(params.get('next') || ($('input[name="dest"]:checked')||{}).value || 'station.html');
   location.replace(next);
 })();
 
@@ -172,7 +172,7 @@ $('#loginForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const email=$('#email').value.trim();
   const pass=$('#pass').value;
-  const dest=safeNext(($('input[name="dest"]:checked')||{}).value || params.get('next') || 'admin.html');
+  const dest=safeNext(($('input[name="dest"]:checked')||{}).value || params.get('next') || 'station.html');
   const msg=$('#msg');
   const btn=$('#btnGo');
   if(!email || !pass){ msg.className='msg err'; msg.textContent='Enter your email and password.'; return; }

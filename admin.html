@@ -35,10 +35,13 @@ h1,h2,h3,.disp{font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
 
 /* ---------- Scoreboard header ---------- */
 header{background:var(--ink);color:#fff;padding:14px 20px 0;border-bottom:4px solid var(--orange)}
-.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand-text{flex:1;min-width:200px}
 .brand h1{font-size:clamp(22px,3.5vw,30px);font-weight:700;text-transform:uppercase}
 .brand h1 span{color:var(--amber)}
 .brand small{color:#9aa4b1;font-size:13px;font-weight:500}
+.account-btn{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-decoration:none;background:var(--orange);border:2px solid var(--amber);border-radius:9px;padding:10px 16px;white-space:nowrap;box-shadow:0 2px 0 rgba(0,0,0,.25);align-self:flex-start;flex-shrink:0}
+.account-btn:hover{filter:brightness(1.08)}
 .scoreboard{display:grid;grid-template-columns:repeat(4,minmax(70px,1fr));gap:10px;max-width:640px;margin:12px 0 14px}
 .sb-cell{background:var(--ink-2);border:1px solid #2c3947;border-radius:6px;padding:8px 10px;text-align:center}
 .sb-cell b{display:block;font-family:'Barlow Condensed';font-size:clamp(20px,3vw,28px);font-weight:700;color:var(--amber);font-variant-numeric:tabular-nums;line-height:1}
@@ -206,9 +209,12 @@ dialog select{width:100%;margin:10px 0 16px}
 
 <header>
   <div class="brand">
-    <h1><img src="assets/camp-builder-logo.png" alt="" width="36" height="36" style="width:36px;height:36px;border-radius:8px;vertical-align:middle;margin-right:8px;object-fit:cover">Camp <span>Builder</span></h1>
-    <small>AAU Select Tour · Check-in → Jerseys → Balanced Teams</small>
-    <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v8 · Select 360, Instagram & website tiles</small>
+    <div class="brand-text">
+      <h1><img src="assets/camp-builder-logo.png" alt="" width="36" height="36" style="width:36px;height:36px;border-radius:8px;vertical-align:middle;margin-right:8px;object-fit:cover">Camp <span>Builder</span></h1>
+      <small>AAU Select Tour · Check-in → Jerseys → Balanced Teams</small>
+      <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v8 · Select 360, Instagram & website tiles</small>
+    </div>
+    <a class="account-btn" href="account.html">Account</a>
   </div>
   <div class="scoreboard">
     <div class="sb-cell" style="min-width:160px;text-align:left;padding:8px 12px">
@@ -219,9 +225,6 @@ dialog select{width:100%;margin:10px 0 16px}
     <div class="sb-cell"><b id="sbIn">0</b><span>Checked In</span></div>
     <div class="sb-cell alert"><b id="sbDue">0</b><span>Balance Due</span></div>
     <div class="sb-cell"><b id="sbTeams">0</b><span>Teams Set</span></div>
-    <div class="sb-cell" style="min-width:auto;padding:8px 10px">
-      <a href="account.html" style="display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#fff;text-decoration:none;border:1px solid #3a4a5c;border-radius:8px;padding:8px 12px;background:#1e2733">Account</a>
-    </div>
   </div>
   <nav>
     <button data-p="camps" class="on"><span class="step">1</span>Camps</button>
