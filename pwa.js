@@ -46,17 +46,38 @@
 
   function readSession() {
     try {
-      const raw = localStorage.getItem('campAuthSession') || localStorage.getItem('stationAuth');
+      const raw = localStorage.getItem('campAuthSession')
+        || localStorage.getItem('stationAuth')
+        || sessionStorage.getItem('campAuthSession');
       if (!raw) return null;
       const s = JSON.parse(raw);
-      return s && s.access_token ? s : null;
+      if (!(s && s.access_token)) return null;
+      // Keep both keys in sync so Account / Admin / Station all see the same login
+      try {
+        localStorage.setItem('campAuthSession', raw);
+        localStorage.setItem('stationAuth', raw);
+      } catch (e) {}
+      return s;
     } catch (e) { return null; }
+  }
+
+  function writeSession(session) {
+    if (!(session && session.access_token)) {
+      clearSession();
+      return;
+    }
+    try {
+      const raw = JSON.stringify(session);
+      localStorage.setItem('campAuthSession', raw);
+      localStorage.setItem('stationAuth', raw);
+    } catch (e) {}
   }
 
   function clearSession() {
     try {
       localStorage.removeItem('campAuthSession');
       localStorage.removeItem('stationAuth');
+      sessionStorage.removeItem('campAuthSession');
     } catch (e) {}
   }
 
@@ -67,6 +88,7 @@
     promptInstall,
     registerServiceWorker,
     readSession,
+    writeSession,
     clearSession
   };
 

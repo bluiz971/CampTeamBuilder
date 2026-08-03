@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="pwa.js" defer></script>
+<script src="pwa.js"></script>
 <style>
 :root{
   --ink:#141a22;--ink-2:#1e2733;--paper:#f0f4fa;--card:#fff;--line:#d7dee8;
@@ -122,15 +122,30 @@ main{max-width:520px;margin:0 auto;padding:20px 16px 40px}
 </main>
 <script>
 const $=s=>document.querySelector(s);
-const PWA=window.CampBuilderPWA;
+
+function emailFromSession(session){
+  if(session && session.email) return session.email;
+  try{
+    const part=(session.access_token||'').split('.')[1];
+    if(!part) return '';
+    const json=atob(part.replace(/-/g,'+').replace(/_/g,'/'));
+    const payload=JSON.parse(json);
+    return payload.email || (payload.user_metadata && payload.user_metadata.email) || '';
+  }catch(e){ return ''; }
+}
 
 function boot(){
+  const PWA=window.CampBuilderPWA;
   const session=PWA?PWA.readSession():null;
   const standalone=PWA&&PWA.isStandalone();
   $('#accMode').textContent=standalone?'Installed app':'Browser tab';
 
-  if(session && session.email){
-    $('#accEmail').textContent=session.email;
+  const email=emailFromSession(session);
+  if(session && session.access_token){
+    if(email && !session.email && PWA && PWA.writeSession){
+      PWA.writeSession(Object.assign({}, session, { email }));
+    }
+    $('#accEmail').textContent=email||'Signed in';
     $('#accRole').textContent='Coach / station account';
     $('#accStatus').textContent='Signed in';
     $('#btnLogin').style.display='none';
@@ -138,7 +153,7 @@ function boot(){
     const ref=document.referrer||'';
     if(/station\.html/i.test(ref)) $('#btnBack').href='station.html';
     else if(/admin\.html/i.test(ref)) $('#btnBack').href='admin.html';
-    else $('#btnBack').href='admin.html';
+    else $('#btnBack').href='station.html';
   } else {
     $('#accEmail').textContent='Not signed in';
     $('#accRole').textContent='Sign in to manage camps and check-in';
@@ -167,6 +182,7 @@ function boot(){
 }
 
 $('#btnInstall').addEventListener('click', async ()=>{
+  const PWA=window.CampBuilderPWA;
   const msg=$('#installMsg');
   if(!PWA){ msg.className='msg err'; msg.textContent='Install is not supported in this browser.'; return; }
   if(PWA.isStandalone()){ msg.className='msg ok'; msg.textContent='Already running as an app.'; return; }
@@ -182,6 +198,7 @@ $('#btnInstall').addEventListener('click', async ()=>{
 });
 
 $('#btnSignOut').addEventListener('click', ()=>{
+  const PWA=window.CampBuilderPWA;
   if(PWA) PWA.clearSession();
   location.replace('login.html');
 });
