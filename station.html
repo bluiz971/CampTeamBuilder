@@ -39,7 +39,7 @@ header{background:var(--ink);color:#fff;padding:14px 16px;border-bottom:4px soli
 header h1{font-size:20px;text-transform:uppercase;letter-spacing:.02em}
 header h1 span{color:var(--amber)}
 .campfield{display:flex;align-items:center;gap:6px;font-size:12px;color:#9aa4b1}
-.campfield input{width:110px;font-size:13px;padding:5px 8px;border-radius:6px;border:1px solid #2c3947;background:var(--ink-2);color:#fff}
+.campfield select{min-width:170px;max-width:min(240px,55vw);font-size:13px;padding:6px 8px;border-radius:6px;border:1px solid #2c3947;background:var(--ink-2);color:#fff}
 .livepill{font-size:11px;color:#9aa4b1;padding:3px 8px}
 .signoutbtn{font-size:12px;color:#9aa4b1;background:transparent;border:1px solid #2c3947;border-radius:6px;padding:5px 10px;cursor:pointer}
 .account-btn{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-decoration:none;background:var(--orange);border:2px solid var(--amber);border-radius:8px;padding:7px 14px;white-space:nowrap;box-shadow:0 2px 0 rgba(0,0,0,.25);display:inline-flex;align-items:center}
@@ -261,7 +261,8 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
       <h1><img src="assets/camp-builder-logo.png" alt="" style="width:28px;height:28px;border-radius:7px;vertical-align:middle;margin-right:6px;object-fit:cover">Check-In <span>Station</span></h1>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <div class="campfield">
-          Camp: <input type="text" id="campCodeInput" placeholder="fall-2026">
+          Camp:
+          <select id="campCodeInput" aria-label="Select camp"></select>
         </div>
         <a class="account-btn" href="account.html">Account</a>
         <button class="signoutbtn" id="btnSignOut">Sign Out</button>
@@ -400,9 +401,9 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 /* =====================================================================
    CONFIG — same Supabase project as index.html / admin.html. Set once
    per tablet (or once, then just bookmark the file / add to home screen).
-   DEFAULT_CAMP_CODE pre-fills the Camp field on a brand-new device —
+   DEFAULT_CAMP_CODE pre-selects a camp on a brand-new device —
    update it each season so new tablets aren't blank on first sign-in.
-   It's just a starting point; the field on-screen can still be changed.
+   The Camp dropdown lists all camps from Supabase; change it anytime.
 ===================================================================== */
 const SUPABASE_URL = "https://nxncasbkrcermftbviuw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54bmNhc2JrcmNlcm1mdGJ2aXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY3NjYsImV4cCI6MjA5OTc5Mjc2Nn0.XdcpcrTLhWeJWf6DXS2PPkXOGjYy8m9nFtagbFoqt9I";
@@ -494,6 +495,7 @@ const urlStation=(urlParams.get('station')||'').trim(); // reserved for future u
 let campCode = (urlParams.get('camp')||'').trim().toLowerCase().replace(/[^a-z0-9-]/g,'-')
   || localStorage.getItem('stationCampCode') || DEFAULT_CAMP_CODE || '';
 let campId=null, campSlug='', campRow=null;
+let campsList=[];
 
 function formatCampDate(d){
   if(!d) return '';
@@ -513,7 +515,42 @@ function showCampNotFoundState(detail){
   $('#livePill').textContent='Camp not found';
   renderCampMeta();
   const extra=detail?('<br><small style="color:var(--mut)">'+esc(detail)+'</small>'):'';
-  $('#plist').innerHTML='<div class="empty"><b>Camp not found</b>No camp matches this slug. Check the Camp field above.'+extra+'</div>';
+  $('#plist').innerHTML='<div class="empty"><b>Camp not found</b>No camp matches this selection. Pick a camp from the dropdown above.'+extra+'</div>';
+}
+function renderCampSelect(){
+  const sel=$('#campCodeInput'); if(!sel) return;
+  const cur=campCode;
+  const list=campsList.slice();
+  if(cur && !list.some(c=>(c.slug||'')===cur)){
+    list.unshift({ slug:cur, name:cur, status:'missing' });
+  }
+  if(!list.length){
+    sel.innerHTML='<option value="">— no camps yet —</option>';
+    return;
+  }
+  sel.innerHTML=list.map(c=>{
+    const slug=c.slug||'';
+    let label=c.name||slug;
+    if(c.location) label+=' · '+c.location;
+    if(c.status && c.status!=='active') label+=' ('+c.status+')';
+    return `<option value="${esc(slug)}" ${slug===cur?'selected':''}>${esc(label)}</option>`;
+  }).join('');
+}
+async function fetchCampsList(){
+  try{
+    const headers=authSession&&authSession.access_token
+      ? authHeaders()
+      : {apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY};
+    let res=await fetch(SUPABASE_URL+'/rest/v1/camps?select=*&order=camp_date.desc.nullslast,name.asc',{ headers });
+    if(!res.ok && !(authSession&&authSession.access_token)){
+      res=await fetch(SUPABASE_URL+'/rest/v1/camps?status=eq.active&select=*&order=name.asc',{
+        headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}
+      });
+    }
+    if(!res.ok) return [];
+    const rows=await res.json();
+    return Array.isArray(rows)?rows:[];
+  }catch(e){ return []; }
 }
 async function resolveCamp(){
   if(!campCode){ campId=null; campRow=null; campSlug=''; renderCampMeta(); return false; }
@@ -538,22 +575,28 @@ async function resolveCamp(){
     const rows=await res.json();
     if(!rows || !rows[0]){
       campId=null; campRow=null; renderCampMeta();
-      lastCampErr='No row with slug "'+campCode+'". Create it on the admin Camps tab, or pick an existing slug.';
+      lastCampErr='No camp with slug "'+campCode+'". Create it on the admin Camps tab, then refresh.';
       return false;
     }
     campRow=rows[0]; campId=campRow.id; campSlug=campRow.slug||campCode;
     lastCampErr='';
-    if($('#campCodeInput')) $('#campCodeInput').value=campSlug;
+    if($('#campCodeInput')){
+      $('#campCodeInput').value=campSlug;
+      // Keep option label in sync if this camp was only known by slug
+      if(!campsList.some(c=>(c.slug||'')===campSlug)){
+        campsList.unshift(campRow);
+        renderCampSelect();
+        $('#campCodeInput').value=campSlug;
+      }
+    }
     renderCampMeta();
     return true;
   }catch(e){ campId=null; campRow=null; renderCampMeta(); lastCampErr='Network error looking up camp.'; return false; }
 }
 let lastCampErr='';
 
-$('#campCodeInput').value = campCode;
-localStorage.setItem('stationCampCode', campCode);
-$('#campCodeInput').addEventListener('input', async e=>{
-  campCode = e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-');
+async function switchCamp(nextCode){
+  campCode = String(nextCode||'').trim().toLowerCase().replace(/[^a-z0-9-]/g,'-');
   localStorage.setItem('stationCampCode', campCode);
   campId=null; campRow=null;
   players=[]; teams=[]; renderList();
@@ -563,6 +606,11 @@ $('#campCodeInput').addEventListener('input', async e=>{
     toast('Camp not found');
     showCampNotFoundState(lastCampErr);
   }
+}
+
+localStorage.setItem('stationCampCode', campCode);
+$('#campCodeInput').addEventListener('change', e=>{
+  switchCamp(e.target.value);
 });
 
 // --- Auth (localStorage + refresh_token so tablets stay signed in all day) ---
@@ -639,6 +687,8 @@ async function authFetch(url, opts){
 async function showApp(){
   $('#gate').style.display='none';
   $('#app').style.display='block';
+  campsList=await fetchCampsList();
+  renderCampSelect();
   if(!await resolveCamp()){
     toast('Camp not found');
     showCampNotFoundState(lastCampErr);
