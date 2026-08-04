@@ -324,7 +324,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   <h3>Scout note</h3>
   <p id="noteWho" class="reg-sub" style="margin-bottom:0"></p>
   <textarea id="noteText" placeholder="• good shooter"></textarea>
-  <p style="font-size:12px;color:var(--mut);margin:0 0 4px;line-height:1.4">Bullet list — press Enter for a new point. The Camp Write-Up turns these into full sentences.</p>
+  <p style="font-size:12px;color:var(--mut);margin:0 0 4px;line-height:1.4">Write normal sentences or short bullets (Enter for a new line). Don’t start with “who is” — the write-up adds height, year, position, and hometown automatically.</p>
   <div class="dlg-actions">
     <button class="bigbtn ghost" type="button" id="noteClear">Clear</button>
     <button class="bigbtn ghost" type="button" id="noteCancel">Cancel</button>
@@ -1504,34 +1504,121 @@ function notesToBulletEditor(raw){
 function bulletEditorToNotes(raw){
   return noteTraits(raw).join('\n');
 }
-/** Turn bio + bullet notes into a camp write-up sentence. */
+function escapeRe(s){
+  return String(s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+}
+function cleanNoteChunk(t){
+  return String(t||'')
+    .replace(/^who\s+is\s+/i,'')
+    .replace(/^[,.\s]+/,'')
+    .replace(/[.\s]+$/,'')
+    .replace(/\balot\b/gi,'a lot')
+    .replace(/\balong\s+w\s+/gi,'along with ')
+    .replace(/\bw\s+a\b/gi,'with a')
+    .replace(/\bthat'?s\s+shows\b/gi,'that shows')
+    .replace(/\bwhile within gameplay\b/gi,'during gameplay')
+    .replace(/\ball around\b/gi,'all-around')
+    .replace(/\bfill up points\b/gi,'rack up points')
+    .trim();
+}
+function ensureSentence(text){
+  let t=String(text||'').trim();
+  if(!t) return '';
+  t=t.charAt(0).toUpperCase()+t.slice(1);
+  if(!/[.!?]$/.test(t)) t+='.';
+  return t;
+}
+function playerFullName(p){
+  return ((p.first||'')+' '+(p.last||'')).trim();
+}
+function playerFirstName(p){
+  return String(p.first||'').trim();
+}
+function startsWithPlayerName(note, p){
+  const n=cleanNoteChunk(note);
+  const full=playerFullName(p);
+  const first=playerFirstName(p);
+  if(full && new RegExp('^'+escapeRe(full)+'\\b','i').test(n)) return true;
+  if(first && first.length>1 && new RegExp('^'+escapeRe(first)+'\\b','i').test(n)) return true;
+  return false;
+}
+/** Notes that already read as their own sentence(s). */
+function isStandaloneNote(note, p){
+  const n=cleanNoteChunk(note);
+  if(!n) return false;
+  if(startsWithPlayerName(note, p)) return true;
+  if(/^(he|she|they|his|her|their)\b/i.test(n)) return true;
+  if(/[.!?]\s+\S/.test(n)) return true;
+  // Long freeform paragraph
+  if(n.split(/\s+/).length>=14) return true;
+  return false;
+}
+/** Descriptor noun phrases: "versatile big that…", "guard that…", "very well rounded player…" */
+function isDescriptorPhrase(note){
+  const n=cleanNoteChunk(note);
+  if(!n || /^(he|she|they)\b/i.test(n)) return false;
+  if(/^(a|an|the)\s+/i.test(n)) return true;
+  if(/^(very\s+)?(well[- ]rounded|versatile|strong|solid|good|excellent|smooth|quick|athletic|pure|twitchy|active)\b/i.test(n)) return true;
+  if(/^(guard|forward|wing|big|shooter|scorer|defender|athlete|handler|point|combo|sg|pg|sf|pf|c)\b/i.test(n)) return true;
+  if(/\b(player|guard|forward|wing|big|shooter)\b/i.test(n) && /\b(that|who|which)\b/i.test(n)) return true;
+  return false;
+}
+function withIndefiniteArticle(phrase){
+  let p=cleanNoteChunk(phrase).replace(/^(a|an|the)\s+/i,'');
+  if(!p) return '';
+  p=p.charAt(0).toLowerCase()+p.slice(1);
+  const article=/^[aeiou]/i.test(p)?'an':'a';
+  return article+' '+p;
+}
+/** Turn bio + scout notes into natural write-up prose (not forced "who is…" joins). */
 function writeUpSentence(p){
-  const traits=noteTraits(p.scout_notes);
+  const traits=noteTraits(p.scout_notes).map(cleanNoteChunk).filter(Boolean);
   if(!traits.length) return '';
-  const name=((p.first||'')+' '+(p.last||'')).trim();
+
+  const name=playerFullName(p);
   const ht=formatHeight(p.height);
   const htDisp=ht && ht!=='—' ? ht : '';
   const yr=String(p.grad_year||'').trim();
-  const pos=String(p.position||'').trim() || 'player';
+  const pos=String(p.position||'').trim();
   const city=String(p.city||'').trim();
   const state=String(p.state||'').trim().toUpperCase();
   const place=[city, state].filter(Boolean).join(', ') || String(p.school||'').trim();
-  let head=name;
-  if(htDisp) head+=', '+htDisp;
-  if(yr || pos) head+=', '+[yr, pos].filter(Boolean).join(' ');
-  if(place) head+=' from '+place;
-  if(traits.length===1){
-    let n=traits[0].replace(/^[,.\s]+/,'').replace(/[.\s]+$/,'');
-    if(/^(is|has|can|plays|shows|brings|does|was|will|a |an |who )/i.test(n)){
-      if(/^(is|has|can|plays|shows|brings|does|was|will|a |an )/i.test(n) && !/^who /i.test(n))
-        return head+', '+n.charAt(0).toLowerCase()+n.slice(1)+'.';
-      return head+', '+n+'.';
+
+  let intro=name;
+  if(htDisp) intro+=', '+htDisp;
+  if(yr) intro+=', '+yr;
+  if(pos) intro+=' '+pos;
+  if(place) intro+=' from '+place;
+
+  const body=[];
+  for(const raw of traits){
+    const n=raw;
+    if(isStandaloneNote(n, p)){
+      body.push(ensureSentence(n));
+      continue;
     }
-    return head+', who is '+n+'.';
+    if(/^(is|has|can|plays|shows|brings|does|was|will|runs|makes|gets|sees|finishes|defends|rebounds|shoots|handles|passes|attacks|creates|scores|covers|communicates|understands)\b/i.test(n)){
+      body.push(ensureSentence('He '+n.charAt(0).toLowerCase()+n.slice(1)));
+      continue;
+    }
+    if(isDescriptorPhrase(n)){
+      body.push(ensureSentence('He is '+withIndefiniteArticle(n)));
+      continue;
+    }
+    // Short trait fragment → "He has a strong handle."
+    if(n.split(/\s+/).length<=5 && !/\b(that|who|which|and|but)\b/i.test(n)){
+      body.push(ensureSentence('He has '+withIndefiniteArticle(n)));
+      continue;
+    }
+    body.push(ensureSentence(n));
   }
-  const parts=traits.map(t=>t.replace(/^[,.\s]+/,'').replace(/[.\s]+$/,''));
-  const last=parts.pop();
-  return head+', who is '+parts.join(', ')+', and '+last+'.';
+
+  let out=[ensureSentence(intro), ...body].filter(Boolean).join(' ');
+  out=out
+    .replace(/\bHe he\b/g,'He')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+  return out;
 }
 function campWriteUpHeader(){
   const name=(campRow && campRow.name) || campSlug || campCode || 'Camp';
@@ -1669,10 +1756,10 @@ function renderWriteUpPanel(){
     <h3>Camp Write-Up</h3>
     <div class="wu-head">${esc(name)}</div>
     ${meta?`<p class="wu-meta">${esc(meta)}</p>`:''}
-    <p class="wu-sub">Headshots + bios from scout notes (city &amp; state included). Sync when ready so parents see <b>Post Camp Report</b> on the home page.</p>
+    <p class="wu-sub">Headshots + bios from scout notes (city &amp; state included). Notes are turned into natural sentences — re-sync to refresh the parent <b>Post Camp Report</b>.</p>
     ${cards
       ? `<div class="wu-list">${cards}</div><div class="wu-plain" id="wuPlainText">${esc(body)}</div>`
-      : `<div class="wu-body">No scout notes yet — tap 📝 on a player and add bullet points (Enter for a new line).</div>`}
+      : `<div class="wu-body">No scout notes yet — tap 📝 on a player. Use full sentences (“Jordan runs the floor well”) or short traits (“strong handle”).</div>`}
     <div class="wu-actions">
       <button class="bigbtn" type="button" id="stBtnSyncWriteUp" ${body?'':'disabled'}>⬆ Sync to Parent Page</button>
       <button class="bigbtn ghost" type="button" id="stBtnCopyWriteUp" ${body?'':'disabled'}>Copy write-up</button>
