@@ -14,3 +14,7 @@
 # Failures become charge_failed and are never retried (query is deposit_paid only).
 [functions."charge-balances"]
   schedule = "@daily"
+
+# sharp is a native module — keep it external for Netlify bundling
+[functions."approve-instagram-story"]
+  external_node_modules = ["sharp"]

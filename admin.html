@@ -299,6 +299,16 @@ dialog select{width:100%;margin:10px 0 16px}
       <span id="pullRegNote" style="font-size:13px;color:var(--mut)"></span>
     </div>
   </div>
+  <div class="mapping" style="margin-bottom:14px" id="igStoryPanel">
+    <h3 style="margin-bottom:6px">Instagram Story Queue</h3>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Registrations that uploaded a photo wait here for approval before anything posts to Instagram. Approve composes a branded Story and publishes it; Reject discards the queue item. Requires Publish sign-in + Netlify env vars (<code>INSTAGRAM_ACCESS_TOKEN</code>, <code>INSTAGRAM_BUSINESS_ACCOUNT_ID</code>).</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <span id="igQueueCount" style="font-size:14px;font-weight:600">0 pending approval</span>
+      <button class="btn btn-ghost btn-sm" type="button" id="btnRefreshIgQueue">Refresh</button>
+      <span id="igQueueNote" style="font-size:13px;color:var(--mut)"></span>
+    </div>
+    <div id="igQueueList" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload roster file">
     <div class="ball">🏀</div>
     <h3>Drop the master list here</h3>
@@ -3397,6 +3407,7 @@ async function pollPlayersLive(){
   }catch(e){ /* stay quiet, retry on next tick */ }
 }
 setInterval(pollPlayersLive, 5000);
+setInterval(refreshIgStoryQueue, 8000);
 setInterval(()=>{ refreshAdminSession(); }, 10*60*1000);
 // Keep Teams tab in sync with station generates when this browser has no local teams yet
 setInterval(()=>{
@@ -3531,6 +3542,115 @@ async function pullRegistrations(){
 }
 
 $('#btnPullReg').addEventListener('click', ()=>pullRegistrations());
+
+async function refreshIgStoryQueue(){
+  const list=$('#igQueueList');
+  const countEl=$('#igQueueCount');
+  const note=$('#igQueueNote');
+  if(!list || !countEl) return;
+  if(!(S.syncUrl && S.syncKey && authSession && authSession.access_token)){
+    countEl.textContent='0 pending approval';
+    list.innerHTML='<div style="font-size:13px;color:var(--mut)">Sign in on the Publish tab to load the Instagram Story queue.</div>';
+    return;
+  }
+  try{
+    const res=await fetch(
+      S.syncUrl+'/rest/v1/registrations?or=(ig_story_status.eq.pending,ig_story_status.eq.failed)&select=id,first,last,camp_code,instagram_handle,photo_url,ig_story_status,ig_story_error,submitted_at&order=submitted_at.desc&limit=50',
+      { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+    );
+    if(!res.ok){
+      const body=await res.text();
+      if(/ig_story_status|photo_url|instagram_handle/i.test(body) && /column|schema|PGRST/i.test(body)){
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Run <code>migrations/011_registration_instagram_stories.sql</code> in Supabase to enable this queue.</div>';
+      } else if(res.status===401 || res.status===403){
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Can’t read registrations — sign in again.</div>';
+      } else {
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Queue load failed ('+res.status+').</div>';
+      }
+      countEl.textContent='0 pending approval';
+      return;
+    }
+    const rows=await res.json();
+    const pending=rows.filter(r=>r.ig_story_status==='pending');
+    const failed=rows.filter(r=>r.ig_story_status==='failed');
+    countEl.textContent=pending.length+' pending approval'+(failed.length?' · '+failed.length+' failed':'');
+    if(!rows.length){
+      list.innerHTML='<div style="font-size:13px;color:var(--mut)">No pending or failed Story requests.</div>';
+      if(note) note.textContent='';
+      return;
+    }
+    list.innerHTML=rows.map(r=>{
+      const name=esc(((r.first||'')+' '+(r.last||'')).trim()||'Player');
+      const thumb=r.photo_url
+        ? `<img src="${esc(r.photo_url)}" alt="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;object-position:center 22%;background:#eee">`
+        : `<div style="width:64px;height:64px;border-radius:10px;background:#eee;display:flex;align-items:center;justify-content:center;color:var(--mut)">📷</div>`;
+      const handle=r.instagram_handle?esc(r.instagram_handle):'<span style="color:var(--mut)">No handle</span>';
+      const status=r.ig_story_status==='failed'
+        ? `<span style="color:var(--red);font-weight:600">Failed</span>${r.ig_story_error?' — '+esc(String(r.ig_story_error).slice(0,160)):''}`
+        : `<span style="color:var(--orange);font-weight:600">Pending</span>`;
+      const retry=r.ig_story_status==='failed'
+        ? `<button class="btn btn-orange btn-sm" type="button" data-ig-approve="${esc(r.id)}">🔁 Retry post</button>`
+        : `<button class="btn btn-orange btn-sm" type="button" data-ig-approve="${esc(r.id)}">✅ Approve &amp; Post</button>`;
+      return `<div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff">
+        ${thumb}
+        <div style="flex:1;min-width:180px">
+          <div style="font-weight:700;font-size:15px">${name}</div>
+          <div style="font-size:13px;color:var(--mut);margin-top:2px">Camp: <code>${esc(r.camp_code||'')}</code> · ${handle}</div>
+          <div style="font-size:12px;margin-top:4px">${status}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${retry}
+          <button class="btn btn-ghost btn-sm" type="button" data-ig-reject="${esc(r.id)}">❌ Reject</button>
+        </div>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('[data-ig-approve]').forEach(btn=>{
+      btn.addEventListener('click', ()=>igStoryAction(btn.getAttribute('data-ig-approve'), 'approve', btn));
+    });
+    list.querySelectorAll('[data-ig-reject]').forEach(btn=>{
+      btn.addEventListener('click', ()=>igStoryAction(btn.getAttribute('data-ig-reject'), 'reject', btn));
+    });
+  }catch(e){
+    list.innerHTML='<div style="font-size:13px;color:var(--red)">Could not load Instagram Story queue.</div>';
+  }
+}
+
+async function igStoryAction(registrationId, action, btn){
+  const note=$('#igQueueNote');
+  if(!(authSession && authSession.access_token)){
+    if(note) note.innerHTML='<span style="color:var(--red)">Sign in on Publish first.</span>';
+    return;
+  }
+  if(!registrationId) return;
+  const label=btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent=action==='reject'?'Rejecting…':'Posting…'; }
+  if(note) note.textContent='';
+  try{
+    const res=await fetch('/.netlify/functions/approve-instagram-story',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+authSession.access_token
+      },
+      body: JSON.stringify({ registrationId, action })
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){
+      if(note) note.innerHTML='<span style="color:var(--red)">'+esc(data.error||('Request failed ('+res.status+')'))+'</span>';
+      return;
+    }
+    if(note) note.innerHTML='<span style="color:var(--green)">'+esc(data.message||(action==='reject'?'Rejected.':'Posted.'))+'</span>';
+    await refreshIgStoryQueue();
+  }catch(e){
+    if(note) note.innerHTML='<span style="color:var(--red)">Network error calling approve-instagram-story.</span>';
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=label; }
+  }
+}
+const btnRefreshIg=$('#btnRefreshIgQueue');
+if(btnRefreshIg) btnRefreshIg.addEventListener('click', ()=>refreshIgStoryQueue());
+if(authSession && authSession.access_token) refreshIgStoryQueue();
+
 $('#btnPushRoster').addEventListener('click', async ()=>{
   if(!(S.syncUrl && S.syncKey && S.campId)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Select an Active camp and set up Live Sync on the Publish tab first.</span>'; return; }
   if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }

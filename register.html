@@ -100,6 +100,20 @@ input.err,select.err{border-color:var(--red);background:#fef2f2}
 .msg.err{color:var(--red)}
 .msg.ok{color:var(--green)}
 .field-err{font-size:12px;color:var(--red);margin-top:4px;min-height:0}
+.consent{
+  display:flex;align-items:flex-start;gap:10px;margin-top:12px;padding:12px 14px;
+  border:1.5px solid var(--line);border-radius:10px;background:#faf9f6;font-size:13px;line-height:1.45;color:var(--ink);
+}
+.consent input{width:auto;margin-top:2px;accent-color:var(--orange);flex-shrink:0}
+.consent.err{border-color:var(--red);background:#fef2f2}
+.photo-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.photo-preview{
+  width:72px;height:72px;border-radius:10px;object-fit:cover;object-position:center 22%;
+  background:#eee;border:1.5px solid var(--line);display:none;
+}
+.photo-preview.on{display:block}
+.photo-actions{display:flex;gap:8px;flex-wrap:wrap;flex:1}
+.photo-actions .btn{width:auto;padding:10px 14px;font-size:15px;display:inline-block}
 .done{text-align:center;padding:12px 4px}
 .done .check{
   width:56px;height:56px;border-radius:50%;background:var(--orange-soft);color:var(--orange);
@@ -188,6 +202,35 @@ footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
       <div class="field span"><label for="parentName">Full name *</label><input id="parentName" autocapitalize="words"><div class="field-err" data-for="parentName"></div></div>
       <div class="field"><label for="parentPhone">Phone *</label><input id="parentPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(555) 555-5555" maxlength="14"><div class="field-err" data-for="parentPhone"></div></div>
       <div class="field"><label for="parentEmail">Email *</label><input id="parentEmail" type="email" autocomplete="email"><div class="field-err" data-for="parentEmail"></div></div>
+    </div>
+
+    <div class="section-title">Instagram (optional)</div>
+    <div class="grid">
+      <div class="field span">
+        <label for="igHandle">Player/Parent Instagram handle</label>
+        <input id="igHandle" autocomplete="off" placeholder="@yourhandle" autocapitalize="off">
+      </div>
+      <div class="field span">
+        <label for="playerPhoto">Upload a photo</label>
+        <div class="photo-row">
+          <img class="photo-preview" id="photoPreview" alt="Photo preview">
+          <div class="photo-actions">
+            <button class="btn ghost" type="button" id="btnPickPhoto">Choose photo</button>
+            <button class="btn ghost" type="button" id="btnTakePhoto">Take photo</button>
+            <button class="btn ghost" type="button" id="btnClearPhoto" style="display:none">Remove</button>
+          </div>
+        </div>
+        <input type="file" id="playerPhoto" accept="image/*" hidden>
+        <input type="file" id="playerPhotoCamera" accept="image/*" capture="environment" hidden>
+        <div class="field-err" data-for="playerPhoto"></div>
+      </div>
+      <div class="field span" id="igConsentWrap" style="display:none">
+        <label class="consent" id="igConsentLabel">
+          <input type="checkbox" id="igConsent">
+          <span>I consent to my child's name and photo being shared on AAU Select Tour's Instagram Story.</span>
+        </label>
+        <div class="field-err" data-for="igConsent"></div>
+      </div>
     </div>
 
     <div class="msg" id="formMsg"></div>
@@ -504,6 +547,8 @@ function validate(){
   const parentName=$('#parentName').value.trim();
   const parentPhone=$('#parentPhone').value.trim();
   const parentEmail=$('#parentEmail').value.trim();
+  const photoFile=getSelectedPhotoFile();
+  const consent=$('#igConsent');
 
   if(!first){ markErr('first','First name is required'); missing.push('First name'); }
   if(!last){ markErr('last','Last name is required'); missing.push('Last name'); }
@@ -517,10 +562,20 @@ function validate(){
   else if(digitsOnly(parentPhone).length!==10){ markErr('parentPhone','Use (XXX) XXX-XXXX'); missing.push('Parent phone'); }
   if(!parentEmail){ markErr('parentEmail','Parent email is required'); missing.push('Parent email'); }
 
+  if(photoFile && !(consent && consent.checked)){
+    markErr('igConsent','Consent is required when a photo is uploaded');
+    const wrap=$('#igConsentLabel');
+    if(wrap) wrap.classList.add('err');
+    missing.push('Instagram photo consent');
+  } else {
+    const wrap=$('#igConsentLabel');
+    if(wrap) wrap.classList.remove('err');
+  }
+
   if(missing.length){
     $('#formMsg').textContent='Please fill in: '+missing.join(', ')+'.';
     $('#formMsg').className='msg err';
-    const firstBad=document.querySelector('input.err,select.err');
+    const firstBad=document.querySelector('input.err,select.err') || (photoFile && !consent.checked ? $('#igConsent') : null);
     if(firstBad) firstBad.focus();
     return false;
   }
@@ -530,6 +585,82 @@ function validate(){
 }
 
 function val(id){ return String(($('#'+id)||{}).value||'').trim(); }
+
+function normalizeIgHandle(raw){
+  let h=String(raw||'').trim();
+  if(!h) return '';
+  h=h.replace(/^@+/,'');
+  h=h.replace(/[^a-zA-Z0-9._]/g,'');
+  return h ? '@'+h : '';
+}
+
+function getSelectedPhotoFile(){
+  const a=$('#playerPhoto');
+  const b=$('#playerPhotoCamera');
+  if(a && a.files && a.files[0]) return a.files[0];
+  if(b && b.files && b.files[0]) return b.files[0];
+  return null;
+}
+
+function syncPhotoUi(){
+  const file=getSelectedPhotoFile();
+  const prev=$('#photoPreview');
+  const clearBtn=$('#btnClearPhoto');
+  const consentWrap=$('#igConsentWrap');
+  if(file){
+    const url=URL.createObjectURL(file);
+    prev.src=url;
+    prev.classList.add('on');
+    clearBtn.style.display='inline-block';
+    consentWrap.style.display='block';
+  } else {
+    prev.removeAttribute('src');
+    prev.classList.remove('on');
+    clearBtn.style.display='none';
+    consentWrap.style.display='none';
+    const c=$('#igConsent'); if(c) c.checked=false;
+    const wrap=$('#igConsentLabel'); if(wrap) wrap.classList.remove('err');
+  }
+}
+
+function clearPhotoInputs(){
+  const a=$('#playerPhoto'); if(a) a.value='';
+  const b=$('#playerPhotoCamera'); if(b) b.value='';
+  syncPhotoUi();
+}
+
+function setPhotoFromInput(input){
+  const other=input.id==='playerPhoto' ? $('#playerPhotoCamera') : $('#playerPhoto');
+  if(other) other.value='';
+  syncPhotoUi();
+}
+
+async function uploadRegistrationPhoto(regId, file){
+  if(!file) return '';
+  const ext=(String(file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+  const safeExt=['jpg','jpeg','png','webp','gif','heic','heif'].includes(ext) ? ext : 'jpg';
+  const camp=(selectedCamp && selectedCamp.code) || 'camp';
+  const path=camp+'/'+regId+'.'+safeExt;
+  const res=await fetch(SUPABASE_URL+'/storage/v1/object/registration-photos/'+path,{
+    method:'POST',
+    headers: anonHeaders({
+      'Content-Type': file.type || 'image/jpeg',
+      'x-upsert': 'true'
+    }),
+    body: file
+  });
+  if(!res.ok){
+    const t=await res.text();
+    if(/Bucket not found|not found|404/i.test(t) || res.status===404){
+      throw new Error('Photo storage isn’t set up yet — ask staff to run migrations/011_registration_instagram_stories.sql.');
+    }
+    if(res.status===401 || res.status===403 || /policy|permission|RLS|42501/i.test(t)){
+      throw new Error('Photo upload blocked — ask staff to run migrations/011_registration_instagram_stories.sql (storage policies).');
+    }
+    throw new Error('Photo upload failed ('+res.status+'). Try a smaller JPEG/PNG.');
+  }
+  return SUPABASE_URL+'/storage/v1/object/public/registration-photos/'+path;
+}
 
 let pendingCheckout=null; // { registrationId, campCode, addons, email, playerName }
 
@@ -590,7 +721,27 @@ async function submit(){
   $('#addonMsg').textContent='';
   $('#addonMsg').className='msg';
   const addons=selectedAddons();
+  const photoFile=getSelectedPhotoFile();
+  const regId=(crypto.randomUUID ? crypto.randomUUID() : ('reg-'+Date.now()+'-'+Math.random().toString(16).slice(2)));
+  let photoUrl='';
+  let igStatus='none';
+
+  try{
+    if(photoFile){
+      btn.textContent='Uploading photo…';
+      photoUrl=await uploadRegistrationPhoto(regId, photoFile);
+      igStatus='pending';
+    }
+  }catch(upErr){
+    $('#addonMsg').textContent=upErr.message || 'Photo upload failed. Try a smaller JPEG/PNG, or continue without a photo.';
+    $('#addonMsg').className='msg err';
+    btn.disabled=false; btn.textContent='Pay with card';
+    return;
+  }
+
+  const handle=normalizeIgHandle(val('igHandle'));
   const row={
+    id: regId,
     camp_code: selectedCamp.code,
     first: val('first'),
     last: val('last'),
@@ -617,9 +768,13 @@ async function submit(){
     parent_name: val('parentName'),
     parent_phone: val('parentPhone'),
     parent_email: val('parentEmail'),
-    addons: addons.join(', ')
+    addons: addons.join(', '),
+    instagram_handle: handle,
+    photo_url: photoUrl,
+    ig_story_status: igStatus
     // payment_status / amount_cents are set by Stripe functions (service role) — not the browser
   };
+  btn.textContent='Starting checkout…';
   try{
     const res=await fetch(SUPABASE_URL+'/rest/v1/registrations',{
       method:'POST',
@@ -631,7 +786,9 @@ async function submit(){
     });
     if(!res.ok){
       const t=await res.text();
-      if(/payment_status|amount_cents/i.test(t) && /column|schema|PGRST/i.test(t)){
+      if(/instagram_handle|photo_url|ig_story_status/i.test(t) && /column|schema|PGRST/i.test(t)){
+        $('#addonMsg').textContent='Instagram columns missing — ask staff to run migrations/011_registration_instagram_stories.sql in Supabase.';
+      } else if(/payment_status|amount_cents/i.test(t) && /column|schema|PGRST/i.test(t)){
         $('#addonMsg').textContent='Payment columns missing — ask staff to run migrations/009_registration_payments.sql in Supabase.';
       } else if(/addons/i.test(t) && /column|schema|PGRST/i.test(t)){
         $('#addonMsg').textContent='Add-ons column missing — ask staff to run migrations/008_registration_addons.sql in Supabase.';
@@ -685,11 +842,12 @@ async function submit(){
 function resetAll(){
   ['first','last','birth','year','weight','email','phone','school','schoolCity','schoolState',
    'schoolCoach','schoolCoachEmail','aauTeam','aauCoach','aauCoachEmail','street1','street2',
-   'city','state','postal','parentName','parentPhone','parentEmail'].forEach(id=>{
+   'city','state','postal','parentName','parentPhone','parentEmail','igHandle'].forEach(id=>{
     const el=$('#'+id); if(el) el.value='';
   });
   $('#pos').value='';
   $('#height').value='';
+  clearPhotoInputs();
   document.querySelectorAll('input[name="addon"]').forEach(c=>{ c.checked=false; });
   document.querySelectorAll('.addon-item').forEach(el=>{ el.classList.remove('on','open'); });
   clearErrors();
@@ -706,6 +864,11 @@ $('#btnNextAddon').addEventListener('click', showAddonStep);
 $('#btnBackForm').addEventListener('click', showFormStep);
 $('#btnSubmit').addEventListener('click', submit);
 $('#btnAnother').addEventListener('click', ()=>{ clearDraft(); resetAll(); });
+$('#btnPickPhoto').addEventListener('click', ()=>$('#playerPhoto').click());
+$('#btnTakePhoto').addEventListener('click', ()=>$('#playerPhotoCamera').click());
+$('#btnClearPhoto').addEventListener('click', clearPhotoInputs);
+$('#playerPhoto').addEventListener('change', e=>setPhotoFromInput(e.target));
+$('#playerPhotoCamera').addEventListener('change', e=>setPhotoFromInput(e.target));
 $('#btnPay').addEventListener('click', async ()=>{
   if(!pendingCheckout){ restoreDraft(); }
   if(!pendingCheckout){

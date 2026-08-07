@@ -3,6 +3,7 @@
     "@supabase/server": "^1.4.0",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
+    "sharp": "^0.33.5",
     "stripe": "^17.7.0"
   }
 }

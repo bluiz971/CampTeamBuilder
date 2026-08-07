@@ -112,3 +112,10 @@ end $$;
 -- After this file, run: migrations/001_multi_camp.sql
 -- See migrations/README.md for the full run order.
 -- ============================================================
+
+-- ============================================================
+-- Instagram Story queue (optional — after registrations exist)
+-- Run: migrations/011_registration_instagram_stories.sql
+-- Adds photo_url / instagram_handle / ig_story_status on
+-- registrations + public registration-photos Storage bucket.
+-- ============================================================
