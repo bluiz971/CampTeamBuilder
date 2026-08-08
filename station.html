@@ -81,13 +81,14 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .empty b{display:block;font-family:'Barlow Condensed';font-size:19px;color:var(--ink);text-transform:uppercase;margin-bottom:4px}
 
 /* ---------- Add-on popover ---------- */
-.addon-pop{position:fixed;z-index:200;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(20,26,34,.25);padding:14px;width:260px;left:50%;top:50%;transform:translate(-50%,-50%)}
+.addon-pop{position:fixed;z-index:520;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(20,26,34,.25);padding:14px;width:min(300px,92vw);max-height:min(80vh,560px);overflow:auto;left:50%;top:50%;transform:translate(-50%,-50%)}
 .addon-pop-head{font-family:'Barlow Condensed';font-weight:600;font-size:16px;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:8px}
-.addon-opt{display:flex;align-items:center;gap:10px;padding:8px 4px;font-size:16px}
-.addon-opt input{width:20px;height:20px;accent-color:var(--orange)}
+.addon-opt{display:flex;align-items:center;gap:10px;padding:8px 4px;font-size:16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.addon-opt input{width:22px;height:22px;accent-color:var(--orange);flex-shrink:0}
 .addon-custom{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .addon-custom input{flex:1;font-size:14px;padding:8px}
 .addon-close{width:100%;margin-top:10px}
+.addon-scrim{position:fixed;inset:0;background:rgba(20,26,34,.45);z-index:510}
 .scrim{position:fixed;inset:0;background:rgba(20,26,34,.4);z-index:150}
 
 /* ---------- Photo role ---------- */
@@ -1337,6 +1338,7 @@ let deferredListRender=false;
 function isEditingList(){
   const dlg=$('#editPlayerDlg');
   if(dlg && dlg.open) return true;
+  if(document.querySelector('.addon-pop')) return true;
   const a=document.activeElement;
   if(!a) return false;
   const wrap=$('#plist');
@@ -1368,6 +1370,8 @@ async function patchPlayer(id, fields){
     let detail='';
     try{ const t=await res.text(); detail=t; }catch(e){}
     if(/scout_notes/i.test(detail)) toast('⚠ Run migration 004 (scout_notes) in Supabase SQL Editor');
+    else if(/addons_manual|addons_removed/i.test(detail) && /column|schema|PGRST/i.test(detail))
+      toast('⚠ Add-on columns missing — check players table has addons_manual / addons_removed');
     else toast('⚠ Save failed — check connection');
     return false;
   }
@@ -2441,28 +2445,47 @@ async function saveEditPlayerInfo(){
 
 const ADDON_MENU=['Mixtape','Eval','Film','Academic','Zoom'];
 function openAddonPopover(id){
-  document.querySelectorAll('.addon-pop,.scrim').forEach(x=>x.remove());
-  const p=players.find(x=>x.id===id); if(!p) return;
+  document.querySelectorAll('.addon-pop,.addon-scrim').forEach(x=>x.remove());
+  const p=players.find(x=>String(x.id)===String(id)); if(!p){ toast('Player not found'); return; }
   const active=new Set(displayAddOns(p));
   const prepurchased=new Set(addOnsFromItems(p.items));
-  const scrim=document.createElement('div'); scrim.className='scrim';
+  const scrim=document.createElement('div'); scrim.className='addon-scrim';
   const pop=document.createElement('div'); pop.className='addon-pop';
+  pop.setAttribute('role','dialog');
+  pop.setAttribute('aria-label','Add-ons for '+((p.first||'')+' '+(p.last||'')).trim());
   pop.innerHTML=`<div class="addon-pop-head">${esc(p.first)} ${esc(p.last)}</div>`
     + ADDON_MENU.map(a=>{
         const pre=prepurchased.has(a) && active.has(a);
         return `<label class="addon-opt"><input type="checkbox" data-a="${esc(a)}" ${active.has(a)?'checked':''}> ${esc(a)}${pre?' <small style="color:var(--mut)">(pre-purchased)</small>':''}</label>`;
       }).join('')
-    + `<div class="addon-custom"><input type="text" id="addonCustom" placeholder="Other…"><button class="bigbtn" id="addonCustomBtn">Add</button></div>`
-    + `<button class="bigbtn ghost addon-close" id="addonClose">Done</button>`;
+    + `<div class="addon-custom"><input type="text" id="addonCustom" placeholder="Other…"><button class="bigbtn" type="button" id="addonCustomBtn">Add</button></div>`
+    + `<button class="bigbtn ghost addon-close" type="button" id="addonClose">Done</button>`;
   document.body.appendChild(scrim); document.body.appendChild(pop);
-  const close=()=>{ pop.remove(); scrim.remove(); };
+
+  const close=()=>{
+    pop.remove(); scrim.remove();
+    // Refresh list once the dialog is gone so tags show
+    requestListRender();
+  };
   scrim.addEventListener('click', close);
   pop.querySelector('#addonClose').addEventListener('click', close);
+
+  async function saveAddOns(manual, removed){
+    const ok=await patchPlayer(id, {addons_manual:manual, addons_removed:removed});
+    if(!ok){
+      toast('⚠ Could not save add-on — check connection / sign-in');
+      return false;
+    }
+    return true;
+  }
+
   pop.querySelectorAll('input[data-a]').forEach(cb=>cb.addEventListener('change', async ()=>{
     const name=cb.dataset.a;
-    const parsed=addOnsFromItems(p.items);
-    let manual=[...(p.addons_manual||[])];
-    let removed=[...(p.addons_removed||[])];
+    // Re-read player in case poll replaced the array object
+    const cur=players.find(x=>String(x.id)===String(id)) || p;
+    const parsed=addOnsFromItems(cur.items);
+    let manual=[...(cur.addons_manual||[])];
+    let removed=[...(cur.addons_removed||[])];
     if(cb.checked){
       removed=removed.filter(a=>a!==name);
       if(!parsed.includes(name) && !manual.includes(name)) manual.push(name);
@@ -2470,15 +2493,28 @@ function openAddonPopover(id){
       manual=manual.filter(a=>a!==name);
       if(parsed.includes(name) && !removed.includes(name)) removed.push(name);
     }
-    await patchPlayer(id, {addons_manual:manual, addons_removed:removed});
-    renderList();
+    cb.disabled=true;
+    const ok=await saveAddOns(manual, removed);
+    cb.disabled=false;
+    if(!ok){
+      // Revert checkbox if save failed
+      cb.checked=!cb.checked;
+    } else {
+      toast(cb.checked?(name+' added'):(name+' removed'));
+    }
   }));
+
   pop.querySelector('#addonCustomBtn').addEventListener('click', async ()=>{
-    const v=pop.querySelector('#addonCustom').value.trim(); if(!v) return;
-    const set=new Set(p.addons_manual||[]); set.add(v);
-    const removed=(p.addons_removed||[]).filter(a=>a!==v);
-    await patchPlayer(id, {addons_manual:[...set], addons_removed:removed});
-    close(); renderList();
+    const input=pop.querySelector('#addonCustom');
+    const v=(input.value||'').trim(); if(!v) return;
+    const cur=players.find(x=>String(x.id)===String(id)) || p;
+    const set=new Set(cur.addons_manual||[]); set.add(v);
+    const removed=(cur.addons_removed||[]).filter(a=>a!==v);
+    const btn=pop.querySelector('#addonCustomBtn');
+    btn.disabled=true;
+    const ok=await saveAddOns([...set], removed);
+    btn.disabled=false;
+    if(ok){ toast(v+' added'); close(); }
   });
 }
 
