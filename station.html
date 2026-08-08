@@ -860,6 +860,14 @@ function readGroupInputs(){
   groupCfg.gB2=+$('#stGB2').value||groupCfg.gB2;
   if(groupCfg.gA2<groupCfg.gA1){ const x=groupCfg.gA1; groupCfg.gA1=groupCfg.gA2; groupCfg.gA2=x; }
   if(groupCfg.gB2<groupCfg.gB1){ const x=groupCfg.gB1; groupCfg.gB1=groupCfg.gB2; groupCfg.gB2=x; }
+  if($('#stNumA')){
+    const a=+$('#stNumA').value;
+    const b=+$('#stNumB').value;
+    if(a>=1) groupCfg.numA=Math.min(20, a);
+    if(b>=1) groupCfg.numB=Math.min(20, b);
+  }
+}
+function suggestTeamCounts(){
   const pool=eligibleForTeams();
   groupCfg.numA=teamsForCount(pool.filter(p=>stationGroupOf(p.year)==='A').length);
   groupCfg.numB=teamsForCount(pool.filter(p=>stationGroupOf(p.year)==='B').length);
@@ -1011,12 +1019,15 @@ async function syncStationTeams(){
   }
 }
 function renderGroupTally(){
+  readGroupInputs();
   const pool=players.filter(p=>String(p.jersey||'').trim());
   const inA=pool.filter(p=>stationGroupOf(p.grad_year)==='A');
   const inB=pool.filter(p=>stationGroupOf(p.grad_year)==='B');
   const outside=pool.filter(p=>!stationGroupOf(p.grad_year));
-  const numA=teamsForCount(inA.length);
-  const numB=teamsForCount(inB.length);
+  const numA=Math.max(1, groupCfg.numA||1);
+  const numB=Math.max(1, groupCfg.numB||1);
+  const sugA=teamsForCount(inA.length);
+  const sugB=teamsForCount(inB.length);
   const per=(n,t)=>{ if(!t) return '—'; const base=Math.floor(n/t), extra=n%t; return extra? (base+'–'+(base+1)) : String(base); };
   const card=(cls,label,y1,y2,list,tCount,names)=>`<div class="gt-card ${cls}">
     <h4>${label}</h4><div class="rng">Grad years ${y1}–${y2} · ${names}</div>
@@ -1031,6 +1042,7 @@ function renderGroupTally(){
     + card('','Group A', groupCfg.gA1, groupCfg.gA2, inA, numA, 'Teams 1–'+numA)
     + card('b','Group B', groupCfg.gB1, groupCfg.gB2, inB, numB, 'Teams '+(numA+1)+'–'+(numA+numB))
     + (outside.length? `<div class="gt-card" style="grid-column:1/-1;border-left-color:var(--red)"><h4>Outside both ranges</h4><div class="gt-detail"><b>${outside.length}</b> numbered player(s) outside ${groupCfg.gA1}–${groupCfg.gA2} and ${groupCfg.gB1}–${groupCfg.gB2}.</div></div>`:'')
+    + `<div style="grid-column:1/-1;font-size:12px;color:var(--mut)">Suggested from player counts: A=${sugA}, B=${sugB}. Tap <b>Suggest counts</b> to fill those in, or type your own.</div>`
     + `</div>`;
 }
 function renderTeamsToolbar(){
@@ -1041,19 +1053,20 @@ function renderTeamsToolbar(){
         <input type="number" id="stGA1" min="2020" max="2045" value="${groupCfg.gA1}"> –
         <input type="number" id="stGA2" min="2020" max="2045" value="${groupCfg.gA2}">
       </div></div>
-      <div><label>Group A teams (auto)</label>
-        <input type="number" id="stNumA" value="${groupCfg.numA}" readonly style="background:#faf9f6">
+      <div><label>Group A teams</label>
+        <input type="number" id="stNumA" min="1" max="20" value="${groupCfg.numA}">
       </div>
       <div><label>Group B years</label><div class="yr">
         <input type="number" id="stGB1" min="2020" max="2045" value="${groupCfg.gB1}"> –
         <input type="number" id="stGB2" min="2020" max="2045" value="${groupCfg.gB2}">
       </div></div>
-      <div><label>Group B teams (auto)</label>
-        <input type="number" id="stNumB" value="${groupCfg.numB}" readonly style="background:#faf9f6">
+      <div><label>Group B teams</label>
+        <input type="number" id="stNumB" min="1" max="20" value="${groupCfg.numB}">
       </div>
     </div>
     <div class="actions">
       <button class="bigbtn" type="button" id="stBtnGen">🏀 Generate Balanced Teams</button>
+      <button class="bigbtn ghost" type="button" id="stBtnSuggestCounts">Suggest counts</button>
       <button class="bigbtn ghost" type="button" id="stBtnAddLate">＋ Add Late Player to a Team</button>
       <button class="bigbtn ghost" type="button" id="stBtnSync">⬆ Sync Teams to Parent Page</button>
       <button class="bigbtn" type="button" id="stBtnWriteUp">✍ Camp Write-Up${noted?' ('+noted+')':''}</button>
@@ -1063,7 +1076,7 @@ function renderTeamsToolbar(){
       pendingLocalTeams ? 'Local edits pending — syncing so every station stays in sync…'
       : (teamsPosted && teams.length ? 'Teams are live across all signed-in stations. Tap 📝 for scout notes, ⇄ to move.'
       : (teams.length ? 'Teams loaded from live sync. Generate again only if you need a fresh balance.'
-      : 'Generate when jersey assignment is far enough along — it auto-syncs to other stations.'))
+      : 'Set how many teams you want in each group, then Generate — it auto-syncs to other stations.'))
     }</div>
   </div>`;
 }
@@ -1213,13 +1226,14 @@ $('#addCancel').addEventListener('click', ()=>$('#addDlg').close());
 $('#addOk').addEventListener('click', ()=>confirmAddToTeam());
 
 function bindTeamsToolbar(){
-  ['stGA1','stGA2','stGB1','stGB2'].forEach(id=>{
+  ['stGA1','stGA2','stGB1','stGB2','stNumA','stNumB'].forEach(id=>{
     const el=$('#'+id); if(!el) return;
     el.addEventListener('change', ()=>{ readGroupInputs(); renderList(); });
     el.addEventListener('input', ()=>{ readGroupInputs(); });
   });
-  const gen=$('#stBtnGen'), sync=$('#stBtnSync'), clr=$('#stBtnClearTeams'), add=$('#stBtnAddLate'), wu=$('#stBtnWriteUp');
+  const gen=$('#stBtnGen'), sync=$('#stBtnSync'), clr=$('#stBtnClearTeams'), add=$('#stBtnAddLate'), wu=$('#stBtnWriteUp'), sug=$('#stBtnSuggestCounts');
   if(gen) gen.addEventListener('click', ()=>generateStationTeams());
+  if(sug) sug.addEventListener('click', ()=>{ readGroupInputs(); suggestTeamCounts(); renderList(); toast('Filled suggested team counts'); });
   if(add) add.addEventListener('click', ()=>openAddToTeamDialog());
   if(sync) sync.addEventListener('click', ()=>syncStationTeams());
   if(clr) clr.addEventListener('click', ()=>clearStationTeams());

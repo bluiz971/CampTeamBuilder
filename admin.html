@@ -403,12 +403,13 @@ dialog select{width:100%;margin:10px 0 16px}
     <div><label>Group A years</label>
       <input type="number" id="gA1" min="2020" max="2045" value="2027" style="width:84px"> –
       <input type="number" id="gA2" min="2020" max="2045" value="2030" style="width:84px"></div>
-    <div><label>Group A teams (auto)</label><input type="number" id="numA" min="1" max="20" value="4" style="width:70px;background:#faf9f6" readonly></div>
+    <div><label>Group A teams</label><input type="number" id="numA" min="1" max="20" value="4" style="width:70px"></div>
     <div><label>Group B years</label>
       <input type="number" id="gB1" min="2020" max="2045" value="2031" style="width:84px"> –
       <input type="number" id="gB2" min="2020" max="2045" value="2035" style="width:84px"></div>
-    <div><label>Group B teams (auto)</label><input type="number" id="numB" min="1" max="20" value="6" style="width:70px;background:#faf9f6" readonly></div>
+    <div><label>Group B teams</label><input type="number" id="numB" min="1" max="20" value="6" style="width:70px"></div>
     <button class="btn btn-orange" id="btnGen">🏀 Generate Balanced Teams</button>
+    <button class="btn btn-ghost" type="button" id="btnSuggestCounts">Suggest counts</button>
     <div class="balance-note" id="balNote"></div>
   </div>
   <div class="grp-tally" id="grpTally"></div>
@@ -1630,19 +1631,20 @@ function renderJersey(){
 function eligible(){ return S.players.filter(p=>p.checkedIn && normJersey(p.jersey)); }
 function refresh(){ renderCheckin(); renderJersey(); renderPlayers(); renderTally(); updateScoreboard(); }
 
-// Live count of numbered players per group + auto team counts
+// Live count of numbered players per group — uses editable team counts
 function renderTally(){
-  // Pull current year ranges from the inputs so it updates as you type
+  // Pull current year ranges + team counts from the inputs so it updates as you type
   S.gA1=+$('#gA1').value||S.gA1; S.gA2=+$('#gA2').value||S.gA2;
   S.gB1=+$('#gB1').value||S.gB1; S.gB2=+$('#gB2').value||S.gB2;
+  const a=+$('#numA').value; const b=+$('#numB').value;
+  if(a>=1) S.numA=Math.min(20,a);
+  if(b>=1) S.numB=Math.min(20,b);
   const pool=eligible();
   const inA=pool.filter(p=>groupOf(p.year)==='A');
   const inB=pool.filter(p=>groupOf(p.year)==='B');
   const outside=pool.filter(p=>!groupOf(p.year));
-  S.numA=teamsForCount(inA.length);
-  S.numB=teamsForCount(inB.length);
-  $('#numA').value=S.numA;
-  $('#numB').value=S.numB;
+  const sugA=teamsForCount(inA.length);
+  const sugB=teamsForCount(inB.length);
 
   const per=(n,t)=>{ if(!t) return '—'; const base=Math.floor(n/t), extra=n%t; return extra? `${base}–${base+1}` : `${base}`; };
   const card=(cls,label,y1,y2,list,teams,names)=>{
@@ -1655,13 +1657,14 @@ function renderTally(){
         <span class="arrow">→</span>
         <span class="teams">${teams}<small>teams</small></span>
       </div>
-      <div class="gt-detail">${n? `About <b>${per(n,teams)}</b> players per team.` : 'No numbered players in this range yet.'}${over?' <span class="gt-over">Over 112 — team count capped at 14; consider adding a group.</span>':''}</div>
+      <div class="gt-detail">${n? `About <b>${per(n,teams)}</b> players per team.` : 'No numbered players in this range yet.'}${over?' <span class="gt-over">Over 112 — consider adding a group.</span>':''}</div>
     </div>`;
   };
   $('#grpTally').innerHTML =
     card('','Group A','' + S.gA1, S.gA2, inA, S.numA, 'Teams 1–'+S.numA) +
     card('b','Group B','' + S.gB1, S.gB2, inB, S.numB, 'Teams '+(S.numA+1)+'–'+(S.numA+S.numB)) +
-    (outside.length? `<div class="gt-card" style="grid-column:1/-1;border-left-color:var(--red)"><h4>Outside both ranges</h4><div class="gt-detail gt-over"><b>${outside.length}</b> numbered player(s) have a grad year outside ${S.gA1}–${S.gA2} and ${S.gB1}–${S.gB2}: ${outside.slice(0,8).map(p=>esc(p.first+' '+p.last)+' ('+esc(p.year)+')').join(', ')}${outside.length>8?', …':''}. They won't be placed until you widen a range.</div></div>`:'');
+    (outside.length? `<div class="gt-card" style="grid-column:1/-1;border-left-color:var(--red)"><h4>Outside both ranges</h4><div class="gt-detail gt-over"><b>${outside.length}</b> numbered player(s) have a grad year outside ${S.gA1}–${S.gA2} and ${S.gB1}–${S.gB2}: ${outside.slice(0,8).map(p=>esc(p.first+' '+p.last)+' ('+esc(p.year)+')').join(', ')}${outside.length>8?', …':''}. They won't be placed until you widen a range.</div></div>`:'') +
+    `<div style="grid-column:1/-1;font-size:12px;color:var(--mut);margin-top:4px">Suggested from player counts: A=${sugA}, B=${sugB}. Use <b>Suggest counts</b> to fill those in.</div>`;
 }
 
 function renderPlayers(){
@@ -1862,10 +1865,10 @@ function generateTeams(){
   S.gB1=+$('#gB1').value||S.gB1; S.gB2=+$('#gB2').value||S.gB2;
   if(S.gA2<S.gA1){ const x=S.gA1; S.gA1=S.gA2; S.gA2=x; }
   if(S.gB2<S.gB1){ const x=S.gB1; S.gB1=S.gB2; S.gB2=x; }
-  // Auto team counts from the number of numbered players in each group
-  const poolAll=eligible();
-  S.numA=teamsForCount(poolAll.filter(p=>groupOf(p.year)==='A').length);
-  S.numB=teamsForCount(poolAll.filter(p=>groupOf(p.year)==='B').length);
+  // Editable team counts from the inputs (Suggest counts fills auto brackets)
+  const a=+$('#numA').value; const b=+$('#numB').value;
+  S.numA=a>=1?Math.min(20,a):S.numA;
+  S.numB=b>=1?Math.min(20,b):S.numB;
 
   const catRank={Big:0,Wing:1,Guard:2};
   const BUCKETS=[[76,82],[72,75],[67,71],[61,66],[48,60]];
@@ -3826,7 +3829,17 @@ function updateScoreboard(){
   $('#sbTeams').textContent=S.teams?[...S.teams.A,...S.teams.B].length:0;
 }
 function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; if($('#pubYtUrl')) $('#pubYtUrl').value=S.ytUrl||''; $('#pubWebUrl').value=S.webUrl||''; if($('#dailySchedUrl')) $('#dailySchedUrl').value=S.dailySchedUrl||''; if($('#dailySchedLabel')) $('#dailySchedLabel').value=S.dailySchedLabel||''; renderDailySchedPreview(); $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
-['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); autoPushLive(); }));
+['gA1','gA2','gB1','gB2','numA','numB'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); autoPushLive(); }));
+const btnSuggestCounts=$('#btnSuggestCounts');
+if(btnSuggestCounts) btnSuggestCounts.addEventListener('click', ()=>{
+  S.gA1=+$('#gA1').value||S.gA1; S.gA2=+$('#gA2').value||S.gA2;
+  S.gB1=+$('#gB1').value||S.gB1; S.gB2=+$('#gB2').value||S.gB2;
+  const pool=eligible();
+  S.numA=teamsForCount(pool.filter(p=>groupOf(p.year)==='A').length);
+  S.numB=teamsForCount(pool.filter(p=>groupOf(p.year)==='B').length);
+  $('#numA').value=S.numA; $('#numB').value=S.numB;
+  renderTally(); store.save(); autoPushLive();
+});
 if(repairPlayerHeights()) store.save();
 renderAll();
 updateAuthUI();
