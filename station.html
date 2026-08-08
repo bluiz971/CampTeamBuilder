@@ -313,7 +313,7 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 <dialog id="mvDlg">
   <h3>Move player</h3>
   <p id="mvWho" style="font-size:14px;color:var(--mut)"></p>
-  <label style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">New team</label>
+  <label style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">New team (Group A or B)</label>
   <select id="mvSel"></select>
   <div class="dlg-actions">
     <button class="bigbtn ghost" type="button" id="mvCancel">Cancel</button>
@@ -1119,12 +1119,16 @@ function openStationMove(fromIdx, jersey, name){
   const p=from.players.find(x=>String(x.j)===String(jersey) && x.n===name);
   if(!p) return;
   mvFromIdx=fromIdx; mvPlayer=p;
-  const bucket=stationTeamBucket(from);
-  const options=teams.map((t,i)=>({t,i})).filter(({t})=>stationTeamBucket(t)===bucket);
-  $('#mvWho').textContent=`#${p.j} ${p.n} — ${p.pos||'—'}, ${formatHeight(p.ht)||'—'}`;
-  $('#mvSel').innerHTML=options.map(({t,i})=>
+  const options=teams.map((t,i)=>({t,i,bucket:stationTeamBucket(t)}));
+  const groupA=options.filter(o=>o.bucket==='A');
+  const groupB=options.filter(o=>o.bucket==='B');
+  const optHtml=(list)=>list.map(({t,i})=>
     `<option value="${i}" ${i===fromIdx?'selected':''}>${esc(t.name)} (${t.players.length})</option>`
   ).join('');
+  $('#mvWho').textContent=`#${p.j} ${p.n} — ${p.pos||'—'}, ${formatHeight(p.ht)||'—'}`;
+  $('#mvSel').innerHTML=
+    (groupA.length?`<optgroup label="Group A">${optHtml(groupA)}</optgroup>`:'')
+    +(groupB.length?`<optgroup label="Group B">${optHtml(groupB)}</optgroup>`:'');
   $('#mvDlg').showModal();
 }
 $('#mvCancel').addEventListener('click', ()=>$('#mvDlg').close());
@@ -1177,17 +1181,11 @@ function openAddToTeamDialog(){
     return `<option value="${esc(p.id)}">${esc(label)}</option>`;
   }).join('');
   const fillTeams=()=>{
-    const id=$('#addPlayerSel').value;
-    const p=players.find(x=>x.id===id);
-    const g=p?stationGroupOf(p.grad_year):null;
-    let opts=teams.map((t,i)=>({t,i}));
-    if(g==='A'||g==='B'){
-      const filtered=opts.filter(({t})=>stationTeamBucket(t)===g);
-      if(filtered.length) opts=filtered;
-    }
-    $('#addTeamSel').innerHTML=opts.map(({t,i})=>
-      `<option value="${i}">${esc(t.name)} (${t.players.length})</option>`
-    ).join('');
+    // All teams in both groups — coaches can place anyone on A or B
+    $('#addTeamSel').innerHTML=teams.map((t,i)=>{
+      const bucket=stationTeamBucket(t);
+      return `<option value="${i}">${esc(t.name)} · Group ${bucket} (${t.players.length})</option>`;
+    }).join('');
   };
   fillTeams();
   $('#addPlayerSel').onchange=fillTeams;
