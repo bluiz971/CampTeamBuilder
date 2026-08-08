@@ -212,7 +212,7 @@ dialog select{width:100%;margin:10px 0 16px}
     <div class="brand-text">
       <h1><img src="assets/camp-builder-logo.png" alt="" width="36" height="36" style="width:36px;height:36px;border-radius:8px;vertical-align:middle;margin-right:8px;object-fit:cover">Camp <span>Builder</span></h1>
       <small>AAU Select Tour · Check-in → Jerseys → Balanced Teams</small>
-      <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v8 · Select 360, Instagram & website tiles</small>
+      <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v8 · Select 360, Instagram, YouTube & website tiles</small>
     </div>
     <a class="account-btn" href="account.html">Account</a>
   </div>
@@ -481,6 +481,7 @@ dialog select{width:100%;margin:10px 0 16px}
     </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
       <div><label>Instagram link</label><input type="text" id="pubIgUrl" placeholder="https://www.instagram.com/aauselecttour" style="width:320px"></div>
+      <div><label>YouTube link</label><input type="text" id="pubYtUrl" placeholder="https://www.youtube.com/@AAUSelectTour" style="width:320px"></div>
       <div><label>AAU Select Tour website</label><input type="text" id="pubWebUrl" placeholder="https://aauselecttour.com" style="width:320px"></div>
     </div>
   </div>
@@ -595,7 +596,7 @@ const DEFAULT_CAMP_CODE = "georgia-2026";
 /* ===================================================================== */
 
 const DEFAULT_SITE_BASE_URL = "https://selecttourcamp.netlify.app";
-let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', webUrl: 'https://aauselecttour.com', dailySchedUrl: '', dailySchedLabel: '', dailySched: [], syncUrl: '', syncKey: '', syncCode: '', campId: '', siteBaseUrl: '', teamsLive: false };
+let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', ytUrl: 'https://www.youtube.com/@AAUSelectTour', webUrl: 'https://aauselecttour.com', dailySchedUrl: '', dailySchedLabel: '', dailySched: [], syncUrl: '', syncKey: '', syncCode: '', campId: '', siteBaseUrl: '', teamsLive: false };
 let campsList=[];
 const GLOBAL_KEY='campTeamBuilder_global_v2';
 const campStoreKey=id=>'campTeamBuilder_camp_'+id;
@@ -646,7 +647,7 @@ const store = {
 S.gA1=S.gA1||2027; S.gA2=S.gA2||2030; S.gB1=S.gB1||2031; S.gB2=S.gB2||2035;
 S.schedule=S.schedule||[]; S.pubTitle=S.pubTitle||''; S.pubSub=S.pubSub||'';
 S.appUrl=S.appUrl||'https://select360.mvt.so/'; S.shopUrl=S.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD';
-S.igUrl=S.igUrl||'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA=='; S.webUrl=S.webUrl||'https://aauselecttour.com';
+S.igUrl=S.igUrl||'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA=='; S.ytUrl=S.ytUrl||'https://www.youtube.com/@AAUSelectTour'; S.webUrl=S.webUrl||'https://aauselecttour.com';
 S.dailySchedUrl=S.dailySchedUrl||''; S.dailySchedLabel=S.dailySchedLabel||''; S.dailySched=Array.isArray(S.dailySched)?S.dailySched:[];
 S.syncUrl=S.syncUrl||DEFAULT_SUPABASE_URL||''; S.syncKey=S.syncKey||DEFAULT_SUPABASE_ANON_KEY||''; S.syncCode=S.syncCode||DEFAULT_CAMP_CODE||''; S.siteBaseUrl=S.siteBaseUrl||DEFAULT_SITE_BASE_URL||''; S.teamsLive=!!S.teamsLive;
 S.campId=S.campId||'';
@@ -854,7 +855,7 @@ async function refreshCampsUI(){
 }
 function emptyCampState(){
   return { players:[], teams:null, numA:12, numB:16, gA1:2027, gA2:2030, gB1:2031, gB2:2035, schedule:[],
-    pubTitle:'', pubSub:'', appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl,
+    pubTitle:'', pubSub:'', appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, ytUrl:S.ytUrl, webUrl:S.webUrl,
     dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'', dailySched:Array.isArray(S.dailySched)?S.dailySched:[],
     syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, campId:S.campId, siteBaseUrl:S.siteBaseUrl, teamsLive:false };
 }
@@ -864,7 +865,7 @@ async function selectCamp(campId){
   const next=campsList.find(c=>c.id===campId);
   if(!next) return;
   const saved=store.loadCamp(campId);
-  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl, dailySchedLabel:S.dailySchedLabel, dailySched:S.dailySched };
+  const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, ytUrl:S.ytUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl, dailySchedLabel:S.dailySchedLabel, dailySched:S.dailySched };
   if(saved){ S=Object.assign(emptyCampState(), saved, keep, { campId:next.id, syncCode:next.slug }); }
   else {
     // Migrate legacy blob once into this camp if slug matches
@@ -2390,6 +2391,7 @@ $('#pubSub').addEventListener('input',e=>{ S.pubSub=e.target.value; store.save()
 $('#pubAppUrl').addEventListener('input',e=>{ S.appUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#pubShopUrl').addEventListener('input',e=>{ S.shopUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#pubIgUrl').addEventListener('input',e=>{ S.igUrl=e.target.value.trim(); store.save(); autoPushLive(); });
+$('#pubYtUrl').addEventListener('input',e=>{ S.ytUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#pubWebUrl').addEventListener('input',e=>{ S.webUrl=e.target.value.trim(); store.save(); autoPushLive(); });
 $('#dailySchedUrl').addEventListener('input',e=>{ S.dailySchedUrl=e.target.value.trim(); store.save(); });
 $('#dailySchedLabel').addEventListener('input',e=>{ S.dailySchedLabel=e.target.value.trim(); store.save(); });
@@ -3708,7 +3710,7 @@ function buildPublicData(opts){
                  .replace(/[·|,\-\s]+$/,'').replace(/^[·|,\-\s]+/,'').trim();
     return { y:dt.getFullYear(), mo:dt.getMonth()+1, d:dt.getDate(), startMin, loc };
   })();
-  return { roster, teams:teamsList, teamsPosted:postTeams, groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', webUrl:S.webUrl||'', dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'', dailySched:Array.isArray(S.dailySched)?S.dailySched:[] };
+  return { roster, teams:teamsList, teamsPosted:postTeams, groups:{ gA1:S.gA1, gA2:S.gA2, gB1:S.gB1, gB2:S.gB2, numA:S.numA, numB:S.numB }, sched, title, sub, cal, appUrl:S.appUrl||'', shopUrl:S.shopUrl||'', igUrl:S.igUrl||'', ytUrl:S.ytUrl||'', webUrl:S.webUrl||'', dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'', dailySched:Array.isArray(S.dailySched)?S.dailySched:[] };
 }
 
 $('#siteBaseUrl').addEventListener('input', e=>{ S.siteBaseUrl=e.target.value.trim().replace(/\/$/,''); store.save(); renderSiteLink(); });
@@ -3799,10 +3801,10 @@ $('#btnReset').addEventListener('click', async ()=>{
   }
   // Keep Live Sync config so you can reload a roster without re-pasting keys
   const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, syncCode:S.syncCode, campId:S.campId, siteBaseUrl:S.siteBaseUrl||DEFAULT_SITE_BASE_URL,
-    appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'', dailySched:Array.isArray(S.dailySched)?S.dailySched:[] };
+    appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, ytUrl:S.ytUrl, webUrl:S.webUrl, dailySchedUrl:S.dailySchedUrl||'', dailySchedLabel:S.dailySchedLabel||'', dailySched:Array.isArray(S.dailySched)?S.dailySched:[] };
   S={players:[],teams:null,numA:12,numB:16,gA1:2027,gA2:2030,gB1:2031,gB2:2035,schedule:[],pubTitle:'',pubSub:'',
     appUrl:keep.appUrl||'https://select360.mvt.so/', shopUrl:keep.shopUrl||'https://aauselecttour.totalcamps.com/shop/GOOD',
-    igUrl:keep.igUrl||'', webUrl:keep.webUrl||'',
+    igUrl:keep.igUrl||'', ytUrl:keep.ytUrl||'https://www.youtube.com/@AAUSelectTour', webUrl:keep.webUrl||'',
     dailySchedUrl:keep.dailySchedUrl||'', dailySchedLabel:keep.dailySchedLabel||'', dailySched:keep.dailySched||[],
     syncUrl:keep.syncUrl||'', syncKey:keep.syncKey||'', syncCode:keep.syncCode||'', campId:keep.campId||'',
     siteBaseUrl:keep.siteBaseUrl, teamsLive:false};
@@ -3823,7 +3825,7 @@ function updateScoreboard(){
   $('#sbDue').textContent=S.players.filter(hasDue).length;
   $('#sbTeams').textContent=S.teams?[...S.teams.A,...S.teams.B].length:0;
 }
-function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; $('#pubWebUrl').value=S.webUrl||''; if($('#dailySchedUrl')) $('#dailySchedUrl').value=S.dailySchedUrl||''; if($('#dailySchedLabel')) $('#dailySchedLabel').value=S.dailySchedLabel||''; renderDailySchedPreview(); $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
+function renderAll(){ renderRosterTbl(); renderCheckin(); renderJersey(); renderPlayers(); renderTeams(); renderSchedule(); $('#pubTitle').value=S.pubTitle||''; $('#pubSub').value=S.pubSub||''; $('#pubAppUrl').value=S.appUrl||''; $('#pubShopUrl').value=S.shopUrl||''; $('#pubIgUrl').value=S.igUrl||''; if($('#pubYtUrl')) $('#pubYtUrl').value=S.ytUrl||''; $('#pubWebUrl').value=S.webUrl||''; if($('#dailySchedUrl')) $('#dailySchedUrl').value=S.dailySchedUrl||''; if($('#dailySchedLabel')) $('#dailySchedLabel').value=S.dailySchedLabel||''; renderDailySchedPreview(); $('#syncUrl').value=S.syncUrl||''; $('#syncKey').value=S.syncKey||''; $('#syncCode').value=S.syncCode||''; $('#siteBaseUrl').value=S.siteBaseUrl||''; renderSiteLink(); updateScoreboard(); }
 ['gA1','gA2','gB1','gB2'].forEach(id=>$('#'+id).addEventListener('input',()=>{ renderTally(); store.save(); autoPushLive(); }));
 if(repairPlayerHeights()) store.save();
 renderAll();
@@ -3836,7 +3838,7 @@ updateAuthUI();
     const saved=store.loadCamp(S.campId);
     const id=S.campId, slug=S.syncCode;
     const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, campId:id, syncCode:slug,
-      appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, webUrl:S.webUrl };
+      appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, ytUrl:S.ytUrl, webUrl:S.webUrl };
     if(saved){
       S=Object.assign(emptyCampState(), saved, keep, { campId:id, syncCode:slug });
     } else {
