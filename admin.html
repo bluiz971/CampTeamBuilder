@@ -1713,7 +1713,7 @@ function renderPlayers(){
       '</td></tr>';
     return;
   }
-  t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Team</th><th>Ht</th><th>Position</th><th>Pay</th><th>Email</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
+  t.innerHTML='<tr><th>Photo</th><th>Group</th><th>Team</th><th>Number</th><th>Name</th><th>Year</th><th>Ht</th><th>Position</th><th>Pay</th><th>Email</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
     pool.sort(byTeamThenJersey).map(p=>{
       const g=groupOf(p.year), i=S.players.indexOf(p);
       const team=teamOf(p);
@@ -1724,7 +1724,7 @@ function renderPlayers(){
         ? `<span class="badge due" title="${esc(payTip||'Balance due')}">Owes${p.balance?' $'+esc(p.balance):''}</span>`
         : `<span class="badge paid" title="${esc(payTip||'Paid')}">Paid</span>`;
       const payNote=payTip?`<div style="font-size:11px;color:var(--mut);margin-top:3px;max-width:140px;line-height:1.3" title="${esc(payTip)}">${esc(payTip.length>48?payTip.slice(0,47)+'…':payTip)}</div>`:'';
-      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">${p.jersey?'#'+esc(p.jersey):'—'}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${team?esc(team):'<span style="color:var(--mut)">—</span>'}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)||'—'}</td><td>${payCell}${payNote}</td><td style="font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(p.email||'')}">${esc(p.email)||'—'}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
+      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td>${g?'Group '+g:'—'}</td><td>${team?esc(team):'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">${p.jersey?esc(p.jersey):'—'}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)||'—'}</td><td>${payCell}${payNote}</td><td style="font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(p.email||'')}">${esc(p.email)||'—'}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
       <td class="addon-cell">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}<button class="addon-add" data-addon="${i}" title="Add / edit add-ons">+ Add</button></td>
       <td class="row-actions"><button class="btn btn-ghost btn-sm" data-ei="${i}" title="Edit year, email, position">Edit Info</button><button class="btn btn-ghost btn-sm" data-eh="${i}" title="Edit height">Edit Ht</button><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
     }).join('');
@@ -4074,16 +4074,16 @@ if(btnRestorePlayers) btnRestorePlayers.addEventListener('click', ()=>pullRoster
 $('#btnCsvPlayers').addEventListener('click',()=>{
   const numbered=eligible();
   const pool=(numbered.length?numbered:S.players.slice()).sort(byTeamThenJersey);
-  const rows=[['Jersey','First','Last','Year','Group','Team','Height','Position','School','City','State','Add-Ons','Parent Email']];
-  pool.forEach(p=>rows.push([p.jersey,p.first,p.last,p.year,groupOf(p.year)?('Group '+groupOf(p.year)):'',teamOf(p),p.height,p.position,p.school,p.city,p.state,displayAddOns(p).join(' / '),p.email]));
+  const rows=[['Group','Team','Number','First','Last','Year','Height','Position','School','City','State','Add-Ons','Parent Email']];
+  pool.forEach(p=>rows.push([groupOf(p.year)?('Group '+groupOf(p.year)):'',teamOf(p),p.jersey,p.first,p.last,p.year,p.height,p.position,p.school,p.city,p.state,displayAddOns(p).join(' / '),p.email]));
   download(campFileSlug()+'-player-data.csv',csv(rows));
 });
 $('#btnCsvTeams').addEventListener('click',()=>{
   if(!S.teams){ alert('Generate teams first.'); return; }
-  const rows=[['Team','Player','Jersey','Year','School','City','State','Position','Height']];
+  const rows=[['Group','Team','Number','Player','Year','School','City','State','Position','Height']];
   [...S.teams.A,...S.teams.B].forEach(t=>{
     t.players.map(playerById).filter(Boolean).sort((a,b)=>jerseySortKey(a)-jerseySortKey(b)).forEach(p=>
-      rows.push([t.name,p.first+' '+p.last,p.jersey,p.year,p.school,p.city,p.state,p.position,p.height]));
+      rows.push([groupOf(p.year)?('Group '+groupOf(p.year)):'',t.name,p.jersey,p.first+' '+p.last,p.year,p.school,p.city,p.state,p.position,p.height]));
   });
   download(campFileSlug()+'-assigned-teams.csv',csv(rows));
 });
