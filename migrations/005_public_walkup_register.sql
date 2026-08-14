@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 005 — Public walk-up self-registration
 -- Run once in Supabase → SQL Editor.
--- Allows anonymously registered players (register.html) to INSERT
+-- Allows anonymously registered players (walkup.html) to INSERT
 -- into players for camps with status = 'active' only.
 -- ============================================================
 

@@ -309,6 +309,16 @@ dialog select{width:100%;margin:10px 0 16px}
     </div>
     <div id="igQueueList" style="display:flex;flex-direction:column;gap:10px"></div>
   </div>
+  <div class="mapping" style="margin-bottom:14px" id="failedChargePanel">
+    <h3 style="margin-bottom:6px">Failed Balance Charges</h3>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Deposit registrations where the automatic week-before-camp charge failed (expired card, bank decline, etc.). Follow up with the family directly — these are <b>not</b> retried automatically. Requires Publish sign-in.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <span id="failedChargeCount" style="font-size:14px;font-weight:600">0 failed</span>
+      <button class="btn btn-ghost btn-sm" type="button" id="btnRefreshFailedCharges">Refresh</button>
+      <span id="failedChargeNote" style="font-size:13px;color:var(--mut)"></span>
+    </div>
+    <div id="failedChargeList" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload roster file">
     <div class="ball">🏀</div>
     <h3>Drop the master list here</h3>
@@ -327,11 +337,15 @@ dialog select{width:100%;margin:10px 0 16px}
     <div id="stationWipeBanner" hidden style="background:#fde8e8;border:1px solid #e8a0a0;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:14px;line-height:1.45">
       <b style="color:var(--red)">Stations still have players for this camp.</b>
       <span id="stationWipeCount"></span>
-      Admin is empty, but tablets read Supabase — click below to wipe them.
-      <div style="margin-top:10px"><button class="btn btn-orange btn-sm" type="button" id="btnClearStationsBanner">🗑 Clear Stations Now</button></div>
+      Admin is empty after a Reset — restore them below, or wipe tablets if you meant to clear.
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-dark btn-sm" type="button" id="btnRestoreStationsBanner">⬇ Restore from Stations</button>
+        <button class="btn btn-orange btn-sm" type="button" id="btnClearStationsBanner">🗑 Clear Stations Now</button>
+      </div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-dark btn-sm" id="btnPushRoster">📤 Push Roster to Stations</button>
+      <button class="btn btn-ghost btn-sm" id="btnPullRoster">⬇ Pull Roster from Stations</button>
       <button class="btn btn-ghost btn-sm" id="btnClearStations">🗑 Clear Stations for Camp</button>
       <span id="rosterSyncNote" style="font-size:13px;color:var(--mut)"></span>
     </div>
@@ -377,8 +391,11 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-players">
   <div class="panel-head">
     <div><h2>Player Data</h2>
-    <p>Everyone who is checked in with a jersey number. Use <b>Edit Info</b> to change year, email, or position; <b>Edit Ht</b> / <b>Edit #</b> for height and jersey; or <b>Clear #</b> to send them back to the Jersey page. Players missing height (especially walk-ups) are highlighted.</p></div>
-    <button class="btn btn-dark btn-sm" id="btnCsvPlayers">Export CSV</button>
+    <p>Everyone on this camp’s roster. Use <b>Edit Info</b> to change year, email, or position; <b>Edit Ht</b> / <b>Edit #</b> for height and jersey; or <b>Clear #</b> to send them back to the Jersey page. Players missing height (especially walk-ups) are highlighted.</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-orange btn-sm" type="button" id="btnRestorePlayers">⬇ Restore roster</button>
+      <button class="btn btn-dark btn-sm" id="btnCsvPlayers">Export CSV</button>
+    </div>
   </div>
   <div class="balance-note" id="pdHtNote" style="margin-bottom:10px"></div>
   <div class="tbl-wrap" style="max-height:560px;overflow:auto"><table id="pdTbl"></table></div>
@@ -1669,23 +1686,37 @@ function renderTally(){
 }
 
 function renderPlayers(){
-  const t=$('#pdTbl'), pool=eligible();
-  const htNote=$('#pdHtNote');
+  const t=$('#pdTbl'), htNote=$('#pdHtNote');
+  const numbered=eligible();
+  const pool=numbered.length?numbered:S.players.slice();
   const missingHt=pool.filter(needsHeight);
   const missingWalk=missingHt.filter(isWalkUp);
   if(htNote){
-    if(missingHt.length){
+    if(!S.players.length){
+      htNote.innerHTML='<span style="color:var(--red)">No roster loaded for this camp.</span> Tap <b>Restore roster</b> to pull from stations / the parent page. Teams showing in the header does not mean Player Data is filled.';
+    } else if(!numbered.length){
+      htNote.innerHTML='Showing the full roster (<b>'+S.players.length+'</b>). None are checked in with a jersey yet — they still appear here so you can export and assign teams.';
+    } else if(missingHt.length){
       htNote.innerHTML='<span class="badge needht">Need Height</span> <b>'+missingHt.length+'</b> numbered player'+(missingHt.length===1?'':'s')+' missing height'
         +(missingWalk.length?' ('+missingWalk.length+' walk-up'+(missingWalk.length===1?'':'s')+')':'')
         +' — fill these in before generating teams so balancing works. Tap <b>Edit Ht</b> on a row.';
     } else {
-      htNote.innerHTML=pool.length?'<span style="color:var(--green)">✓ All numbered players have a height.</span>':'';
+      htNote.innerHTML='<span style="color:var(--green)">✓ All numbered players have a height.</span>';
     }
   }
-  if(!pool.length){ t.innerHTML='<tr><td style="padding:30px;text-align:center;color:var(--mut)">No players yet — they appear here once checked in with a jersey number.</td></tr>'; return; }
-  t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Ht</th><th>Position</th><th>Pay</th><th>Email</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
+  if(!pool.length){
+    t.innerHTML='<tr><td style="padding:28px 20px;text-align:center">'+
+      '<div style="font-size:16px;color:var(--ink);font-weight:600;margin-bottom:8px">No players loaded for this camp</div>'+
+      '<p style="color:var(--mut);font-size:14px;margin:0 auto 16px;max-width:420px;line-height:1.45">The 6 teams in the header came from the parent page. Restore pulls those players back into Player Data.</p>'+
+      '<button class="btn btn-orange" type="button" data-restore-roster style="display:inline-block;width:auto;min-width:220px">⬇ Restore roster</button>'+
+      '<div id="pdRestoreNote" style="margin-top:12px;font-size:13px;color:var(--mut)"></div>'+
+      '</td></tr>';
+    return;
+  }
+  t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Team</th><th>Ht</th><th>Position</th><th>Pay</th><th>Email</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
     pool.sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>{
       const g=groupOf(p.year), i=S.players.indexOf(p);
+      const team=teamOf(p);
       const tags=displayAddOns(p);
       const miss=needsHeight(p);
       const payTip=paymentDetailNote(p);
@@ -1693,7 +1724,7 @@ function renderPlayers(){
         ? `<span class="badge due" title="${esc(payTip||'Balance due')}">Owes${p.balance?' $'+esc(p.balance):''}</span>`
         : `<span class="badge paid" title="${esc(payTip||'Paid')}">Paid</span>`;
       const payNote=payTip?`<div style="font-size:11px;color:var(--mut);margin-top:3px;max-width:140px;line-height:1.3" title="${esc(payTip)}">${esc(payTip.length>48?payTip.slice(0,47)+'…':payTip)}</div>`:'';
-      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">#${esc(p.jersey)}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)||'—'}</td><td>${payCell}${payNote}</td><td style="font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(p.email||'')}">${esc(p.email)||'—'}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
+      return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">${p.jersey?'#'+esc(p.jersey):'—'}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${g?'Group '+g:'—'}</td><td>${team?esc(team):'<span style="color:var(--mut)">—</span>'}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)||'—'}</td><td>${payCell}${payNote}</td><td style="font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(p.email||'')}">${esc(p.email)||'—'}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
       <td class="addon-cell">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}<button class="addon-add" data-addon="${i}" title="Add / edit add-ons">+ Add</button></td>
       <td class="row-actions"><button class="btn btn-ghost btn-sm" data-ei="${i}" title="Edit year, email, position">Edit Info</button><button class="btn btn-ghost btn-sm" data-eh="${i}" title="Edit height">Edit Ht</button><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
     }).join('');
@@ -1975,6 +2006,15 @@ function generateTeams(){
 $('#btnGen').addEventListener('click',generateTeams);
 
 function playerById(id){ return S.players.find(p=>p.id===id); }
+function teamOf(p){
+  if(!p || !S.teams) return '';
+  const id=p.id;
+  const hit=[...(S.teams.A||[]),...(S.teams.B||[])].find(t=>(t.players||[]).includes(id));
+  return hit ? (hit.name||'') : '';
+}
+function campFileSlug(){
+  return String(S.syncCode||'camp').toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-|-$/g,'') || 'camp';
+}
 
 function renderTeams(){
   const out=$('#teamsOut'), sum=$('#htSummary');
@@ -2610,6 +2650,13 @@ async function pullLiveTeams(silent){
       if(!silent && note) note.innerHTML='<span style="color:var(--mut)">No live teams posted yet for this camp. Generate & sync from a station or this admin.</span>';
       return false;
     }
+    if(!S.players.length){
+      const fromLive=playersFromLiveBlob(data);
+      if(fromLive.length){
+        S.players=fromLive;
+        store.save();
+      }
+    }
     const matchPlayer=(j,n)=>{
       const name=String(n||'').trim().toLowerCase();
       const jersey=String(j||'').trim();
@@ -3022,6 +3069,150 @@ function playerRow(p){
     addons_manual:p.addonsManual||[], addons_removed:p.addonsRemoved||[], photo_url:p.photoUrl||''
   };
 }
+function playerFromRemote(r){
+  return {
+    id:0, uid:r.id,
+    first:r.first||'', last:r.last||'', year:r.grad_year||'',
+    height:normalizeHeightValue(r.height||'')||(r.height||''), hin:heightToInches(r.height||''),
+    position:r.position||'', school:r.school||'',
+    city:r.city||'', state:r.state||'',
+    payStatus:r.pay_status||'', balance:r.balance||'',
+    items:r.items||'', email:r.email||'',
+    checkedIn:!!r.checked_in, jersey:r.jersey||'',
+    addonsManual:r.addons_manual||[], addonsRemoved:r.addons_removed||[],
+    photoUrl:r.photo_url||''
+  };
+}
+function playersFromLiveBlob(data){
+  const seen=new Set();
+  const out=[];
+  const add=tp=>{
+    const name=String(tp.n||tp.name||'').trim();
+    if(!name) return;
+    const jersey=String(tp.j||tp.jersey||'').trim();
+    const key=(jersey+'|'+name).toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    const parts=name.split(/\s+/);
+    const first=parts.shift()||'';
+    const last=parts.join(' ');
+    const uid=(crypto.randomUUID?crypto.randomUUID():('live-'+Date.now()+'-'+Math.random().toString(16).slice(2)));
+    const ht=tp.ht||tp.height||'';
+    out.push({
+      id:out.length, uid,
+      first, last, year:String(tp.yr||tp.year||''),
+      height:normalizeHeightValue(ht)||ht, hin:heightToInches(ht),
+      position:tp.pos||tp.position||'', school:tp.sc||tp.school||'',
+      city:'', state:'',
+      payStatus:'', balance:'',
+      items:'', email:'',
+      checkedIn:!!jersey, jersey,
+      addonsManual:[], addonsRemoved:[], photoUrl:tp.ph||tp.photoUrl||''
+    });
+  };
+  (data.roster||[]).forEach(add);
+  (data.teams||[]).forEach(t=>(t.players||[]).forEach(add));
+  return out;
+}
+/** Load this camp's players from Supabase (stations) into admin. Used when this browser's roster is empty. */
+async function hydratePlayersFromRemote(){
+  if(!(S.syncUrl && S.syncKey && S.campId && authSession && authSession.access_token)){
+    return { ok:false, count:0, error:'Sign in on Publish first.' };
+  }
+  const id=encodeURIComponent(S.campId);
+  const slug=encodeURIComponent(S.syncCode||'');
+  let rows=[];
+  try{
+    let res=await fetch(
+      S.syncUrl+'/rest/v1/players?or=(camp_id.eq.'+id+',camp_code.eq.'+slug+')&select=*&order=last.asc,first.asc',
+      { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+    );
+    if(res.ok) rows=await res.json();
+    if(!rows.length){
+      res=await fetch(
+        S.syncUrl+'/rest/v1/players?select=*&limit=1000',
+        { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+      );
+      if(res.ok){
+        const all=await res.json();
+        const wantId=String(S.campId||'');
+        const wantSlug=String(S.syncCode||'').toLowerCase();
+        rows=(all||[]).filter(r=>String(r.camp_id||'')===wantId || String(r.camp_code||'').toLowerCase()===wantSlug);
+        if(!rows.length && /atlantic/i.test(wantSlug)){
+          rows=(all||[]).filter(r=>/atlantic/i.test(String(r.camp_code||'')));
+        }
+      }
+    }
+  }catch(e){
+    return { ok:false, count:0, error:e.message||'Could not reach stations.' };
+  }
+  let source='stations';
+  if(!rows.length){
+    try{
+      let live=await fetch(
+        S.syncUrl+'/rest/v1/camp_live?or=(camp_id.eq.'+id+',code.eq.'+slug+')&select=code,camp_id,data',
+        { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+      );
+      if(!live.ok){
+        live=await fetch(
+          S.syncUrl+'/rest/v1/camp_live?select=code,camp_id,data',
+          { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+        );
+      }
+      if(live.ok){
+        const blobs=await live.json();
+        const wantId=String(S.campId||'');
+        const wantSlug=String(S.syncCode||'').toLowerCase();
+        let blob=(blobs||[]).find(b=>String(b.camp_id||'')===wantId || String(b.code||'').toLowerCase()===wantSlug)
+          || (blobs||[]).find(b=>/atlantic/i.test(String(b.code||'')))
+          || blobs[0];
+        rows=playersFromLiveBlob(blob && blob.data || {});
+        if(rows.length) source='parent page'+(blob && blob.code?' ('+blob.code+')':'');
+      }
+    }catch(e){}
+  }
+  if(!rows.length){
+    try{
+      const reg=await fetch(
+        S.syncUrl+'/rest/v1/registrations?camp_code=eq.'+slug+'&select=id,first,last,grad_year,height,position,school,school_city,city,state,email,parent_email,addons',
+        { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+      );
+      if(reg.ok){
+        rows=(await reg.json()).map(r=>({
+          id:r.id, first:r.first, last:r.last, grad_year:r.grad_year,
+          height:r.height, position:r.position, school:r.school,
+          city:r.school_city||r.city, state:r.state, email:r.email||r.parent_email,
+          items:r.addons||'', checked_in:false, jersey:'',
+          addons_manual:[], addons_removed:[], photo_url:''
+        }));
+        if(rows.length) source='registrations';
+      }
+    }catch(e){}
+  }
+  let otherNote='';
+  if(!rows.length && (S.syncCode||'')!=='georgia-2026'){
+    try{
+      const other=await fetch(
+        S.syncUrl+'/rest/v1/players?camp_code=eq.georgia-2026&select=id',
+        { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+      );
+      if(other.ok){
+        const n=(await other.json()).length;
+        if(n) otherNote=' Georgia still has '+n+' player'+(n===1?'':'s')+' — switch Active camp to Georgia if that’s where they were saved.';
+      }
+    }catch(e){}
+  }
+  if(!rows.length) return { ok:true, count:0, source, otherNote };
+  S.players=rows.map((r,i)=>{
+    const p=r.uid ? r : playerFromRemote(r);
+    p.id=i;
+    return p;
+  });
+  store.save();
+  renderAll();
+  try{ await pullLiveTeams(true); }catch(e){}
+  return { ok:true, count:S.players.length, source };
+}
 
 /** Re-parse Excel/time/curly-quote heights already sitting on the roster. */
 function repairPlayerHeights(){
@@ -3158,11 +3349,7 @@ async function pushRosterLive(){
   }
   const campId=active.campId, code=active.slug;
   if(!S.players.length){
-    // Empty local roster → wipe stations for this camp (used after Reset)
-    const r=await clearCampRemote();
-    if(r.ok){
-      $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(code)+'</code> at '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.';
-    }
+    $('#rosterSyncNote').innerHTML='Admin roster is empty — pull from stations instead of pushing (pushing an empty list used to wipe tablets).';
     return;
   }
   try{
@@ -3269,10 +3456,10 @@ async function pushRosterLive(){
 // and merge them into the local roster so admin.html always reflects
 // what's happening at the physical tables, without any manual re-upload.
 let _lastStationPull=null;
-function setStationWipeBanner(remoteCount){
+function setStationWipeBanner(remoteCount, pendingWipe){
   const banner=$('#stationWipeBanner');
   if(!banner) return;
-  const show=!S.players.length && remoteCount>0;
+  const show=!!pendingWipe && !S.players.length && remoteCount>0;
   banner.hidden=!show;
   if(show){
     $('#stationWipeCount').textContent=' Currently '+remoteCount+' on tablets for "'+S.syncCode+'".';
@@ -3287,7 +3474,7 @@ async function runClearStations(){
     const r=await clearCampRemote();
     S.teamsLive=false; store.save();
     try{ sessionStorage.removeItem('wipeCamp'); }catch(e){}
-    setStationWipeBanner(r.remaining||0);
+    setStationWipeBanner(r.remaining||0, true);
     if(r.ok){
       $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code>'
         +(r.archived?' ('+r.archived+' moved off camp)':(r.deleted?' ('+r.deleted+' deleted)':''))
@@ -3308,19 +3495,20 @@ async function pollPlayersLive(){
   if(!(S.syncUrl && S.syncKey && S.campId && authSession && authSession.access_token)) return;
   const filt='camp_id=eq.'+encodeURIComponent(S.campId);
   try{
-    // After Reset, finish wiping remote until empty
+    // After Reset, finish wiping remote until empty — do NOT treat an empty
+    // local roster as a reset (that hid Mid-Atlantic players still on stations).
     let pendingWipe=false;
     try{ pendingWipe=sessionStorage.getItem('wipeCamp')===S.campId; }catch(e){}
-    if(pendingWipe || !S.players.length){
+    if(pendingWipe){
       const countRes=await fetch(S.syncUrl+'/rest/v1/players?'+filt+'&select=id',{
         headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token }
       });
       if(countRes.ok){
         const remote=await countRes.json();
-        setStationWipeBanner(remote.length);
-        if(pendingWipe && remote.length){
+        setStationWipeBanner(remote.length, true);
+        if(remote.length){
           const r=await clearCampRemote();
-          setStationWipeBanner(r.remaining||0);
+          setStationWipeBanner(r.remaining||0, true);
           if(r.ok){
             try{ sessionStorage.removeItem('wipeCamp'); }catch(e){}
             $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Stations cleared</b> for <code>'+esc(S.syncCode)+'</code>. Hard-refresh tablets.';
@@ -3329,16 +3517,21 @@ async function pollPlayersLive(){
           }
           return;
         }
-        if(!S.players.length){
-          _lastStationPull=new Date();
-          if(remote.length){
-            $('#rosterSyncNote').innerHTML='Stations still have <b style="color:var(--red)">'+remote.length+' players</b> for <code>'+esc(S.syncCode)+'</code> — click <b>Clear Stations Now</b> above.';
-          }else{
-            $('#rosterSyncNote').innerHTML='Stations empty for <code>'+esc(S.syncCode)+'</code> · checked '+_lastStationPull.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-          }
-          return;
-        }
+        try{ sessionStorage.removeItem('wipeCamp'); }catch(e){}
+        setStationWipeBanner(0, false);
       }
+    }
+
+    if(!S.players.length){
+      const restored=await hydratePlayersFromRemote();
+      if(restored.count){
+        setStationWipeBanner(0, false);
+        $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Restored '+restored.count+' player'+(restored.count===1?'':'s')+'</b> from '+esc(restored.source||'stations')+' for <code>'+esc(S.syncCode)+'</code>.';
+        return;
+      }
+      setStationWipeBanner(0, false);
+      $('#rosterSyncNote').innerHTML='No players on stations for <code>'+esc(S.syncCode)+'</code> — try <b>Pull From Camp Registration</b>, or check Active camp.'+esc(restored.otherNote||'');
+      return;
     }
 
     const res=await fetch(S.syncUrl+'/rest/v1/players?'+filt+'&select=*',{
@@ -3346,7 +3539,7 @@ async function pollPlayersLive(){
     });
     if(!res.ok) return;
     const rows=await res.json();
-    setStationWipeBanner(0);
+    setStationWipeBanner(0, false);
     if(!rows.length) return;
     // Auto-remove same-name duplicates left from older roster pushes
     const byName={};
@@ -3418,6 +3611,7 @@ async function pollPlayersLive(){
 }
 setInterval(pollPlayersLive, 5000);
 setInterval(refreshIgStoryQueue, 8000);
+setInterval(refreshFailedCharges, 8000);
 setInterval(()=>{ refreshAdminSession(); }, 10*60*1000);
 // Keep Teams tab in sync with station generates when this browser has no local teams yet
 setInterval(()=>{
@@ -3426,7 +3620,10 @@ setInterval(()=>{
   pullLiveTeams(true);
 }, 8000);
 if(authSession && authSession.access_token){
-  refreshAdminSession().then(()=>pullLiveTeams(true));
+  refreshAdminSession().then(async ()=>{
+    if(!S.players.length) await hydratePlayersFromRemote();
+    await pullLiveTeams(true);
+  });
 }
 async function pullRegistrations(){
   const note=$('#pullRegNote');
@@ -3661,17 +3858,98 @@ const btnRefreshIg=$('#btnRefreshIgQueue');
 if(btnRefreshIg) btnRefreshIg.addEventListener('click', ()=>refreshIgStoryQueue());
 if(authSession && authSession.access_token) refreshIgStoryQueue();
 
+function centsToMoney(c){
+  const n=Number(c)||0;
+  return '$'+(n/100).toFixed(n%100===0?0:2);
+}
+
+async function refreshFailedCharges(){
+  const list=$('#failedChargeList');
+  const countEl=$('#failedChargeCount');
+  const note=$('#failedChargeNote');
+  if(!list || !countEl) return;
+  if(!(S.syncUrl && S.syncKey && authSession && authSession.access_token)){
+    countEl.textContent='0 failed';
+    list.innerHTML='<div style="font-size:13px;color:var(--mut)">Sign in on the Publish tab to load failed balance charges.</div>';
+    return;
+  }
+  try{
+    const res=await fetch(
+      S.syncUrl+'/rest/v1/registrations?pay_status=eq.charge_failed&select=id,first,last,email,parent_email,camp_code,camp_date,amount_total,amount_paid,balance_charge_error,balance_charge_attempted_at&order=balance_charge_attempted_at.desc.nullslast&limit=50',
+      { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+    );
+    if(!res.ok){
+      const body=await res.text();
+      if(/pay_status|amount_total|balance_charge/i.test(body) && /column|schema|PGRST/i.test(body)){
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Run <code>migrations/010_registration_deposit_balance.sql</code> (and 012) in Supabase to enable this list.</div>';
+      } else if(res.status===401 || res.status===403){
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Can’t read registrations — sign in again.</div>';
+      } else {
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Load failed ('+res.status+').</div>';
+      }
+      countEl.textContent='0 failed';
+      return;
+    }
+    const rows=await res.json();
+    countEl.textContent=rows.length+' failed';
+    if(!rows.length){
+      list.innerHTML='<div style="font-size:13px;color:var(--mut)">No failed automatic balance charges.</div>';
+      if(note) note.textContent='';
+      return;
+    }
+    list.innerHTML=rows.map(r=>{
+      const name=esc(((r.first||'')+' '+(r.last||'')).trim()||'Player');
+      const email=esc(r.parent_email||r.email||'—');
+      const total=Number(r.amount_total)||0;
+      const paid=Number(r.amount_paid)||0;
+      const owed=Math.max(0, total-paid);
+      const err=r.balance_charge_error?esc(String(r.balance_charge_error).slice(0,220)):'No error message stored';
+      const when=r.balance_charge_attempted_at?esc(String(r.balance_charge_attempted_at).replace('T',' ').slice(0,16)):'';
+      return `<div style="padding:12px;border:1px solid #e8a0a0;border-radius:12px;background:#fdf6f6">
+        <div style="font-weight:700;font-size:15px">${name}</div>
+        <div style="font-size:13px;color:var(--mut);margin-top:2px">${email} · Camp <code>${esc(r.camp_code||'')}</code>${r.camp_date?' · '+esc(r.camp_date):''}</div>
+        <div style="font-size:14px;margin-top:6px"><b>Owes ${centsToMoney(owed)}</b> <span style="color:var(--mut)">(paid ${centsToMoney(paid)} of ${centsToMoney(total)})</span></div>
+        <div style="font-size:12px;color:var(--red);margin-top:4px">${err}${when?' · attempted '+when:''}</div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML='<div style="font-size:13px;color:var(--red)">Could not load failed balance charges.</div>';
+  }
+}
+
+const btnRefreshFailed=$('#btnRefreshFailedCharges');
+if(btnRefreshFailed) btnRefreshFailed.addEventListener('click', ()=>refreshFailedCharges());
+if(authSession && authSession.access_token) refreshFailedCharges();
+
 $('#btnPushRoster').addEventListener('click', async ()=>{
   if(!(S.syncUrl && S.syncKey && S.campId)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Select an Active camp and set up Live Sync on the Publish tab first.</span>'; return; }
   if(!(authSession && authSession.access_token)){ $('#rosterSyncNote').innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>'; return; }
   if(!S.players.length){
-    // Empty admin + Push = wipe stations (what people expect after Reset)
-    await runClearStations();
+    $('#rosterSyncNote').innerHTML='Admin roster is empty — use <b>Pull Roster from Stations</b> to restore, or <b>Clear Stations</b> if you really want tablets empty.';
     return;
   }
   $('#rosterSyncNote').textContent='Pushing…';
   pushRosterLive();
 });
+async function pullRosterFromStations(){
+  const notes=[$('#rosterSyncNote'), $('#pdHtNote'), $('#pdRestoreNote')].filter(Boolean);
+  notes.forEach(n=>{ n.innerHTML='Pulling roster…'; n.style.color=''; });
+  const restored=await hydratePlayersFromRemote();
+  const html=!restored.ok
+    ? '<span style="color:var(--red)">'+esc(restored.error||'Pull failed.')+'</span>'
+    : (!restored.count
+      ? 'No players found on stations or the parent page for <code>'+esc(S.syncCode)+'</code>. Try Georgia as Active camp if that’s where they were saved.'+esc(restored.otherNote||'')
+      : '<b style="color:var(--green)">✓ Restored '+restored.count+' player'+(restored.count===1?'':'s')+'</b> from '+esc(restored.source||'stations')+'.');
+  notes.forEach(n=>{ n.innerHTML=html; });
+}
+document.addEventListener('click', e=>{
+  const btn=e.target.closest('[data-restore-roster], #btnRestorePlayers');
+  if(btn){ e.preventDefault(); pullRosterFromStations(); }
+});
+const btnPullRoster=$('#btnPullRoster');
+if(btnPullRoster) btnPullRoster.addEventListener('click', ()=>pullRosterFromStations());
+const btnRestoreBanner=$('#btnRestoreStationsBanner');
+if(btnRestoreBanner) btnRestoreBanner.addEventListener('click', ()=>pullRosterFromStations());
 $('#btnClearStations').addEventListener('click', ()=>runClearStations());
 $('#btnClearStationsBanner').addEventListener('click', ()=>runClearStations());
 
@@ -3775,17 +4053,21 @@ function download(name,text){
   a.href=URL.createObjectURL(new Blob([text],{type:'text/csv'})); a.download=name; a.click();
   URL.revokeObjectURL(a.href);
 }
+const btnRestorePlayers=$('#btnRestorePlayers');
+if(btnRestorePlayers) btnRestorePlayers.addEventListener('click', ()=>pullRosterFromStations());
 $('#btnCsvPlayers').addEventListener('click',()=>{
-  const rows=[['Jersey','First','Last','Year','Height','Position','School','City','State','Add-Ons','Parent Email']];
-  eligible().forEach(p=>rows.push([p.jersey,p.first,p.last,p.year,p.height,p.position,p.school,p.city,p.state,displayAddOns(p).join(' / '),p.email]));
-  download('player-data.csv',csv(rows));
+  const numbered=eligible();
+  const pool=numbered.length?numbered:S.players.slice();
+  const rows=[['Jersey','First','Last','Year','Group','Team','Height','Position','School','City','State','Add-Ons','Parent Email']];
+  pool.forEach(p=>rows.push([p.jersey,p.first,p.last,p.year,groupOf(p.year)?('Group '+groupOf(p.year)):'',teamOf(p),p.height,p.position,p.school,p.city,p.state,displayAddOns(p).join(' / '),p.email]));
+  download(campFileSlug()+'-player-data.csv',csv(rows));
 });
 $('#btnCsvTeams').addEventListener('click',()=>{
   if(!S.teams){ alert('Generate teams first.'); return; }
   const rows=[['Team','Player','Jersey','Year','School','City','State','Position','Height']];
   [...S.teams.A,...S.teams.B].forEach(t=>t.players.map(playerById).filter(Boolean).forEach(p=>
     rows.push([t.name,p.first+' '+p.last,p.jersey,p.year,p.school,p.city,p.state,p.position,p.height])));
-  download('assigned-teams.csv',csv(rows));
+  download(campFileSlug()+'-assigned-teams.csv',csv(rows));
 });
 $('#btnPrint').addEventListener('click',()=>window.print());
 $('#btnReset').addEventListener('click', async ()=>{
@@ -3802,7 +4084,7 @@ $('#btnReset').addEventListener('click', async ()=>{
       try{ sessionStorage.setItem('wipeCamp', campId); }catch(e){}
       const r=await clearCampRemote();
       remoteNote=r.ok?' Stations for "'+camp+'" were cleared.':' Still wiping stations in background — leave this tab open a few seconds, or click Clear Stations Now.';
-      setStationWipeBanner(r.remaining||0);
+      setStationWipeBanner(r.remaining||0, true);
     }catch(e){ remoteNote=' Station clear failed — click Clear Stations Now.'; }
   }else if(campId){
     remoteNote=' Sign in on Publish, then click Clear Stations for Camp to wipe tablets.';
@@ -3858,7 +4140,11 @@ updateAuthUI();
     const keep={ syncUrl:S.syncUrl, syncKey:S.syncKey, siteBaseUrl:S.siteBaseUrl, campId:id, syncCode:slug,
       appUrl:S.appUrl, shopUrl:S.shopUrl, igUrl:S.igUrl, ytUrl:S.ytUrl, webUrl:S.webUrl };
     if(saved){
+      const keepPlayers=(!saved.players || !saved.players.length) && (S.players||[]).length ? S.players : null;
+      const keepTeams=S.teams;
       S=Object.assign(emptyCampState(), saved, keep, { campId:id, syncCode:slug });
+      if(keepPlayers) S.players=keepPlayers;
+      if((!(S.teams && ((S.teams.A||[]).length+(S.teams.B||[]).length))) && keepTeams) S.teams=keepTeams;
     } else {
       const legacy=store.loadLegacy();
       if(legacy && (!legacy.campId || legacy.syncCode===slug) && legacy.players && legacy.players.length){
@@ -3868,6 +4154,10 @@ updateAuthUI();
     }
   }
   renderAll();
+  const restored=await hydratePlayersFromRemote();
+  if(restored && restored.count){
+    $('#rosterSyncNote').innerHTML='<b style="color:var(--green)">✓ Restored '+restored.count+' player'+(restored.count===1?'':'s')+'</b> from '+esc(restored.source||'stations')+' for <code>'+esc(S.syncCode)+'</code>.';
+  }
   pollPlayersLive();
 })();
 </script>

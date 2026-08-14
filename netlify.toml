@@ -10,10 +10,13 @@
 [functions."stripe-webhook"]
   included_files = []
 
-# One-time balance charges for deposit_paid rows when camp is 7 days out.
+# One-time balance charges for deposit_paid rows when camp is ≤7 days out.
 # Failures become charge_failed and are never retried (query is deposit_paid only).
-[functions."charge-balances"]
+# Requires a Netlify plan that supports Scheduled Functions (Pro+).
+[functions."charge-remaining-balance"]
   schedule = "@daily"
+
+# Legacy alias only — do NOT schedule (would double-charge). Handled by charge-remaining-balance.
 
 # sharp is a native module — keep it external for Netlify bundling
 [functions."approve-instagram-story"]

@@ -14,6 +14,7 @@ Run these in Supabase → **SQL Editor**, in order:
 10. **`009_registration_payments.sql`** — Stripe payment fields (`payment_status`, `amount_cents`, session ids) for `register.html` checkout.
 11. **`010_registration_deposit_balance.sql`** — deposit / balance fields (`pay_status`, `amount_total`, `amount_paid`, `balance_charge_error`). Auto-charge is one attempt only (`deposit_paid` → `balance_charged` or `charge_failed`).
 12. **`011_registration_instagram_stories.sql`** — Instagram Story approval fields (`instagram_handle`, `photo_url`, `ig_story_status`, …) + public `registration-photos` Storage bucket for `register.html` uploads.
+13. **`012_registration_camp_date.sql`** — `camp_date` on registrations (for deposit auto-charge 7 days before camp) + ensures deposit/balance columns exist.
 
 After that:
 

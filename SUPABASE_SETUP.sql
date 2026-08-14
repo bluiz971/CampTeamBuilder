@@ -114,6 +114,16 @@ end $$;
 -- ============================================================
 
 -- ============================================================
+-- Stripe payments (optional — after registrations exist)
+-- Run in order:
+--   migrations/009_registration_payments.sql
+--   migrations/010_registration_deposit_balance.sql
+--   migrations/012_registration_camp_date.sql
+-- Adds payment_status / pay_status / amount_* / stripe_* / camp_date
+-- for register.html checkout + deposit auto-charge.
+-- ============================================================
+
+-- ============================================================
 -- Instagram Story queue (optional — after registrations exist)
 -- Run: migrations/011_registration_instagram_stories.sql
 -- Adds photo_url / instagram_handle / ig_story_status on

@@ -6,6 +6,7 @@
 <title>Camp Builder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
 <style>
 :root{
   --ink:#141a22; --paper:#f6f5f2; --card:#fff; --line:#e2ded6;
@@ -85,6 +86,22 @@ input.err,select.err{border-color:var(--red);background:#fef2f2}
 .pay-summary .row.mut{color:var(--mut)}
 .pay-summary .total{border-top:1px solid var(--line);margin-top:8px;padding-top:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:20px;text-transform:uppercase}
 .pay-summary .total span:last-child{color:var(--orange)}
+.pay-options{display:grid;gap:10px;margin:14px 0}
+.pay-option{
+  text-align:left;width:100%;cursor:pointer;border:2px solid var(--line);
+  border-radius:12px;padding:16px 18px;background:#fff;font:inherit;color:inherit;
+  transition:border-color .15s, background .15s, box-shadow .15s;
+}
+.pay-option:hover{border-color:#f0a070;background:var(--orange-soft)}
+.pay-option.on{border-color:var(--orange);background:var(--orange-soft);box-shadow:0 0 0 1px var(--orange)}
+.pay-option .pname{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.pay-option .pmeta{font-size:13px;color:var(--mut);margin-top:6px;line-height:1.45}
+.card-box{
+  margin-top:14px;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:#faf9f6;
+}
+.card-box label{margin-bottom:10px}
+#cardElement{padding:4px 0 2px}
+.StripeElement{padding:10px 0}
 .picked{font-size:14px;color:var(--mut);margin-bottom:14px}
 .picked b{color:var(--ink)}
 .actions{margin-top:18px;display:flex;flex-direction:column;gap:10px}
@@ -245,11 +262,29 @@ footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
     <p class="sub">Optional extras for <b id="addonPlayerName"></b> at <b id="addonCampName"></b>. Tap a row to read the description, check any you’d like — then continue to payment.</p>
     <div class="addon-list" id="addonList"></div>
     <div class="pay-summary" id="paySummary"></div>
-    <p class="addon-shop">Secure payment is processed by Stripe. You’ll complete your card details on the next screen.</p>
+    <p class="addon-shop">Next you’ll choose pay-in-full or a deposit, then enter your card securely with Stripe.</p>
     <div class="msg" id="addonMsg"></div>
     <div class="actions">
-      <button class="btn" type="button" id="btnSubmit">Pay with card</button>
+      <button class="btn" type="button" id="btnNextPay">Next: Payment</button>
       <button class="btn ghost" type="button" id="btnBackForm">Back</button>
+    </div>
+  </div>
+
+  <!-- Step 4: payment (Stripe Elements) -->
+  <div class="card hidden" id="payStep">
+    <h2>Payment</h2>
+    <p class="sub">Secure checkout for <b id="payPlayerName"></b> at <b id="payCampName"></b>.</p>
+    <div class="pay-summary" id="payStepSummary"></div>
+    <div class="section-title" style="margin-top:8px">How would you like to pay?</div>
+    <div class="pay-options" id="payOptionCards"></div>
+    <div class="card-box">
+      <label>Card details</label>
+      <div id="cardElement"><!-- Stripe Elements mounts here --></div>
+    </div>
+    <div class="msg" id="payMsg"></div>
+    <div class="actions">
+      <button class="btn" type="button" id="btnSubmit">Pay now</button>
+      <button class="btn ghost" type="button" id="btnBackAddon">Back</button>
     </div>
   </div>
 
@@ -269,22 +304,25 @@ footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
 <script>
 /* =====================================================================
    EDITABLE CAMPS — update names / dates / locations / codes here.
-   `code` must match the camp slug used in admin (Active camp / Camp Code),
-   e.g. "georgia-2026", so Pull Registrations can find these rows.
+   `code` must match the camp slug used in admin (Active camp / Camp Code).
+   `date` = camp start day (YYYY-MM-DD) — deposit balance charges 7 days before.
+   Keep prices/dates in sync with netlify/functions/pricing.js.
 ===================================================================== */
 const CAMPS = [
   {
     code: 'georgia-2026',
     name: 'Georgia Select Tour Camp 2026',
-    date: 'Sat, Aug 29, 2026',
-    location: 'Suwanee Sports Academy, Suwanee, GA',
+    label: 'Georgia Select Tour Camp 2026',
+    info: 'Suwanee Sports Academy, Suwanee, GA',
+    date: '2026-08-29',
     price: 140
   },
   {
     code: 'mid-atlantic-2026',
     name: 'Mid-Atlantic Select Tour Camp 2026',
-    date: 'Sat, Jul 25, 2026',
-    location: 'Rowan University, Glassboro, NJ',
+    label: 'Mid-Atlantic Select Tour Camp 2026',
+    info: 'Rowan University - July 25, 2026',
+    date: '2026-07-25',
     price: 145
   }
 ];
@@ -316,6 +354,8 @@ const ADDONS = [
 
 const SUPABASE_URL = "https://nxncasbkrcermftbviuw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54bmNhc2JrcmNlcm1mdGJ2aXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY3NjYsImV4cCI6MjA5OTc5Mjc2Nn0.XdcpcrTLhWeJWf6DXS2PPkXOGjYy8m9nFtagbFoqt9I";
+/* Stripe PUBLISHABLE key only (pk_test_… / pk_live_…). Secret key stays in Netlify env. */
+const STRIPE_PUBLISHABLE_KEY = "pk_test_REPLACE_WITH_YOUR_PUBLISHABLE_KEY";
 
 const $=s=>document.querySelector(s);
 const $$=s=>document.querySelectorAll(s);
@@ -343,6 +383,33 @@ function fillHeightSelect(){
   }
 }
 
+function formatCampDate(iso){
+  if(!iso) return '';
+  const d=new Date(iso+'T12:00:00');
+  if(isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined,{ weekday:'short', month:'short', day:'numeric', year:'numeric' });
+}
+
+function balanceChargeDate(iso){
+  if(!iso) return null;
+  const d=new Date(iso+'T12:00:00');
+  if(isNaN(d.getTime())) return null;
+  d.setDate(d.getDate()-7);
+  return d.toISOString().slice(0,10);
+}
+
+function orderTotals(){
+  const campFee=Number(selectedCamp && selectedCamp.price)||0;
+  const tags=selectedAddons();
+  const lines=tags.map(tag=>{
+    const a=ADDONS.find(x=>x.tag===tag);
+    return a ? { name:a.name, price:Number(a.price)||0 } : null;
+  }).filter(Boolean);
+  const addonTotal=lines.reduce((s,l)=>s+l.price, 0);
+  const total=campFee+addonTotal;
+  return { campFee, lines, addonTotal, total, tags };
+}
+
 function renderCampCards(){
   const wrap=$('#campCards');
   if(!CAMPS.length){
@@ -351,8 +418,8 @@ function renderCampCards(){
   }
   wrap.innerHTML=CAMPS.map(c=>`
     <button type="button" class="camp-card" data-code="${esc(c.code)}">
-      <div class="cname">${esc(c.name)}</div>
-      <div class="cmeta">${esc([c.date, c.location].filter(Boolean).join(' · '))}</div>
+      <div class="cname">${esc(c.label||c.name)}</div>
+      <div class="cmeta">${esc([formatCampDate(c.date), c.info||c.location, c.price!=null?('From $'+c.price):''].filter(Boolean).join(' · '))}</div>
     </button>
   `).join('');
   wrap.querySelectorAll('.camp-card').forEach(btn=>{
@@ -365,11 +432,12 @@ function pickCamp(code){
   selectedCamp=CAMPS.find(c=>c.code===code)||null;
   if(!selectedCamp) return;
   $$('.camp-card').forEach(b=>b.classList.toggle('on', b.dataset.code===code));
-  $('#pickedCampName').textContent=selectedCamp.name;
+  $('#pickedCampName').textContent=selectedCamp.label||selectedCamp.name;
   $('#campStepMsg').textContent='';
   $('#campStep').classList.add('hidden');
   $('#formStep').classList.remove('hidden');
   $('#addonStep').classList.add('hidden');
+  $('#payStep').classList.add('hidden');
   $('#doneStep').classList.add('hidden');
   setTimeout(()=>$('#first').focus(), 50);
 }
@@ -379,6 +447,7 @@ function showCampStep(){
   $$('.camp-card').forEach(b=>b.classList.remove('on'));
   $('#formStep').classList.add('hidden');
   $('#addonStep').classList.add('hidden');
+  $('#payStep').classList.add('hidden');
   $('#doneStep').classList.add('hidden');
   $('#campStep').classList.remove('hidden');
   clearErrors();
@@ -386,16 +455,41 @@ function showCampStep(){
   $('#formMsg').className='msg';
   $('#addonMsg').textContent='';
   $('#addonMsg').className='msg';
+  $('#payMsg').textContent='';
+  $('#payMsg').className='msg';
 }
 
 function showAddonStep(){
   if(!validate()) return;
   $('#addonPlayerName').textContent=val('first')+' '+val('last');
-  $('#addonCampName').textContent=selectedCamp.name;
+  $('#addonCampName').textContent=selectedCamp.label||selectedCamp.name;
   $('#formStep').classList.add('hidden');
+  $('#payStep').classList.add('hidden');
   $('#addonStep').classList.remove('hidden');
   $('#doneStep').classList.add('hidden');
   renderPaySummary();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function showPayStep(){
+  if(!validate()){ showFormStep(); return; }
+  if(!selectedCamp){ showCampStep(); return; }
+  $('#payPlayerName').textContent=val('first')+' '+val('last');
+  $('#payCampName').textContent=selectedCamp.label||selectedCamp.name;
+  $('#addonStep').classList.add('hidden');
+  $('#formStep').classList.add('hidden');
+  $('#doneStep').classList.add('hidden');
+  $('#payStep').classList.remove('hidden');
+  renderPayStepUI();
+  ensureStripeCard();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function showFormStep(){
+  $('#addonStep').classList.add('hidden');
+  $('#payStep').classList.add('hidden');
+  $('#doneStep').classList.add('hidden');
+  $('#formStep').classList.remove('hidden');
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
@@ -437,13 +531,6 @@ function restoreDraft(){
 }
 function clearDraft(){
   try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
-}
-
-function showFormStep(){
-  $('#addonStep').classList.add('hidden');
-  $('#doneStep').classList.add('hidden');
-  $('#formStep').classList.remove('hidden');
-  window.scrollTo({ top:0, behavior:'smooth' });
 }
 
 function digitsOnly(s){ return String(s||'').replace(/\D/g,''); }
@@ -509,18 +596,160 @@ function money(n){ return '$'+Number(n||0).toFixed(0); }
 function renderPaySummary(){
   const wrap=$('#paySummary');
   if(!wrap || !selectedCamp) return;
-  const campFee=Number(selectedCamp.price)||0;
-  const tags=selectedAddons();
-  const lines=tags.map(tag=>{
-    const a=ADDONS.find(x=>x.tag===tag);
-    return a ? { name:a.name, price:Number(a.price)||0 } : null;
-  }).filter(Boolean);
-  const addonTotal=lines.reduce((s,l)=>s+l.price, 0);
-  const total=campFee+addonTotal;
+  const { campFee, lines, total } = orderTotals();
   wrap.innerHTML=`<h3>Order summary</h3>
     <div class="row"><span>Camp registration</span><span>${money(campFee)}</span></div>
     ${lines.map(l=>`<div class="row mut"><span>${esc(l.name)}</span><span>${money(l.price)}</span></div>`).join('')}
     <div class="row total"><span>Total due</span><span>${money(total)}</span></div>`;
+}
+
+let payMode='full'; // 'full' | 'deposit'
+let stripe=null;
+let cardElement=null;
+let pendingCheckout=null;
+
+function renderPayStepUI(){
+  const wrap=$('#payStepSummary');
+  const opts=$('#payOptionCards');
+  if(!selectedCamp) return;
+  const { campFee, lines, total } = orderTotals();
+  const deposit=Math.round(total/2);
+  const remainder=Math.max(0, total-deposit);
+  const chargeOn=balanceChargeDate(selectedCamp.date);
+  const chargeLabel=chargeOn ? formatCampDate(chargeOn) : 'one week before camp';
+
+  if(wrap){
+    wrap.innerHTML=`<h3>Order summary</h3>
+      <div class="row"><span>Camp registration</span><span>${money(campFee)}</span></div>
+      ${lines.map(l=>`<div class="row mut"><span>${esc(l.name)}</span><span>${money(l.price)}</span></div>`).join('')}
+      <div class="row total"><span>Total</span><span>${money(total)}</span></div>`;
+  }
+  if(opts){
+    opts.innerHTML=`
+      <button type="button" class="pay-option ${payMode==='full'?'on':''}" data-mode="full">
+        <div class="pname">Pay in Full — ${money(total)}</div>
+        <div class="pmeta">Charge the full camp fee${lines.length?' and selected add-ons':''} today. No later charges.</div>
+      </button>
+      <button type="button" class="pay-option ${payMode==='deposit'?'on':''}" data-mode="deposit">
+        <div class="pname">Pay Deposit Now — ${money(deposit)}</div>
+        <div class="pmeta">Pay ${money(deposit)} today. Remaining ${money(remainder)} is charged automatically on ${esc(chargeLabel)} (7 days before camp).</div>
+      </button>`;
+    opts.querySelectorAll('.pay-option').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        payMode=btn.dataset.mode==='deposit'?'deposit':'full';
+        opts.querySelectorAll('.pay-option').forEach(b=>b.classList.toggle('on', b.dataset.mode===payMode));
+        updatePayButtonLabel();
+      });
+    });
+  }
+  updatePayButtonLabel();
+}
+
+function updatePayButtonLabel(){
+  const btn=$('#btnSubmit');
+  if(!btn || !selectedCamp) return;
+  const { total } = orderTotals();
+  const amount=payMode==='deposit' ? Math.round(total/2) : total;
+  btn.textContent='Pay '+money(amount)+' now';
+}
+
+function ensureStripeCard(){
+  const mount=$('#cardElement');
+  if(!mount) return;
+  if(!STRIPE_PUBLISHABLE_KEY || /REPLACE_WITH_YOUR/.test(STRIPE_PUBLISHABLE_KEY)){
+    $('#payMsg').textContent='Stripe publishable key isn’t set yet — add STRIPE_PUBLISHABLE_KEY in register.html (Dashboard → Developers → API keys).';
+    $('#payMsg').className='msg err';
+    return;
+  }
+  if(typeof Stripe==='undefined'){
+    $('#payMsg').textContent='Stripe.js failed to load — check your connection and try again.';
+    $('#payMsg').className='msg err';
+    return;
+  }
+  if(!stripe) stripe=Stripe(STRIPE_PUBLISHABLE_KEY);
+  if(!cardElement){
+    const elements=stripe.elements();
+    cardElement=elements.create('card',{
+      style:{
+        base:{
+          fontFamily:'Barlow, system-ui, sans-serif',
+          fontSize:'16px',
+          color:'#141a22',
+          '::placeholder':{ color:'#6b7280' }
+        },
+        invalid:{ color:'#b91c1c' }
+      }
+    });
+    cardElement.mount('#cardElement');
+    cardElement.on('change', ev=>{
+      if(ev.error){
+        $('#payMsg').textContent=ev.error.message;
+        $('#payMsg').className='msg err';
+      } else if($('#payMsg').classList.contains('err') && !$('#payMsg').dataset.locked){
+        $('#payMsg').textContent='';
+        $('#payMsg').className='msg';
+      }
+    });
+  }
+}
+
+function showPaidDone(first, campName, opts){
+  opts=opts||{};
+  $('#campStep').classList.add('hidden');
+  $('#formStep').classList.add('hidden');
+  $('#addonStep').classList.add('hidden');
+  $('#payStep').classList.add('hidden');
+  $('#doneStep').classList.remove('hidden');
+  $('#doneTitle').textContent='You’re all set!';
+  let copy='Thanks'+(first?', '+first:'')+' — you’re registered for '+campName+'.';
+  if(opts.deposit){
+    copy+=' Deposit of '+money(opts.paid||0)+' received. The remaining '+money(opts.remaining||0)+
+      ' will be charged automatically on '+(opts.chargeDateLabel||'one week before camp')+'.';
+  } else {
+    copy+=' Full payment of '+money(opts.paid||0)+' received. We’ll email details before camp day.';
+  }
+  $('#doneCopy').textContent=copy;
+  const payBtn=$('#btnPay');
+  if(payBtn) payBtn.style.display='none';
+}
+
+async function createPaymentIntent(payload){
+  const res=await fetch('/.netlify/functions/create-payment-intent',{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      registrationId: payload.registrationId,
+      campCode: payload.campCode,
+      addons: payload.addons,
+      email: payload.email,
+      parentEmail: payload.parentEmail,
+      name: payload.playerName,
+      playerName: payload.playerName,
+      isDeposit: !!payload.isDeposit
+    })
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok || !data.client_secret){
+    throw new Error(data.error || ('Payment setup failed ('+res.status+')'));
+  }
+  return data;
+}
+
+async function confirmRegistrationPayment(payload){
+  const res=await fetch('/.netlify/functions/confirm-registration-payment',{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      registrationId: payload.registrationId,
+      paymentIntentId: payload.paymentIntentId,
+      isDeposit: !!payload.isDeposit
+    })
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok || !data.ok){
+    throw new Error(data.error || ('Could not finalize registration ('+res.status+')'));
+  }
+  return data;
 }
 
 function clearErrors(){
@@ -662,69 +891,31 @@ async function uploadRegistrationPhoto(regId, file){
   return SUPABASE_URL+'/storage/v1/object/public/registration-photos/'+path;
 }
 
-let pendingCheckout=null; // { registrationId, campCode, addons, email, playerName }
-
-function checkoutUrls(campCode){
-  const base=location.origin+location.pathname;
-  const camp=encodeURIComponent(campCode||'');
-  return {
-    successUrl: base+'?camp='+camp+'&pay=success&session_id={CHECKOUT_SESSION_ID}',
-    cancelUrl: base+'?camp='+camp+'&pay=cancel'
-  };
-}
-
-async function startStripeCheckout(payload){
-  const urls=checkoutUrls(payload.campCode);
-  const res=await fetch('/.netlify/functions/create-checkout',{
-    method:'POST',
-    headers:{ 'Content-Type':'application/json' },
-    body: JSON.stringify({
-      registrationId: payload.registrationId,
-      campCode: payload.campCode,
-      addons: payload.addons,
-      email: payload.email,
-      parentEmail: payload.parentEmail,
-      playerName: payload.playerName,
-      successUrl: urls.successUrl,
-      cancelUrl: urls.cancelUrl
-    })
-  });
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok || !data.url){
-    throw new Error(data.error || ('Checkout failed ('+res.status+')'));
-  }
-  location.href=data.url;
-}
-
-function showPaidDone(first, campName){
-  $('#campStep').classList.add('hidden');
-  $('#formStep').classList.add('hidden');
-  $('#addonStep').classList.add('hidden');
-  $('#doneStep').classList.remove('hidden');
-  $('#doneTitle').textContent='You’re all set!';
-  $('#doneCopy').textContent=
-    'Thanks'+(first?', '+first:'')+' — payment received for '+campName+
-    '. You’re registered. We’ll email details before camp day.';
-  const payBtn=$('#btnPay');
-  if(payBtn) payBtn.style.display='none';
-}
-
-function showCancelResume(){
-  $('#addonMsg').textContent='Payment was canceled — you can tap Pay with card again when you’re ready.';
-  $('#addonMsg').className='msg err';
-}
-
 async function submit(){
   if(!validate()){ showFormStep(); return; }
+  if(!selectedCamp){ showCampStep(); return; }
+  ensureStripeCard();
+  if(!stripe || !cardElement){
+    $('#payMsg').textContent='Card form isn’t ready — check the Stripe publishable key and try again.';
+    $('#payMsg').className='msg err';
+    return;
+  }
+
   const btn=$('#btnSubmit');
-  btn.disabled=true; btn.textContent='Starting checkout…';
-  $('#addonMsg').textContent='';
-  $('#addonMsg').className='msg';
+  btn.disabled=true;
+  $('#payMsg').textContent='';
+  $('#payMsg').className='msg';
+  delete $('#payMsg').dataset.locked;
+
   const addons=selectedAddons();
   const photoFile=getSelectedPhotoFile();
   const regId=(crypto.randomUUID ? crypto.randomUUID() : ('reg-'+Date.now()+'-'+Math.random().toString(16).slice(2)));
   let photoUrl='';
   let igStatus='none';
+  const isDeposit=payMode==='deposit';
+  const { total } = orderTotals();
+  const amountTotalCents=Math.round(total*100);
+  const chargeNow=isDeposit ? Math.round(total/2) : total;
 
   try{
     if(photoFile){
@@ -733,9 +924,9 @@ async function submit(){
       igStatus='pending';
     }
   }catch(upErr){
-    $('#addonMsg').textContent=upErr.message || 'Photo upload failed. Try a smaller JPEG/PNG, or continue without a photo.';
-    $('#addonMsg').className='msg err';
-    btn.disabled=false; btn.textContent='Pay with card';
+    $('#payMsg').textContent=upErr.message || 'Photo upload failed. Try a smaller JPEG/PNG, or continue without a photo.';
+    $('#payMsg').className='msg err';
+    btn.disabled=false; updatePayButtonLabel();
     return;
   }
 
@@ -743,6 +934,7 @@ async function submit(){
   const row={
     id: regId,
     camp_code: selectedCamp.code,
+    camp_date: selectedCamp.date || null,
     first: val('first'),
     last: val('last'),
     birth_date: val('birth'),
@@ -771,10 +963,13 @@ async function submit(){
     addons: addons.join(', '),
     instagram_handle: handle,
     photo_url: photoUrl,
-    ig_story_status: igStatus
-    // payment_status / amount_cents are set by Stripe functions (service role) — not the browser
+    ig_story_status: igStatus,
+    amount_total: amountTotalCents,
+    amount_paid: 0,
+    pay_status: 'unpaid'
   };
-  btn.textContent='Starting checkout…';
+
+  btn.textContent='Saving registration…';
   try{
     const res=await fetch(SUPABASE_URL+'/rest/v1/registrations',{
       method:'POST',
@@ -787,55 +982,162 @@ async function submit(){
     if(!res.ok){
       const t=await res.text();
       if(/instagram_handle|photo_url|ig_story_status/i.test(t) && /column|schema|PGRST/i.test(t)){
-        $('#addonMsg').textContent='Instagram columns missing — ask staff to run migrations/011_registration_instagram_stories.sql in Supabase.';
+        $('#payMsg').textContent='Instagram columns missing — ask staff to run migrations/011_registration_instagram_stories.sql in Supabase.';
+      } else if(/camp_date|pay_status|amount_total|amount_paid/i.test(t) && /column|schema|PGRST/i.test(t)){
+        $('#payMsg').textContent='Payment columns missing — ask staff to run migrations/009–012 (payments + camp_date) in Supabase.';
       } else if(/payment_status|amount_cents/i.test(t) && /column|schema|PGRST/i.test(t)){
-        $('#addonMsg').textContent='Payment columns missing — ask staff to run migrations/009_registration_payments.sql in Supabase.';
+        $('#payMsg').textContent='Payment columns missing — ask staff to run migrations/009_registration_payments.sql in Supabase.';
       } else if(/addons/i.test(t) && /column|schema|PGRST/i.test(t)){
-        $('#addonMsg').textContent='Add-ons column missing — ask staff to run migrations/008_registration_addons.sql in Supabase.';
+        $('#payMsg').textContent='Add-ons column missing — ask staff to run migrations/008_registration_addons.sql in Supabase.';
       } else if(/permission|policy|42501|RLS|not find|PGRST/i.test(t) || res.status===401 || res.status===403 || res.status===404){
-        $('#addonMsg').textContent='Registration isn’t enabled yet — ask staff to run migrations/007_registrations.sql in Supabase.';
+        $('#payMsg').textContent='Registration isn’t enabled yet — ask staff to run migrations/007_registrations.sql in Supabase.';
       } else {
-        $('#addonMsg').textContent='Save failed ('+res.status+'). Try again in a moment.';
+        $('#payMsg').textContent='Save failed ('+res.status+'). Try again in a moment.';
       }
-      $('#addonMsg').className='msg err';
+      $('#payMsg').className='msg err';
       return;
     }
     const saved=(await res.json())[0];
     if(!saved || !saved.id){
-      $('#addonMsg').textContent='Saved, but couldn’t start payment — contact camp staff.';
-      $('#addonMsg').className='msg err';
+      $('#payMsg').textContent='Saved, but couldn’t start payment — contact camp staff.';
+      $('#payMsg').className='msg err';
       return;
     }
+
     pendingCheckout={
       registrationId: saved.id,
       campCode: selectedCamp.code,
       addons,
       email: row.parent_email || row.email,
       parentEmail: row.parent_email,
-      playerName: (row.first+' '+row.last).trim()
+      playerName: (row.first+' '+row.last).trim(),
+      isDeposit,
+      first: row.first,
+      campName: selectedCamp.label||selectedCamp.name
     };
     saveDraft();
-    try{
-      await startStripeCheckout(pendingCheckout);
-    }catch(payErr){
-      $('#addonStep').classList.add('hidden');
-      $('#doneStep').classList.remove('hidden');
-      $('#doneTitle').textContent='Registration saved';
-      $('#doneCopy').textContent=
-        'Thanks, '+row.first+' — you’re on the list for '+selectedCamp.name+
-        ', but checkout couldn’t start: '+(payErr.message||'payment error')+
-        '. Tap Complete payment to try again, or contact camp staff.';
+
+    btn.textContent='Preparing payment…';
+    const intent=await createPaymentIntent(pendingCheckout);
+
+    btn.textContent='Processing '+money(chargeNow)+'…';
+    const { error, paymentIntent } = await stripe.confirmCardPayment(intent.client_secret, {
+      payment_method: {
+        card: cardElement,
+        billing_details: {
+          name: pendingCheckout.playerName || undefined,
+          email: pendingCheckout.email || undefined
+        }
+      }
+    });
+    if(error){
+      $('#payMsg').dataset.locked='1';
+      $('#payMsg').textContent=error.message || 'Card was declined. Try another card.';
+      $('#payMsg').className='msg err';
       const payBtn=$('#btnPay');
       if(payBtn){
         payBtn.style.display='';
-        payBtn.textContent='Complete payment';
+        payBtn.textContent='Retry payment';
       }
+      return;
     }
+    if(!paymentIntent || paymentIntent.status!=='succeeded'){
+      $('#payMsg').textContent='Payment didn’t complete. Tap Pay again or contact camp staff.';
+      $('#payMsg').className='msg err';
+      return;
+    }
+
+    btn.textContent='Confirming…';
+    await confirmRegistrationPayment({
+      registrationId: pendingCheckout.registrationId,
+      paymentIntentId: paymentIntent.id,
+      isDeposit
+    });
+
+    clearDraft();
+    const rem=Math.max(0, total-chargeNow);
+    const chargeIso=balanceChargeDate(selectedCamp.date);
+    showPaidDone(row.first, selectedCamp.label||selectedCamp.name, {
+      deposit: isDeposit,
+      paid: chargeNow,
+      remaining: rem,
+      chargeDateLabel: chargeIso ? formatCampDate(chargeIso) : null
+    });
+    pendingCheckout=null;
   }catch(e){
-    $('#addonMsg').textContent='Could not reach the server — check your connection.';
-    $('#addonMsg').className='msg err';
+    $('#payMsg').textContent=e.message || 'Could not complete payment — check your connection.';
+    $('#payMsg').className='msg err';
+    const payBtn=$('#btnPay');
+    if(pendingCheckout && payBtn){
+      $('#payStep').classList.add('hidden');
+      $('#doneStep').classList.remove('hidden');
+      $('#doneTitle').textContent='Registration saved';
+      $('#doneCopy').textContent=
+        'Thanks, '+(pendingCheckout.first||'')+' — you’re on the list for '+(pendingCheckout.campName||'camp')+
+        ', but payment needs finishing: '+(e.message||'payment error')+
+        '. Tap Retry payment when ready.';
+      payBtn.style.display='';
+      payBtn.textContent='Retry payment';
+    }
   }finally{
-    btn.disabled=false; btn.textContent='Pay with card';
+    btn.disabled=false;
+    updatePayButtonLabel();
+  }
+}
+
+async function retryPayment(){
+  if(!pendingCheckout){ restoreDraft(); }
+  if(!pendingCheckout){
+    $('#doneCopy').textContent='Start registration again to pay.';
+    return;
+  }
+  payMode=pendingCheckout.isDeposit?'deposit':'full';
+  $('#doneStep').classList.add('hidden');
+  $('#payStep').classList.remove('hidden');
+  renderPayStepUI();
+  ensureStripeCard();
+  const b=$('#btnPay');
+  if(b) b.style.display='none';
+
+  const btn=$('#btnSubmit');
+  btn.disabled=true;
+  $('#payMsg').textContent='';
+  $('#payMsg').className='msg';
+  try{
+    btn.textContent='Preparing payment…';
+    const intent=await createPaymentIntent(pendingCheckout);
+    const { total } = orderTotals();
+    const chargeNow=pendingCheckout.isDeposit ? Math.round(total/2) : total;
+    btn.textContent='Processing '+money(chargeNow)+'…';
+    const { error, paymentIntent } = await stripe.confirmCardPayment(intent.client_secret, {
+      payment_method: { card: cardElement }
+    });
+    if(error){
+      $('#payMsg').textContent=error.message || 'Card was declined.';
+      $('#payMsg').className='msg err';
+      return;
+    }
+    await confirmRegistrationPayment({
+      registrationId: pendingCheckout.registrationId,
+      paymentIntentId: paymentIntent.id,
+      isDeposit: pendingCheckout.isDeposit
+    });
+    clearDraft();
+    const rem=Math.max(0, total-chargeNow);
+    const chargeIso=balanceChargeDate(selectedCamp && selectedCamp.date);
+    showPaidDone(pendingCheckout.first, pendingCheckout.campName, {
+      deposit: !!pendingCheckout.isDeposit,
+      paid: chargeNow,
+      remaining: rem,
+      chargeDateLabel: chargeIso ? formatCampDate(chargeIso) : null
+    });
+    pendingCheckout=null;
+  }catch(e){
+    $('#payMsg').textContent=e.message||'Could not complete payment.';
+    $('#payMsg').className='msg err';
+  }finally{
+    btn.disabled=false;
+    updatePayButtonLabel();
   }
 }
 
@@ -850,6 +1152,8 @@ function resetAll(){
   clearPhotoInputs();
   document.querySelectorAll('input[name="addon"]').forEach(c=>{ c.checked=false; });
   document.querySelectorAll('.addon-item').forEach(el=>{ el.classList.remove('on','open'); });
+  payMode='full';
+  pendingCheckout=null;
   clearErrors();
   showCampStep();
 }
@@ -861,7 +1165,9 @@ wirePhoneInput('phone');
 wirePhoneInput('parentPhone');
 $('#btnChangeCamp').addEventListener('click', showCampStep);
 $('#btnNextAddon').addEventListener('click', showAddonStep);
+$('#btnNextPay').addEventListener('click', showPayStep);
 $('#btnBackForm').addEventListener('click', showFormStep);
+$('#btnBackAddon').addEventListener('click', showAddonStep);
 $('#btnSubmit').addEventListener('click', submit);
 $('#btnAnother').addEventListener('click', ()=>{ clearDraft(); resetAll(); });
 $('#btnPickPhoto').addEventListener('click', ()=>$('#playerPhoto').click());
@@ -869,47 +1175,7 @@ $('#btnTakePhoto').addEventListener('click', ()=>$('#playerPhotoCamera').click()
 $('#btnClearPhoto').addEventListener('click', clearPhotoInputs);
 $('#playerPhoto').addEventListener('change', e=>setPhotoFromInput(e.target));
 $('#playerPhotoCamera').addEventListener('change', e=>setPhotoFromInput(e.target));
-$('#btnPay').addEventListener('click', async ()=>{
-  if(!pendingCheckout){ restoreDraft(); }
-  if(!pendingCheckout){
-    $('#doneCopy').textContent='Start registration again to pay.';
-    return;
-  }
-  const b=$('#btnPay');
-  b.disabled=true; b.textContent='Opening Stripe…';
-  try{ await startStripeCheckout(pendingCheckout); }
-  catch(e){ $('#doneCopy').textContent=e.message||'Could not open payment.'; }
-  finally{ b.disabled=false; b.textContent='Complete payment'; }
-});
-
-(function handlePayReturn(){
-  const pay=urlParams.get('pay');
-  if(!pay) return;
-  const code=(urlParams.get('camp')||preselect||'').toLowerCase();
-  const camp=CAMPS.find(c=>c.code===code);
-  if(pay==='success'){
-    clearDraft();
-    showPaidDone('', (camp&&camp.name)||'your camp');
-    history.replaceState({},'', location.pathname+(code?('?camp='+encodeURIComponent(code)):''));
-    return;
-  }
-  if(pay==='cancel'){
-    const draft=restoreDraft();
-    if(draft && selectedCamp){
-      $('#campStep').classList.add('hidden');
-      $('#formStep').classList.add('hidden');
-      $('#addonStep').classList.remove('hidden');
-      $('#addonPlayerName').textContent=val('first')+' '+val('last');
-      $('#addonCampName').textContent=selectedCamp.name;
-      renderPaySummary();
-      showCancelResume();
-    } else if(code){
-      pickCamp(code);
-      $('#campStepMsg').textContent='Payment canceled — continue when you’re ready to pay.';
-    }
-    history.replaceState({},'', location.pathname+(code?('?camp='+encodeURIComponent(code)):''));
-  }
-})();
+$('#btnPay').addEventListener('click', ()=>retryPayment());
 </script>
 </body>
 </html>

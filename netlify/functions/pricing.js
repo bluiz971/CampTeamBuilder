@@ -5,11 +5,23 @@
 const CAMPS = {
   'georgia-2026': {
     name: 'Georgia Select Tour Camp 2026',
-    priceCents: 14000
+    priceCents: 14000,
+    date: '2026-08-29'
   },
   'mid-atlantic-2026': {
     name: 'Mid-Atlantic Select Tour Camp 2026',
-    priceCents: 14500
+    priceCents: 14500,
+    date: '2026-07-25'
+  },
+  'north-carolina-2026': {
+    name: 'North Carolina District',
+    priceCents: 14000,
+    date: '2026-09-12'
+  },
+  'new-england-2026': {
+    name: 'New England District',
+    priceCents: 14000,
+    date: '2026-10-10'
   }
 };
 
@@ -45,7 +57,23 @@ function buildLineItems(campCode, addonTags){
     });
     total += a.priceCents;
   }
-  return { items, totalCents: total, campName: camp.name };
+  return { items, totalCents: total, campName: camp.name, campDate: camp.date || null };
 }
 
-module.exports = { CAMPS, ADDONS, buildLineItems };
+/** Amount to charge now: full total, or half (deposit). Always even cents. */
+function computeCharge(campCode, addonTags, isDeposit){
+  const line = buildLineItems(campCode, addonTags);
+  const totalCents = line.totalCents;
+  const chargeNowCents = isDeposit
+    ? Math.round(totalCents / 2)
+    : totalCents;
+  return {
+    ...line,
+    totalCents,
+    chargeNowCents,
+    remainingCents: Math.max(0, totalCents - chargeNowCents),
+    isDeposit: !!isDeposit
+  };
+}
+
+module.exports = { CAMPS, ADDONS, buildLineItems, computeCharge };

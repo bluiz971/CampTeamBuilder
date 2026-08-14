@@ -1,5 +1,5 @@
 /* Camp Builder — lightweight offline shell for login / account */
-const CACHE = 'camp-builder-v4';
+const CACHE = 'camp-builder-v5';
 const PRECACHE = [
   '/',
   '/login.html',
