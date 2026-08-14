@@ -1714,7 +1714,7 @@ function renderPlayers(){
     return;
   }
   t.innerHTML='<tr><th>Photo</th><th>Jersey</th><th>Name</th><th>Year</th><th>Group</th><th>Team</th><th>Ht</th><th>Position</th><th>Pay</th><th>Email</th><th>School</th><th>City</th><th>Add-Ons</th><th style="text-align:center">Edit</th></tr>'+
-    pool.sort((a,b)=>(+a.jersey||0)-(+b.jersey||0)).map(p=>{
+    pool.sort(byTeamThenJersey).map(p=>{
       const g=groupOf(p.year), i=S.players.indexOf(p);
       const team=teamOf(p);
       const tags=displayAddOns(p);
@@ -2014,6 +2014,22 @@ function teamOf(p){
 }
 function campFileSlug(){
   return String(S.syncCode||'camp').toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-|-$/g,'') || 'camp';
+}
+function teamSortKey(name){
+  const m=String(name||'').match(/(\d+)/);
+  if(m) return +m[1];
+  return String(name||'').trim() ? 9999 : 10000;
+}
+function jerseySortKey(p){
+  const n=parseInt(String(p&&p.jersey||'').replace(/\D/g,''),10);
+  return isNaN(n) ? 1e9 : n;
+}
+function byTeamThenJersey(a,b){
+  const ta=teamSortKey(teamOf(a)), tb=teamSortKey(teamOf(b));
+  if(ta!==tb) return ta-tb;
+  const na=String(teamOf(a)||''), nb=String(teamOf(b)||'');
+  if(na!==nb) return na.localeCompare(nb);
+  return jerseySortKey(a)-jerseySortKey(b);
 }
 
 function renderTeams(){
@@ -4057,7 +4073,7 @@ const btnRestorePlayers=$('#btnRestorePlayers');
 if(btnRestorePlayers) btnRestorePlayers.addEventListener('click', ()=>pullRosterFromStations());
 $('#btnCsvPlayers').addEventListener('click',()=>{
   const numbered=eligible();
-  const pool=numbered.length?numbered:S.players.slice();
+  const pool=(numbered.length?numbered:S.players.slice()).sort(byTeamThenJersey);
   const rows=[['Jersey','First','Last','Year','Group','Team','Height','Position','School','City','State','Add-Ons','Parent Email']];
   pool.forEach(p=>rows.push([p.jersey,p.first,p.last,p.year,groupOf(p.year)?('Group '+groupOf(p.year)):'',teamOf(p),p.height,p.position,p.school,p.city,p.state,displayAddOns(p).join(' / '),p.email]));
   download(campFileSlug()+'-player-data.csv',csv(rows));
@@ -4065,8 +4081,10 @@ $('#btnCsvPlayers').addEventListener('click',()=>{
 $('#btnCsvTeams').addEventListener('click',()=>{
   if(!S.teams){ alert('Generate teams first.'); return; }
   const rows=[['Team','Player','Jersey','Year','School','City','State','Position','Height']];
-  [...S.teams.A,...S.teams.B].forEach(t=>t.players.map(playerById).filter(Boolean).forEach(p=>
-    rows.push([t.name,p.first+' '+p.last,p.jersey,p.year,p.school,p.city,p.state,p.position,p.height])));
+  [...S.teams.A,...S.teams.B].forEach(t=>{
+    t.players.map(playerById).filter(Boolean).sort((a,b)=>jerseySortKey(a)-jerseySortKey(b)).forEach(p=>
+      rows.push([t.name,p.first+' '+p.last,p.jersey,p.year,p.school,p.city,p.state,p.position,p.height]));
+  });
   download(campFileSlug()+'-assigned-teams.csv',csv(rows));
 });
 $('#btnPrint').addEventListener('click',()=>window.print());
