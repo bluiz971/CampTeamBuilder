@@ -3,6 +3,11 @@
  * Keep in sync with CAMPS / ADDONS in register.html.
  */
 const CAMPS = {
+  'south-carolina-2026': {
+    name: 'South Carolina Select Tour Camp 2026',
+    priceCents: 14000,
+    date: null
+  },
   'georgia-2026': {
     name: 'Georgia Select Tour Camp 2026',
     priceCents: 14000,

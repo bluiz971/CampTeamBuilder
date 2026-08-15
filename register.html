@@ -62,11 +62,23 @@ input.err,select.err{border-color:var(--red);background:#fef2f2}
   text-align:left;width:100%;cursor:pointer;border:2px solid var(--line);
   border-radius:12px;padding:16px 18px;background:#fff;font:inherit;color:inherit;
   transition:border-color .15s, background .15s, box-shadow .15s;
+  position:relative;overflow:hidden;
 }
 .camp-card:hover{border-color:#f0a070;background:var(--orange-soft)}
 .camp-card.on{border-color:var(--orange);background:var(--orange-soft);box-shadow:0 0 0 1px var(--orange)}
 .camp-card .cname{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
 .camp-card .cmeta{font-size:13px;color:var(--mut);margin-top:4px;line-height:1.4}
+.camp-card.closed{
+  cursor:not-allowed;opacity:.72;background:#f3f1ed;
+}
+.camp-card.closed:hover{border-color:var(--line);background:#f3f1ed}
+.camp-stamp{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(-18deg);
+  font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--red);
+  border:3px solid var(--red);border-radius:6px;padding:2px 10px;
+  background:rgba(255,255,255,.88);pointer-events:none;
+}
 .addon-list{display:grid;gap:10px;margin:8px 0 4px}
 .addon-item{border:2px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;transition:border-color .15s,background .15s}
 .addon-item.on{border-color:var(--orange);background:var(--orange-soft)}
@@ -310,12 +322,22 @@ footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
 ===================================================================== */
 const CAMPS = [
   {
+    code: 'south-carolina-2026',
+    name: 'South Carolina Select Tour Camp 2026',
+    label: 'South Carolina Select Tour Camp 2026',
+    info: 'Date & location coming soon',
+    date: '',
+    price: 140,
+    open: true
+  },
+  {
     code: 'georgia-2026',
     name: 'Georgia Select Tour Camp 2026',
     label: 'Georgia Select Tour Camp 2026',
     info: 'Suwanee Sports Academy, Suwanee, GA',
     date: '2026-08-29',
-    price: 140
+    price: 140,
+    open: false
   },
   {
     code: 'mid-atlantic-2026',
@@ -323,7 +345,26 @@ const CAMPS = [
     label: 'Mid-Atlantic Select Tour Camp 2026',
     info: 'Rowan University - July 25, 2026',
     date: '2026-07-25',
-    price: 145
+    price: 145,
+    open: false
+  },
+  {
+    code: 'north-carolina-2026',
+    name: 'North Carolina Select Tour Camp 2026',
+    label: 'North Carolina Select Tour Camp 2026',
+    info: 'Date & location coming soon',
+    date: '2026-09-12',
+    price: 140,
+    open: false
+  },
+  {
+    code: 'new-england-2026',
+    name: 'New England Select Tour Camp 2026',
+    label: 'New England Select Tour Camp 2026',
+    info: 'Date & location coming soon',
+    date: '2026-10-10',
+    price: 140,
+    open: false
   }
 ];
 /* Keep prices in sync with netlify/functions/pricing.js (Stripe server amounts).
@@ -410,27 +451,38 @@ function orderTotals(){
   return { campFee, lines, addonTotal, total, tags };
 }
 
+function isCampOpen(c){ return !!(c && c.open !== false); }
+
 function renderCampCards(){
   const wrap=$('#campCards');
   if(!CAMPS.length){
     wrap.innerHTML='<p class="sub">No camps listed yet — ask staff to update the CAMPS list in register.html.</p>';
     return;
   }
-  wrap.innerHTML=CAMPS.map(c=>`
-    <button type="button" class="camp-card" data-code="${esc(c.code)}">
+  wrap.innerHTML=CAMPS.map(c=>{
+    const closed=!isCampOpen(c);
+    return `
+    <button type="button" class="camp-card${closed?' closed':''}" data-code="${esc(c.code)}" ${closed?'aria-disabled="true"':''}>
       <div class="cname">${esc(c.label||c.name)}</div>
       <div class="cmeta">${esc([formatCampDate(c.date), c.info||c.location, c.price!=null?('From $'+c.price):''].filter(Boolean).join(' · '))}</div>
-    </button>
-  `).join('');
+      ${closed?'<span class="camp-stamp">Closed</span>':''}
+    </button>`;
+  }).join('');
   wrap.querySelectorAll('.camp-card').forEach(btn=>{
     btn.addEventListener('click', ()=>pickCamp(btn.dataset.code));
   });
-  if(preselect && CAMPS.some(c=>c.code===preselect)) pickCamp(preselect);
+  const want=preselect && CAMPS.find(c=>c.code===preselect);
+  if(want && isCampOpen(want)) pickCamp(want.code);
 }
 
 function pickCamp(code){
-  selectedCamp=CAMPS.find(c=>c.code===code)||null;
-  if(!selectedCamp) return;
+  const camp=CAMPS.find(c=>c.code===code)||null;
+  if(!camp) return;
+  if(!isCampOpen(camp)){
+    $('#campStepMsg').textContent='Registration for this camp is closed.';
+    return;
+  }
+  selectedCamp=camp;
   $$('.camp-card').forEach(b=>b.classList.toggle('on', b.dataset.code===code));
   $('#pickedCampName').textContent=selectedCamp.label||selectedCamp.name;
   $('#campStepMsg').textContent='';
@@ -515,7 +567,7 @@ function restoreDraft(){
     const raw=sessionStorage.getItem(DRAFT_KEY);
     if(!raw) return null;
     const draft=JSON.parse(raw);
-    if(draft.camp && CAMPS.some(c=>c.code===draft.camp)){
+    if(draft.camp && CAMPS.some(c=>c.code===draft.camp && isCampOpen(c))){
       selectedCamp=CAMPS.find(c=>c.code===draft.camp);
     }
     Object.entries(draft.fields||{}).forEach(([id,v])=>{
@@ -768,6 +820,7 @@ function validate(){
   clearErrors();
   const missing=[];
   if(!selectedCamp){ $('#campStepMsg').textContent='Please choose a camp first.'; return false; }
+  if(!isCampOpen(selectedCamp)){ $('#campStepMsg').textContent='Registration for this camp is closed.'; showCampStep(); return false; }
   const first=$('#first').value.trim();
   const last=$('#last').value.trim();
   const year=$('#year').value.trim();
@@ -893,7 +946,11 @@ async function uploadRegistrationPhoto(regId, file){
 
 async function submit(){
   if(!validate()){ showFormStep(); return; }
-  if(!selectedCamp){ showCampStep(); return; }
+  if(!selectedCamp || !isCampOpen(selectedCamp)){
+    showCampStep();
+    $('#campStepMsg').textContent='Registration for this camp is closed.';
+    return;
+  }
   ensureStripeCard();
   if(!stripe || !cardElement){
     $('#payMsg').textContent='Card form isn’t ready — check the Stripe publishable key and try again.';
