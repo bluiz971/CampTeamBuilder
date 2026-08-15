@@ -29,6 +29,12 @@ header{
 header h1{font-size:clamp(26px,6vw,38px);text-transform:uppercase;letter-spacing:.02em;line-height:1.1}
 header h1 span{color:var(--amber)}
 header p{color:#9aa4b1;font-size:15px;margin-top:8px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.45}
+.camphq-logo-link{display:inline-flex;align-items:center;color:inherit;text-decoration:none;margin-bottom:10px}
+header .camphq-logo-link h1{margin:0}
+.camphq-logo{height:32px;width:auto;display:block;border-radius:8px}
+.camphq-credit{text-align:center;font-size:12px;color:rgba(10,14,26,0.4);padding:12px 0}
+.camphq-credit a{color:rgba(10,14,26,0.6);text-decoration:none;font-weight:600}
+.camphq-credit a:hover{color:#141a22;text-decoration:underline}
 main{max-width:640px;margin:0 auto;padding:24px 16px 48px}
 .card{
   background:var(--card);border:1px solid var(--line);border-radius:14px;
@@ -157,7 +163,10 @@ footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
 </head>
 <body>
 <header>
-  <h1>Camp <span>Builder</span></h1>
+  <a href="https://camphq.net" class="camphq-logo-link" aria-label="CampHQ home" target="_blank" rel="noopener" style="flex-direction:column;gap:10px">
+    <img src="assets/camp-builder-logo.png" alt="CampHQ" class="camphq-logo" />
+    <h1>Camp <span>Builder</span></h1>
+  </a>
   <p>Pick your camp, fill out player and parent details, then continue to payment to secure your spot.</p>
 </header>
 
@@ -311,7 +320,11 @@ footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
     </div>
   </div>
 </main>
-<footer>Camp Builder</footer>
+<footer>Camp Builder
+  <div class="camphq-credit">
+    Created by <a href="https://camphq.net" target="_blank" rel="noopener">CampHQ</a>
+  </div>
+</footer>
 
 <script>
 /* =====================================================================

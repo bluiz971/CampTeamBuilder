@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Camp Teams & Schedule</title>
+<title>AAU Select Tour Camps</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -15,6 +15,19 @@ header{background:var(--ink);color:#fff;padding:20px;border-bottom:4px solid var
 header h1{font-size:clamp(24px,5vw,34px);text-transform:uppercase;letter-spacing:.02em}
 header h1 span{color:var(--amber)}
 header p{color:#9aa4b1;font-size:14px;margin-top:3px}
+.camphq-logo-link{display:inline-flex;align-items:center;color:inherit;text-decoration:none;margin-bottom:10px}
+.camphq-logo{height:32px;width:auto;display:block;border-radius:8px}
+.camphq-credit{text-align:center;font-size:12px;color:rgba(10,14,26,0.4);padding:12px 0}
+.camphq-credit a{color:rgba(10,14,26,0.6);text-decoration:none;font-weight:600}
+.camphq-credit a:hover{color:#141a22;text-decoration:underline}
+.camp-landing{display:none}
+.camp-select-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:6px}
+.camp-select-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;text-align:left}
+.camp-select-card-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;margin-bottom:4px}
+.camp-select-card-date{color:var(--mut);font-size:13px;margin-bottom:14px}
+.camp-select-card-btn{background:var(--orange);color:#fff;border:none;border-radius:6px;padding:10px 16px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;width:100%}
+.camp-select-card-btn:hover{filter:brightness(1.08)}
+.camp-select-empty{color:var(--mut);margin-top:20px;font-size:15px;line-height:1.45;text-align:center}
 nav{display:flex;justify-content:stretch;gap:0;background:var(--ink);padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain}
 nav::-webkit-scrollbar{display:none}
 nav button{flex:1 1 0;min-width:0;font-family:'Barlow Condensed';font-size:clamp(12px,3.1vw,17px);font-weight:600;text-transform:uppercase;letter-spacing:.03em;background:transparent;color:#9aa4b1;border:none;padding:12px 6px;cursor:pointer;border-radius:8px 8px 0 0;white-space:nowrap;text-align:center}
@@ -74,6 +87,7 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .tile .pic.web{background:linear-gradient(135deg,#15803d,#1e2733)}
 .tile .pic.report{background:linear-gradient(135deg,#1e3a5f,#e8590c)}
 .tile .pic.daily{background:linear-gradient(135deg,#0f766e,#134e4a)}
+.tile .pic.reg{background:linear-gradient(135deg,#15803d,#1e2733)}
 .tile .cap{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:3px}
 .tile .cap b{font-family:'Barlow Condensed';font-size:19px;text-transform:uppercase;letter-spacing:.02em}
 .tile .cap span{color:var(--mut);font-size:13px}
@@ -131,6 +145,9 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 </div>
 
 <header>
+  <a href="https://camphq.net" class="camphq-logo-link" aria-label="CampHQ home">
+    <img src="assets/camp-builder-logo.png" alt="CampHQ" class="camphq-logo">
+  </a>
   <h1 id="hTitle1">Camp</h1>
   <p id="hSub" style="display:none"></p>
   <p id="calWrap" style="display:none;margin-top:8px">
@@ -147,6 +164,39 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 </nav>
 
 <main>
+  <div id="camp-select-screen" class="camp-landing" style="display:none;">
+    <div class="home-head">
+      <h2>Welcome</h2>
+      <p>Register for a camp, buy add-ons from a camp you already attended, or jump to recruiting and film.</p>
+    </div>
+    <div class="tilegrid" id="hubTiles">
+      <a class="tile" href="register.html">
+        <div class="pic reg">📝</div>
+        <div class="cap"><b>Register for Camp</b><span>Sign up and pay for an upcoming Select Tour camp.</span><span class="go">Register Now</span></div>
+      </a>
+      <a class="tile" href="https://aauselecttour.totalcamps.com/shop/GOOD" target="_blank" rel="noopener">
+        <div class="pic shop">🛒</div>
+        <div class="cap"><b>Add-Ons Shop</b><span>Already attended? Buy mixtapes, evals, film &amp; more.</span><span class="go">Shop Now ↗</span></div>
+      </a>
+      <a class="tile" href="https://www.youtube.com/@AAUSelectTour" target="_blank" rel="noopener">
+        <div class="pic yt">▶️</div>
+        <div class="cap"><b>YouTube</b><span>Select Tour videos, highlights, and mixtapes.</span><span class="go">Watch ↗</span></div>
+      </a>
+      <a class="tile" href="https://select360.mvt.so/" target="_blank" rel="noopener">
+        <div class="pic app">🏀</div>
+        <div class="cap"><b>College Recruiting 360</b><span>Training, recruiting tools, and player development.</span><span class="go">Open App ↗</span></div>
+      </a>
+    </div>
+    <div class="home-head" style="margin-top:36px">
+      <h2>Choose Your Camp</h2>
+      <p>View teams, schedule, and check-in for a specific camp.</p>
+    </div>
+    <div id="camp-select-list" class="camp-select-list"></div>
+    <div id="camp-select-empty" class="camp-select-empty" style="display:none;">
+      No camps are currently active. Check back soon.
+    </div>
+  </div>
+
   <div id="loadingState" class="bigempty">
     <h2>Loading…</h2>
     <p>Getting the latest teams and schedule.</p>
@@ -194,7 +244,11 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
     </section>
   </div>
 </main>
-<footer>Generated by Camp Team Builder</footer>
+<footer>Generated by Camp Team Builder
+  <div class="camphq-credit">
+    Created by <a href="https://camphq.net" target="_blank" rel="noopener">CampHQ</a>
+  </div>
+</footer>
 <div id="modalRoot"></div>
 
 <script>
@@ -205,12 +259,14 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 ===================================================================== */
 const SUPABASE_URL = "https://nxncasbkrcermftbviuw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54bmNhc2JrcmNlcm1mdGJ2aXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY3NjYsImV4cCI6MjA5OTc5Mjc2Nn0.XdcpcrTLhWeJWf6DXS2PPkXOGjYy8m9nFtagbFoqt9I";
-// Used only if the link has no ?camp=... in it. Handy if you usually
-// run one camp at a time and don't want to bother with the query string.
+// Kept for Publish-tab config snippets. A missing ?camp= now shows the
+// camp-selection screen instead of silently opening this slug.
 const DEFAULT_CAMP_CODE = "georgia-2026";
 const DEFAULT_IG_URL = "https://www.instagram.com/aauselecttour";
 const DEFAULT_YT_URL = "https://www.youtube.com/@AAUSelectTour";
 const DEFAULT_WEB_URL = "https://aauselecttour.com";
+const DEFAULT_SHOP_URL = "https://aauselecttour.totalcamps.com/shop/GOOD";
+const DEFAULT_APP_URL = "https://select360.mvt.so/";
 /* ===================================================================== */
 
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
@@ -265,10 +321,9 @@ function formatHeight(h){
   setTimeout(()=>{ if(vid.paused && !vid.ended) dismiss(); }, 1800);
 })();
 
-const params=new URLSearchParams(location.search);
-const campSlug=(params.get('camp')||DEFAULT_CAMP_CODE||'').trim();
-
+let campSlug='';
 let campRow=null;
+let livePollTimer=null;
 let D={roster:[],teams:[],teamsPosted:false,sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:'',igUrl:'',ytUrl:'',webUrl:'',writeUp:null,dailySchedUrl:'',dailySchedLabel:'',dailySched:[]};
 let myTeam=null, dayFilter='all', lastUpdated=null;
 
@@ -313,6 +368,14 @@ async function fetchCamp(slug){
     return rows && rows[0] ? rows[0] : null;
   }catch(e){ return null; }
 }
+function emptyAppData(){
+  return {roster:[],teams:[],teamsPosted:false,sched:[],title:'Camp Teams & Schedule',sub:'',cal:null,appUrl:'',shopUrl:'',igUrl:'',ytUrl:'',webUrl:'',writeUp:null,dailySchedUrl:'',dailySchedLabel:'',dailySched:[]};
+}
+function setCampInUrl(code){
+  const url=new URL(window.location.href);
+  url.searchParams.set('camp', code);
+  window.history.pushState({}, '', url);
+}
 async function boot(){
   campRow=await fetchCamp(campSlug);
   if(!campRow){
@@ -321,19 +384,104 @@ async function boot(){
   }
   renderCampHeader();
   fetchLive();
-  setInterval(fetchLive, 20000);
+  if(livePollTimer) clearInterval(livePollTimer);
+  livePollTimer=setInterval(fetchLive, 20000);
 }
-
-if(!campSlug || !SUPABASE_URL || SUPABASE_URL.startsWith('REPLACE_')){
+async function initAppWithCampCode(code){
+  campSlug=String(code||'').trim();
+  campRow=null;
+  lastUpdated=null;
+  myTeam=null;
+  dayFilter='all';
+  D=emptyAppData();
+  const screen=$('#camp-select-screen');
+  if(screen) screen.style.display='none';
+  $('#notFoundState').style.display='none';
+  $('#siteRoot').style.display='none';
+  $('#mainNav').style.display='none';
+  $('#loadingState').style.display='block';
+  if(!SUPABASE_URL || SUPABASE_URL.startsWith('REPLACE_')){
+    $('#loadingState').style.display='none';
+    $('#notFoundState').style.display='block';
+    $('#notFoundState h2').textContent='Camp not found';
+    $('#notFoundMsg').textContent='This page needs to be connected to Supabase first — see the CONFIG section at the top of this file.';
+    return;
+  }
+  if(!campSlug){
+    renderCampSelectScreen();
+    return;
+  }
+  await boot();
+}
+async function renderCampSelectScreen(){
+  const screen=$('#camp-select-screen');
+  const list=$('#camp-select-list');
+  const empty=$('#camp-select-empty');
+  if(!screen||!list||!empty) return;
+  screen.style.display='block';
+  list.innerHTML='';
+  empty.style.display='none';
+  empty.textContent='No camps are currently active. Check back soon.';
   $('#loadingState').style.display='none';
-  $('#notFoundState').style.display='block';
-  $('#notFoundState h2').textContent='Camp not found';
-  $('#notFoundMsg').textContent = !campSlug
-    ? 'This link is missing a camp code. Ask your coach for the correct link (it should end in ?camp=something).'
-    : 'This page needs to be connected to Supabase first — see the CONFIG section at the top of this file.';
-} else {
-  boot();
+  $('#notFoundState').style.display='none';
+  $('#siteRoot').style.display='none';
+  $('#mainNav').style.display='none';
+  document.title='AAU Select Tour Camps';
+  $('#hTitle1').innerHTML='AAU Select <span>Tour</span>';
+  const subEl=$('#hSub');
+  subEl.textContent='Register, shop add-ons, or pick a camp';
+  subEl.style.display='block';
+  $('#calWrap').style.display='none';
+  if(!SUPABASE_URL || SUPABASE_URL.startsWith('REPLACE_')){
+    empty.style.display='block';
+    empty.textContent='This page needs to be connected to Supabase first — see the CONFIG section at the top of this file.';
+    return;
+  }
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/camps?status=eq.active&select=slug,name,location,camp_date,status&order=camp_date.asc.nullslast,name.asc',{
+      headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const camps=(await res.json()).filter(c=>c.slug && c.slug!=='admin-cleared');
+    if(!camps.length){
+      empty.style.display='block';
+      return;
+    }
+    camps.forEach(camp=>{
+      const card=document.createElement('div');
+      card.className='camp-select-card';
+      const dateLabel=camp.camp_date
+        ? new Date(String(camp.camp_date).includes('T')?camp.camp_date:camp.camp_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+        : '';
+      const meta=[dateLabel, camp.location||''].filter(Boolean).join(' · ');
+      card.innerHTML=`
+        <div class="camp-select-card-name">${esc(camp.name||camp.slug)}</div>
+        ${meta?`<div class="camp-select-card-date">${esc(meta)}</div>`:''}
+        <button type="button" class="camp-select-card-btn" data-camp="${esc(camp.slug)}">View Camp</button>
+      `;
+      list.appendChild(card);
+    });
+    list.querySelectorAll('.camp-select-card-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const code=btn.getAttribute('data-camp');
+        setCampInUrl(code);
+        initAppWithCampCode(code);
+      });
+    });
+  }catch(e){
+    console.error('Failed to load camps', e);
+    empty.style.display='block';
+    empty.textContent='Something went wrong loading camps. Please refresh.';
+  }
 }
+function startFromUrl(){
+  const params=new URLSearchParams(location.search);
+  campSlug=(params.get('camp')||'').trim();
+  if(!campSlug) renderCampSelectScreen();
+  else initAppWithCampCode(campSlug);
+}
+window.addEventListener('popstate', startFromUrl);
+startFromUrl();
 
 async function fetchLive(){
   if(!campRow) return;

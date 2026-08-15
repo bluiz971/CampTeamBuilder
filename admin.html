@@ -40,6 +40,11 @@ header{background:var(--ink);color:#fff;padding:14px 20px 0;border-bottom:4px so
 .brand h1{font-size:clamp(22px,3.5vw,30px);font-weight:700;text-transform:uppercase}
 .brand h1 span{color:var(--amber)}
 .brand small{color:#9aa4b1;font-size:13px;font-weight:500}
+.camphq-logo-link{display:inline-flex;align-items:center;color:inherit;text-decoration:none}
+.camphq-logo{height:32px;width:auto;display:block;border-radius:8px;vertical-align:middle;margin-right:8px;object-fit:cover}
+.camphq-credit{text-align:center;font-size:12px;color:rgba(10,14,26,0.4);padding:12px 0 24px}
+.camphq-credit a{color:rgba(10,14,26,0.6);text-decoration:none;font-weight:600}
+.camphq-credit a:hover{color:#141a22;text-decoration:underline}
 .account-btn{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-decoration:none;background:var(--orange);border:2px solid var(--amber);border-radius:9px;padding:10px 16px;white-space:nowrap;box-shadow:0 2px 0 rgba(0,0,0,.25);align-self:flex-start;flex-shrink:0}
 .account-btn:hover{filter:brightness(1.08)}
 .scoreboard{display:grid;grid-template-columns:repeat(4,minmax(70px,1fr));gap:10px;max-width:640px;margin:12px 0 14px}
@@ -210,7 +215,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <header>
   <div class="brand">
     <div class="brand-text">
-      <h1><img src="assets/camp-builder-logo.png" alt="" width="36" height="36" style="width:36px;height:36px;border-radius:8px;vertical-align:middle;margin-right:8px;object-fit:cover">Camp <span>Builder</span></h1>
+      <h1><a href="https://camphq.net" class="camphq-logo-link" aria-label="CampHQ home" target="_blank" rel="noopener"><img src="assets/camp-builder-logo.png" alt="CampHQ" class="camphq-logo" width="36" height="36" style="width:36px;height:36px;border-radius:8px;vertical-align:middle;margin-right:8px;object-fit:cover">Camp <span>Builder</span></a></h1>
       <small>AAU Select Tour · Check-in → Jerseys → Balanced Teams</small>
       <small style="display:block;color:var(--orange);font-weight:600;margin-top:2px">v8 · Select 360, Instagram, YouTube & website tiles</small>
     </div>
@@ -537,7 +542,7 @@ dialog select{width:100%;margin:10px 0 16px}
     <h3 style="font-size:18px;text-transform:uppercase;margin-bottom:4px">3. Your public link</h3>
     <p style="font-size:13px;color:var(--mut);margin-bottom:10px">After you hit <b>Save &amp; Sync Now</b>, the parent link below is ready to text families. It uses your Site Base URL + Camp Code.</p>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-      <div><label>Site base URL</label><input type="text" id="siteBaseUrl" placeholder="https://selecttourcamp.netlify.app" style="width:320px"></div>
+      <div><label>Site base URL</label><input type="text" id="siteBaseUrl" placeholder="https://selecttour.camphq.net" style="width:320px"></div>
     </div>
     <div class="balance-note" id="siteLinkNote" style="margin-top:12px"></div>
   </div>
@@ -614,7 +619,11 @@ const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 const DEFAULT_CAMP_CODE = "georgia-2026";
 /* ===================================================================== */
 
-const DEFAULT_SITE_BASE_URL = "https://selecttourcamp.netlify.app";
+const DEFAULT_SITE_BASE_URL = "https://selecttour.camphq.net";
+const LEGACY_SITE_BASE_URLS = [
+  "https://selecttourcamp.netlify.app",
+  "https://selecttourcamp.camphq.net"
+];
 let S = { players: [], teams: null, numA: 12, numB: 16, gA1: 2027, gA2: 2030, gB1: 2031, gB2: 2035, schedule: [], pubTitle: '', pubSub: '', appUrl: 'https://select360.mvt.so/', shopUrl: 'https://aauselecttour.totalcamps.com/shop/GOOD', igUrl: 'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA==', ytUrl: 'https://www.youtube.com/@AAUSelectTour', webUrl: 'https://aauselecttour.com', dailySchedUrl: '', dailySchedLabel: '', dailySched: [], syncUrl: '', syncKey: '', syncCode: '', campId: '', siteBaseUrl: '', teamsLive: false };
 let campsList=[];
 const GLOBAL_KEY='campTeamBuilder_global_v2';
@@ -669,6 +678,7 @@ S.appUrl=S.appUrl||'https://select360.mvt.so/'; S.shopUrl=S.shopUrl||'https://aa
 S.igUrl=S.igUrl||'https://www.instagram.com/aauselecttour?igsh=MW1hbjJlYW9mNWFwZA=='; S.ytUrl=S.ytUrl||'https://www.youtube.com/@AAUSelectTour'; S.webUrl=S.webUrl||'https://aauselecttour.com';
 S.dailySchedUrl=S.dailySchedUrl||''; S.dailySchedLabel=S.dailySchedLabel||''; S.dailySched=Array.isArray(S.dailySched)?S.dailySched:[];
 S.syncUrl=S.syncUrl||DEFAULT_SUPABASE_URL||''; S.syncKey=S.syncKey||DEFAULT_SUPABASE_ANON_KEY||''; S.syncCode=S.syncCode||DEFAULT_CAMP_CODE||''; S.siteBaseUrl=S.siteBaseUrl||DEFAULT_SITE_BASE_URL||''; S.teamsLive=!!S.teamsLive;
+if(LEGACY_SITE_BASE_URLS.includes((S.siteBaseUrl||'').replace(/\/$/,''))) S.siteBaseUrl=DEFAULT_SITE_BASE_URL;
 S.campId=S.campId||'';
 if(S.teams){
   const all=[...(S.teams.A||[]),...(S.teams.B||[])];
@@ -4179,5 +4189,8 @@ updateAuthUI();
   pollPlayersLive();
 })();
 </script>
+<div class="camphq-credit">
+  Created by <a href="https://camphq.net" target="_blank" rel="noopener">CampHQ</a>
+</div>
 </body>
 </html>

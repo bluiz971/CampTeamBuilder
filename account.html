@@ -35,6 +35,11 @@ header.appbar{
 header.appbar img{width:44px;height:44px;border-radius:10px;background:#fff;object-fit:cover}
 header.appbar h1{font-family:'Barlow Condensed',sans-serif;font-size:22px;text-transform:uppercase;letter-spacing:.02em;line-height:1.1}
 header.appbar h1 span{color:var(--amber)}
+.camphq-logo-link{display:inline-flex;align-items:center;color:inherit;text-decoration:none;gap:12px}
+.camphq-logo{height:32px;width:auto;display:block}
+.camphq-credit{text-align:center;font-size:12px;color:rgba(10,14,26,0.4);padding:12px 0 24px}
+.camphq-credit a{color:rgba(10,14,26,0.6);text-decoration:none;font-weight:600}
+.camphq-credit a:hover{color:#141a22;text-decoration:underline}
 header.appbar .spacer{flex:1}
 header.appbar a.back{
   color:#fff;text-decoration:none;font-size:13px;font-weight:600;
@@ -81,8 +86,10 @@ main{max-width:520px;margin:0 auto;padding:20px 16px 40px}
 </head>
 <body>
 <header class="appbar">
-  <img src="assets/camp-builder-logo.png" alt="Camp Builder">
-  <h1>Camp <span>Builder</span></h1>
+  <a href="https://camphq.net" class="camphq-logo-link" aria-label="CampHQ home" target="_blank" rel="noopener">
+    <img src="assets/camp-builder-logo.png" alt="CampHQ">
+    <h1>Camp <span>Builder</span></h1>
+  </a>
   <div class="spacer"></div>
   <a class="back" id="btnBack" href="login.html">Back</a>
 </header>
@@ -120,6 +127,9 @@ main{max-width:520px;margin:0 auto;padding:20px 16px 40px}
     </div>
   </div>
 </main>
+<div class="camphq-credit">
+  Created by <a href="https://camphq.net" target="_blank" rel="noopener">CampHQ</a>
+</div>
 <script>
 const $=s=>document.querySelector(s);
 
