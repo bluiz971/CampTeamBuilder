@@ -19,8 +19,8 @@ const TPL_W = 819;
 const TPL_H = 1024;
 const SCALE = 1;
 const PHOTO = { x: 160, y: 446, w: 500, h: 340 };
-const BAR = { x: 120, y: 786, w: 571, h: 84 };
-const CAMP_BOX = { x: 100, y: 940, w: 620, h: 46 };
+const BAR = { x: 120, y: 786, w: 571, h: 88 };
+const CAMP_BOX = { x: 140, y: 938, w: 540, h: 48 };
 const NAVY = '#082554';
 const RED = '#c8102e';
 const DEFAULT_SITE = 'https://selecttourevents.com';
@@ -31,6 +31,13 @@ function supabaseUrl(){
 }
 
 function px(n){ return Math.round(n * SCALE); }
+
+function inviteCampLabel(row){
+  let n = String((row && row.camp_name) || '').trim();
+  n = n.replace(/\s+(High School|Middle School)$/i, '');
+  if (!n) n = String((row && row.camp_code) || '').replace(/-?\d{4}$/, '').replace(/-/g, ' ');
+  return n.replace(/\s+/g, ' ').trim().toUpperCase() || 'CAMP';
+}
 
 function escapeXml(s){
   return String(s || '')
@@ -136,32 +143,44 @@ async function composeInvitePng(row){
   const year = String(row.grad_year || '').trim();
   const handle = String(row.instagram_handle || '').replace(/^@+/, '').trim();
   const state = String(row.home_state || '').trim().toUpperCase();
-  const campName = String(row.camp_name || '').trim() || 'District Select Camp';
-  const nameSize = name.length > 22 ? 22 : name.length > 16 ? 28 : 34;
-  const campSize = campName.length > 22 ? 22 : campName.length > 16 ? 28 : 34;
+  const campName = inviteCampLabel(row);
+  const nameSize = name.length > 22 ? 24 : name.length > 16 ? 30 : 36;
+  const campSize = campName.length > 18 ? 26 : campName.length > 12 ? 32 : 38;
+  const handleShown = handle ? '@' + handle : '';
+  const leftX = bar.x + 22;
+  const midX = bar.x + bar.w / 2;
+  const rightX = bar.x + bar.w - 22;
+  const valueY = bar.y + 62;
+  const labelY = bar.y + 78;
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <rect x="${bar.x}" y="${bar.y}" width="${bar.w}" height="${bar.h}" fill="${NAVY}"/>
-  <text x="${bar.x + bar.w / 2}" y="${bar.y + 36}" text-anchor="middle" fill="#ffffff"
+  <text x="${midX}" y="${bar.y + 38}" text-anchor="middle" fill="#ffffff"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
     font-size="${nameSize}" font-style="italic" font-weight="800">${escapeXml(name.toUpperCase())}</text>
-  <text x="${bar.x + 28}" y="${bar.y + 68}" text-anchor="start"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" font-weight="700">
-    <tspan fill="${RED}">${escapeXml(year)}</tspan><tspan fill="#ffffff"> CLASS</tspan>
-  </text>
-  <text x="${bar.x + bar.w / 2}" y="${bar.y + 68}" text-anchor="middle"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" font-weight="700">
-    <tspan fill="${RED}">${escapeXml(handle)}</tspan><tspan fill="#ffffff"> USERNAME</tspan>
-  </text>
-  <text x="${bar.x + bar.w - 28}" y="${bar.y + 68}" text-anchor="end"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" font-weight="700">
-    <tspan fill="${RED}">${escapeXml(state)}</tspan><tspan fill="#ffffff"> STATE</tspan>
-  </text>
-  <rect x="${camp.x}" y="${camp.y}" width="${camp.w}" height="${camp.h}" fill="#f4f4f4"/>
-  <text x="${camp.x + camp.w / 2}" y="${camp.y + camp.h / 2 + 11}" text-anchor="middle" fill="${NAVY}"
+  <text x="${leftX}" y="${valueY}" text-anchor="start" fill="${RED}"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="${campSize}" font-style="italic" font-weight="800">${escapeXml(campName.toUpperCase())}</text>
+    font-size="18" font-style="italic" font-weight="800">${escapeXml(year)}</text>
+  <text x="${leftX}" y="${labelY}" text-anchor="start" fill="#ffffff"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="8" font-weight="700" letter-spacing="1.5">CLASS</text>
+  <text x="${midX}" y="${valueY}" text-anchor="middle" fill="${RED}"
+    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="16" font-style="italic" font-weight="800">${escapeXml(handleShown)}</text>
+  <text x="${midX}" y="${labelY}" text-anchor="middle" fill="#ffffff"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="8" font-weight="700" letter-spacing="1.5">USERNAME</text>
+  <text x="${rightX}" y="${valueY}" text-anchor="end" fill="${RED}"
+    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="18" font-style="italic" font-weight="800">${escapeXml(state)}</text>
+  <text x="${rightX}" y="${labelY}" text-anchor="end" fill="#ffffff"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="8" font-weight="700" letter-spacing="1.5">STATE</text>
+  <rect x="${camp.x}" y="${camp.y}" width="${camp.w}" height="${camp.h}" fill="#ececec"/>
+  <text x="${camp.x + camp.w / 2}" y="${camp.y + camp.h / 2 + 12}" text-anchor="middle" fill="#0a1e4a"
+    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="${campSize}" font-style="italic" font-weight="800">${escapeXml(campName)}</text>
 </svg>`;
 
   layers.push({ input: Buffer.from(svg), top: 0, left: 0 });

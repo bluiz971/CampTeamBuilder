@@ -76,16 +76,21 @@ main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
 .invite-modal{position:fixed;inset:0;z-index:80;background:rgba(20,26,34,.55);display:none;align-items:center;justify-content:center;padding:16px}
 .invite-modal.on{display:flex}
 .invite-modal-card{background:#fff;border-radius:14px;max-width:420px;width:100%;max-height:94vh;overflow:auto;padding:16px 16px 18px;box-shadow:0 16px 40px rgba(20,26,34,.25)}
-.invite-stage{position:relative;width:100%;aspect-ratio:819 / 1024;background:#f3f3f3;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(20,26,34,.12)}
+.invite-stage{position:relative;width:100%;aspect-ratio:819 / 1024;background:#f3f3f3;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(20,26,34,.12);container-type:inline-size}
 .invite-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
 .invite-photo{position:absolute;left:19.536%;top:43.555%;width:61.051%;height:33.203%;overflow:hidden;background:#1a2740}
 .invite-photo img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block}
 .invite-photo .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9aa4b1;font-size:12px}
-.invite-bar{position:absolute;left:14.652%;top:76.758%;width:69.719%;height:8.203%;background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:1% 4% 1.4%}
-.invite-name{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:clamp(18px,5.2vw,30px);line-height:1;text-align:center;text-transform:uppercase;letter-spacing:.01em;white-space:nowrap;overflow:hidden}
-.invite-meta{display:flex;justify-content:space-between;gap:6px;margin-top:3px;font-size:clamp(9px,2.2vw,12px);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.invite-meta b{color:#c8102e;font-weight:800}
-.invite-camp{position:absolute;left:12.21%;top:91.797%;width:75.702%;height:4.492%;display:flex;align-items:center;justify-content:center;background:#f4f4f4;color:var(--navy);font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:clamp(16px,4.6vw,26px);text-transform:uppercase;letter-spacing:.02em;text-align:center;white-space:nowrap;overflow:hidden}
+.invite-bar{position:absolute;left:14.652%;top:76.758%;width:69.719%;height:8.59%;background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:flex-end;padding:0 3.6% 1.1%;box-sizing:border-box}
+.invite-name{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:5.6cqw;line-height:.92;text-align:center;text-transform:uppercase;letter-spacing:.01em;white-space:nowrap;flex:0 0 auto}
+.invite-meta{display:grid;grid-template-columns:1fr 1.4fr 1fr;align-items:end;gap:4px;margin-top:2px;flex:0 0 auto}
+.invite-meta span{display:flex;flex-direction:column;line-height:1}
+.invite-meta span:first-child{align-items:flex-start;text-align:left}
+.invite-meta span:nth-child(2){align-items:center;text-align:center}
+.invite-meta span:last-child{align-items:flex-end;text-align:right}
+.invite-meta b{color:#c8102e;font-weight:800;font-size:3.1cqw;font-style:italic;letter-spacing:.02em}
+.invite-meta small{color:#fff;font-size:1.45cqw;font-weight:700;letter-spacing:.12em;margin-top:1px}
+.invite-camp{position:absolute;left:16%;top:91.6%;width:68%;height:4.7%;display:flex;align-items:center;justify-content:center;background:#ececec;color:#0a1e4a;font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:5.2cqw;text-transform:uppercase;letter-spacing:.04em;text-align:center;white-space:nowrap;overflow:hidden;border:0;box-shadow:none}
 input[type=text],input[type=number],input[type=search],select{font-family:'Barlow';font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--orange);outline-offset:1px}
 
@@ -349,9 +354,9 @@ dialog select{width:100%;margin:10px 0 16px}
         <div class="invite-bar">
           <div class="invite-name" id="nomInviteName"></div>
           <div class="invite-meta">
-            <span><b id="nomInviteYear"></b> CLASS</span>
-            <span><b id="nomInviteHandle"></b> USERNAME</span>
-            <span><b id="nomInviteState"></b> STATE</span>
+            <span><b id="nomInviteYear"></b><small>CLASS</small></span>
+            <span><b id="nomInviteHandle"></b><small>USERNAME</small></span>
+            <span><b id="nomInviteState"></b><small>STATE</small></span>
           </div>
         </div>
         <div class="invite-camp" id="nomInviteCamp"></div>
@@ -4065,6 +4070,12 @@ function closeNomInvitePreview(){
   modal.hidden=true;
   nomPreviewId='';
 }
+function inviteCampLabel(row){
+  let n=String((row && row.camp_name) || '').trim();
+  n=n.replace(/\s+(High School|Middle School)$/i,'');
+  if(!n) n=String((row && row.camp_code) || '').replace(/-?\d{4}$/,'').replace(/-/g,' ');
+  return n.replace(/\s+/g,' ').trim().toUpperCase() || 'CAMP';
+}
 function openNomInvitePreview(id){
   const row=nomById[id];
   const modal=$('#nomInviteModal');
@@ -4075,14 +4086,13 @@ function openNomInvitePreview(id){
   const to=row.player_email || (row.nominator_type==='self' ? row.nominator_email : '');
   const nameEl=$('#nomInviteName');
   nameEl.textContent=name.toUpperCase();
-  nameEl.style.fontSize = name.length>22 ? '18px' : name.length>16 ? '22px' : '';
+  nameEl.style.fontSize='';
   $('#nomInviteYear').textContent=row.grad_year||'';
-  $('#nomInviteHandle').textContent=handle;
+  $('#nomInviteHandle').textContent=handle ? '@'+handle : '';
   $('#nomInviteState').textContent=String(row.home_state||'').trim().toUpperCase();
-  const camp=String(row.camp_name||row.camp_code||'District Select Camp').trim();
   const campEl=$('#nomInviteCamp');
-  campEl.textContent=camp.toUpperCase();
-  campEl.style.fontSize = camp.length>22 ? '16px' : camp.length>16 ? '18px' : '';
+  campEl.textContent=inviteCampLabel(row);
+  campEl.style.fontSize='';
   const photo=$('#nomInvitePhoto');
   const ph=$('#nomInvitePhotoPh');
   if(row.photo_url){
