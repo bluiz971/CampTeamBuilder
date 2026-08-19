@@ -316,10 +316,11 @@ dialog select{width:100%;margin:10px 0 16px}
   </div>
   <div class="mapping" style="margin-bottom:14px" id="nomPanel">
     <h3 style="margin-bottom:6px">Player Nominations</h3>
-    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Public submissions from <code>nominate.html</code>. The invitation graphic is emailed to the player 3 hours after submit (Netlify function <code>send-nomination-invites</code>). Requires Publish sign-in. Run <code>migrations/013_nominations.sql</code> and <code>014_nomination_invite_email.sql</code> if this list stays empty.</p>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Public submissions from <code>nominate.html</code>. Invitations email automatically 3 hours after submit, or use <b>Send invite</b> to send now. Requires Publish sign-in. Run <code>migrations/013_nominations.sql</code>, <code>014_nomination_invite_email.sql</code>, and <code>015_nomination_invite_grants.sql</code> if this list stays empty or invites fail to mark sent.</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <span id="nomCount" style="font-size:14px;font-weight:600">0 nominations</span>
       <button class="btn btn-ghost btn-sm" type="button" id="btnRefreshNoms">Refresh</button>
+      <button class="btn btn-dark btn-sm" type="button" id="btnSendDueNoms">Send pending invites</button>
       <span id="nomNote" style="font-size:13px;color:var(--mut)"></span>
     </div>
     <div id="nomList" style="display:flex;flex-direction:column;gap:10px"></div>
@@ -3941,6 +3942,7 @@ async function refreshNominations(){
       let invite='Invite pending (sends 3 hours after submit)';
       if(r.invite_sent_at) invite='Invite emailed '+new Date(r.invite_sent_at).toLocaleString();
       else if(r.invite_error) invite='Invite failed: '+r.invite_error;
+      const sendBtn=r.invite_sent_at?'':`<button class="btn btn-dark btn-sm" type="button" data-nom-send="${esc(r.id)}">Send invite</button>`;
       return `<div style="display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff">
         ${r.photo_url?`<img src="${esc(r.photo_url)}" alt="" style="width:54px;height:54px;border-radius:8px;object-fit:cover;object-position:center 20%;background:#eee">`:'<div style="width:54px;height:54px;border-radius:8px;background:#eee"></div>'}
         <div style="flex:1;min-width:0">
@@ -3949,6 +3951,7 @@ async function refreshNominations(){
           <div style="font-size:12px;color:var(--mut)">${esc(handle)} ${to?'· '+esc(to):''} ${when?'· '+esc(when):''}</div>
           <div style="font-size:12px;margin-top:2px;color:${r.invite_error&&!r.invite_sent_at?'var(--red)':r.invite_sent_at?'var(--green)':'var(--mut)'}">${esc(invite)}</div>
         </div>
+        ${sendBtn}
       </div>`;
     }).join('');
   }catch(e){
@@ -3956,8 +3959,54 @@ async function refreshNominations(){
     list.innerHTML='<div style="font-size:13px;color:var(--red)">Could not reach Supabase.</div>';
   }
 }
+async function sendNominationInvites(payload, btn){
+  const note=$('#nomNote');
+  const label=btn?btn.textContent:'';
+  if(!(authSession && authSession.access_token)){
+    if(note) note.innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>';
+    return;
+  }
+  if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+  if(note) note.textContent='Sending invitation email…';
+  try{
+    const res=await fetch('/.netlify/functions/process-nomination-invites',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+authSession.access_token
+      },
+      body: JSON.stringify(payload)
+    });
+    const data=await res.json().catch(()=>({}));
+    const sent=Number(data.sent)||0;
+    const failed=Number(data.failed)||0;
+    const failMsg=(data.results||[]).filter(r=>r && r.status==='failed' && r.error).map(r=>r.error)[0];
+    if(failed && !sent){
+      if(note) note.innerHTML='<span style="color:var(--red)">'+esc(failMsg||data.error||data.message||('Send failed ('+res.status+')'))+'</span>';
+    } else if(!res.ok && !sent){
+      if(note) note.innerHTML='<span style="color:var(--red)">'+esc(data.error||data.message||('Send failed ('+res.status+')'))+'</span>';
+    } else if(sent){
+      if(note) note.innerHTML='<span style="color:var(--green)">Sent '+sent+' invitation'+(sent===1?'':'s')+(failed?'; '+failed+' failed':'')+'.</span>';
+    } else {
+      if(note) note.innerHTML='<span style="color:var(--mut)">'+esc(data.message||'Nothing due to send.')+'</span>';
+    }
+    await refreshNominations();
+  }catch(e){
+    if(note) note.innerHTML='<span style="color:var(--red)">Network error calling process-nomination-invites.</span>';
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=label; }
+  }
+}
 const btnRefreshNoms=$('#btnRefreshNoms');
 if(btnRefreshNoms) btnRefreshNoms.addEventListener('click', ()=>refreshNominations());
+const btnSendDueNoms=$('#btnSendDueNoms');
+if(btnSendDueNoms) btnSendDueNoms.addEventListener('click', ()=>sendNominationInvites({ sendDue:true }, btnSendDueNoms));
+const nomListEl=$('#nomList');
+if(nomListEl) nomListEl.addEventListener('click', (ev)=>{
+  const btn=ev.target && ev.target.closest ? ev.target.closest('[data-nom-send]') : null;
+  if(!btn) return;
+  sendNominationInvites({ id: btn.getAttribute('data-nom-send'), sendNow:true }, btn);
+});
 if(authSession && authSession.access_token) refreshNominations();
 
 function centsToMoney(c){

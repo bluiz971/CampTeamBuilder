@@ -17,9 +17,10 @@ Run these in Supabase → **SQL Editor**, in order:
 13. **`012_registration_camp_date.sql`** — `camp_date` on registrations (for deposit auto-charge 7 days before camp) + ensures deposit/balance columns exist.
 14. **`013_nominations.sql`** — public nominations (`nominate.html`) → `nominations` table + `nomination-photos` Storage bucket.
 15. **`014_nomination_invite_email.sql`** — `player_email` + invite send tracking. Netlify function `send-nomination-invites` emails the invitation PNG 3 hours after submit.
+16. **`015_nomination_invite_grants.sql`** — lets the invite function mark `invite_sent_at` / `invite_error`.
 
 After that:
 
 - Sign in on **admin.html → Publish**, then open **Camps** to manage camps.
 - Public links: `/?camp=your-slug`, `/station.html?camp=your-slug`, `/register.html?camp=your-slug` (advance signup), `/walkup.html?camp=your-slug` (day-of), `/nominate.html` (player nominations).
-- Nomination invitations: Netlify env `RESEND_API_KEY` (or `SENDGRID_API_KEY`) + `MAIL_FROM` (verified sender). Scheduled function `send-nomination-invites` runs every 15 minutes and emails the graphic 3 hours after submit.
+- Nomination invitations: Netlify env `RESEND_API_KEY` (or `SENDGRID_API_KEY`) + `MAIL_FROM` (verified sender). Scheduled function `send-nomination-invites` runs every 15 minutes; admin **Send invite** calls `process-nomination-invites`.

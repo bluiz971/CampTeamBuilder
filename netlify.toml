@@ -23,8 +23,13 @@
   external_node_modules = ["sharp"]
 
 # Email nomination invitation graphics 3 hours after submit.
-# Requires Netlify scheduled functions (Pro+) plus RESEND_API_KEY or SENDGRID_API_KEY.
+# Scheduled functions cannot be invoked by URL — use process-nomination-invites for catch-up.
 [functions."send-nomination-invites"]
   schedule = "*/15 * * * *"
+  external_node_modules = ["sharp"]
+  included_files = ["assets/invite-template.png"]
+
+[functions."process-nomination-invites"]
+  timeout = 26
   external_node_modules = ["sharp"]
   included_files = ["assets/invite-template.png"]
