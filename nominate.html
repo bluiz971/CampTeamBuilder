@@ -231,7 +231,7 @@ footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
   <div class="card done hidden" id="doneCard">
     <div class="check">✓</div>
     <h2>Nomination submitted</h2>
-    <p id="doneCopy">Thank you. The official invitation will be emailed to the player about three hours from now.</p>
+    <p id="doneCopy">Thank you. The nomination will be reviewed and an invitation will be sent if the nomination is accepted.</p>
     <p class="note" style="text-align:left;margin:14px auto 0;max-width:520px">A nomination does not guarantee a camp spot. An invitation does not reserve a place until the player is officially registered and camp payment is completed.</p>
     <div class="actions" style="max-width:420px;margin:16px auto 0">
       <a class="btn ghost" id="btnRegister" href="register.html">Register for camp</a>
@@ -524,7 +524,7 @@ async function submit(){
       }
       throw new Error('Save failed ('+res.status+'). Try again in a moment.');
     }
-    showDone('Thank you. The official invitation will be emailed to the player about three hours from now.');
+    showDone('Thank you. The nomination will be reviewed and an invitation will be sent if the nomination is accepted.');
   }catch(e){
     $('#formMsg').textContent=e.message||'Could not save the nomination.';
     $('#formMsg').className='msg err';
