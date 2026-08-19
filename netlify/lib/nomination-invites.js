@@ -61,8 +61,12 @@ function templatePath(){
   throw new Error('invite-template.png not found (include assets/invite-template.png in the function bundle)');
 }
 
+function resendApiKey(){
+  return process.env.RESEND_API_KEY || process.env.RESEND_API_Key || process.env.RESEND_API_key || '';
+}
+
 function mailConfigured(){
-  return !!(process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY);
+  return !!(resendApiKey() || process.env.SENDGRID_API_KEY);
 }
 
 function assertConfigured(){
@@ -201,7 +205,7 @@ function resendError(body, status){
 
 async function sendEmail({ to, subject, html, png, filename }){
   const from = parseFrom(process.env.MAIL_FROM || 'AAU Select Tour <info@aauselecttour.com>');
-  const resendKey = process.env.RESEND_API_KEY || '';
+  const resendKey = resendApiKey();
   const sendgridKey = process.env.SENDGRID_API_KEY || '';
   const attachmentB64 = png.toString('base64');
 
