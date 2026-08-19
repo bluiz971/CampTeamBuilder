@@ -6,7 +6,7 @@ const CAMPS = {
   'south-carolina-2026': {
     name: 'South Carolina Select Tour Camp 2026',
     priceCents: 14000,
-    date: null
+    date: '2026-09-26'
   },
   'florida-hs-2026': {
     name: 'Florida Select Tour Camp 2026',

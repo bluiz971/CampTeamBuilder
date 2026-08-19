@@ -337,10 +337,11 @@ const CAMPS = [
     code: 'south-carolina-2026',
     name: 'South Carolina Select Tour Camp 2026',
     label: 'South Carolina Select Tour Camp 2026',
-    info: 'Date & location coming soon',
-    date: '',
+    info: 'JB Owens Sportsplex, Easley, SC',
+    date: '2026-09-26',
     price: 140,
-    open: true
+    open: true,
+    shop: 'https://aauselecttour.totalcamps.com/shop/product/651973'
   },
   {
     code: 'florida-hs-2026',
@@ -349,7 +350,8 @@ const CAMPS = [
     info: 'The Well Activity Center, Apopka, FL',
     date: '2026-08-23',
     price: 140,
-    open: true
+    open: true,
+    shop: 'https://aauselecttour.totalcamps.com/shop/product/643261'
   },
   {
     code: 'georgia-2026',
@@ -358,7 +360,8 @@ const CAMPS = [
     info: 'Suwanee Sports Academy, Suwanee, GA',
     date: '2026-08-29',
     price: 140,
-    open: true
+    open: true,
+    shop: 'https://aauselecttour.totalcamps.com/shop/product/643229'
   },
   {
     code: 'mid-atlantic-2026',
@@ -513,6 +516,10 @@ function pickCamp(code){
   if(!camp) return;
   if(!isCampOpen(camp)){
     $('#campStepMsg').textContent='Registration for this camp is closed.';
+    return;
+  }
+  if(camp.shop){
+    location.href=camp.shop;
     return;
   }
   selectedCamp=camp;
