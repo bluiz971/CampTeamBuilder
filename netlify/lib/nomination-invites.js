@@ -19,10 +19,10 @@ const TPL_W = 819;
 const TPL_H = 1024;
 const SCALE = 1;
 const PHOTO = { x: 160, y: 446, w: 500, h: 340 };
-const BAR = { x: 120, y: 786, w: 571, h: 88 };
+const BAR = { x: 120, y: 786, w: 571, h: 110 };
 const CAMP_BOX = { x: 140, y: 938, w: 540, h: 48 };
 const NAVY = '#082554';
-const RED = '#c8102e';
+const RED = '#ff3355';
 const DEFAULT_SITE = 'https://selecttourevents.com';
 const DEFAULT_SUPABASE_URL = 'https://nxncasbkrcermftbviuw.supabase.co';
 
@@ -144,30 +144,42 @@ async function composeInvitePng(row){
   const handle = String(row.instagram_handle || '').replace(/^@+/, '').trim();
   const state = String(row.home_state || '').trim().toUpperCase();
   const campName = inviteCampLabel(row);
-  const nameSize = name.length > 18 ? 26 : name.length > 14 ? 30 : 34;
+  const nameSize = name.length > 20 ? 30 : name.length > 16 ? 34 : 38;
   const campSize = campName.length > 18 ? 26 : campName.length > 12 ? 32 : 36;
   const handleShown = handle ? '@' + handle : '';
-  const leftX = bar.x + 48;
+  const leftX = bar.x + 36;
   const midX = bar.x + bar.w / 2;
-  const rightX = bar.x + bar.w - 48;
-  const valueY = bar.y + 70;
+  const rightX = bar.x + bar.w - 36;
+  const nameY = bar.y + 48;
+  const valueY = bar.y + 78;
+  const labelY = bar.y + 98;
   const campMidX = camp.x + camp.w / 2;
   const campTextY = camp.y + camp.h / 2 + 12;
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-  <text x="${midX}" y="${bar.y + 36}" text-anchor="middle" fill="#ffffff"
+  <rect x="${bar.x}" y="${bar.y}" width="${bar.w}" height="${bar.h}" fill="${NAVY}"/>
+  <text x="${midX}" y="${nameY}" text-anchor="middle" fill="#ffffff"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="${nameSize}" font-style="italic" font-weight="800" letter-spacing="1.2">${escapeXml(name.toUpperCase())}</text>
+    font-size="${nameSize}" font-style="italic" font-weight="800" letter-spacing="1">${escapeXml(name.toUpperCase())}</text>
   <text x="${leftX}" y="${valueY}" text-anchor="start" fill="${RED}"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="16" font-style="italic" font-weight="800">${escapeXml(year)}</text>
+    font-size="18" font-style="italic" font-weight="800">${escapeXml(year)}</text>
+  <text x="${leftX}" y="${labelY}" text-anchor="start" fill="#ffffff"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="9" font-weight="700" letter-spacing="2">CLASS</text>
   <text x="${midX}" y="${valueY}" text-anchor="middle" fill="${RED}"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="15" font-style="italic" font-weight="800">${escapeXml(handleShown)}</text>
+    font-size="16" font-style="italic" font-weight="800">${escapeXml(handleShown)}</text>
+  <text x="${midX}" y="${labelY}" text-anchor="middle" fill="#ffffff"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="9" font-weight="700" letter-spacing="2">USERNAME</text>
   <text x="${rightX}" y="${valueY}" text-anchor="end" fill="${RED}"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="16" font-style="italic" font-weight="800">${escapeXml(state)}</text>
+    font-size="18" font-style="italic" font-weight="800">${escapeXml(state)}</text>
+  <text x="${rightX}" y="${labelY}" text-anchor="end" fill="#ffffff"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="9" font-weight="700" letter-spacing="2">STATE</text>
   <rect x="${camp.x}" y="${camp.y}" width="${camp.w}" height="${camp.h}" fill="#ececec"/>
   <text x="${campMidX}" y="${campTextY}" text-anchor="middle" fill="#0a1e4a"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
