@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nominate a Player — AAU Select Tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#141a22; --paper:#f6f5f2; --card:#fff; --line:#e2ded6;
+  --orange:#e8590c; --amber:#ffb63d; --mut:#6b7280; --green:#15803d; --red:#b91c1c;
+  --orange-soft:#fdeee3; --navy:#082554;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Barlow',system-ui,sans-serif;color:var(--ink);min-height:100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(232,89,12,.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(255,182,61,.1), transparent 50%),
+    var(--paper);
+}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif}
+header{
+  background:var(--ink);color:#fff;padding:28px 20px 32px;text-align:center;
+  border-bottom:4px solid var(--orange);
+}
+header h1{font-size:clamp(26px,6vw,38px);text-transform:uppercase;letter-spacing:.02em;line-height:1.1;margin:0}
+header h1 span{color:var(--amber)}
+header p{color:#9aa4b1;font-size:15px;margin-top:8px;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.45}
+.camphq-logo-link{display:inline-flex;align-items:center;justify-content:center;color:inherit;text-decoration:none;margin:12px 0 4px}
+.camphq-logo{height:44px;width:auto;display:block;border-radius:8px}
+.camphq-credit{text-align:center;font-size:12px;color:rgba(10,14,26,0.4);padding:12px 0}
+.camphq-credit a{color:rgba(10,14,26,0.6);text-decoration:none;font-weight:600}
+.camphq-credit a:hover{color:#141a22;text-decoration:underline}
+main{max-width:640px;margin:0 auto;padding:24px 16px 48px}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:22px 20px;box-shadow:0 8px 28px rgba(20,26,34,.06);
+}
+.card h2{font-size:22px;text-transform:uppercase;margin-bottom:4px}
+.card .sub{font-size:14px;color:var(--mut);margin-bottom:16px;line-height:1.45}
+.intro p{font-size:15px;line-height:1.55;color:var(--ink);margin-bottom:10px}
+.intro .who{background:#faf9f6;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:12px}
+.intro .who b{display:block;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:16px;margin-bottom:4px}
+.note{
+  font-size:13px;line-height:1.5;color:var(--mut);margin-top:12px;padding:10px 12px;
+  border-left:3px solid var(--orange);background:var(--orange-soft);
+}
+.section-title{
+  font-family:'Barlow Condensed',sans-serif;font-size:18px;text-transform:uppercase;
+  letter-spacing:.03em;margin:22px 0 12px;padding-top:8px;border-top:1px solid var(--line);
+}
+.section-title:first-of-type{border-top:none;margin-top:0;padding-top:0}
+label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:5px;font-weight:600}
+input,select,textarea{
+  width:100%;font-family:'Barlow';font-size:16px;padding:12px 14px;
+  border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+input.err,select.err{border-color:var(--red);background:#fef2f2}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:540px){.grid{grid-template-columns:1fr}}
+.span{grid-column:1/-1}
+.field{margin-bottom:2px}
+.field-err{font-size:12px;color:var(--red);margin-top:4px;min-height:0}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.choice button{
+  text-align:left;cursor:pointer;border:2px solid var(--line);border-radius:12px;
+  padding:14px 16px;background:#fff;font:inherit;color:inherit;
+}
+.choice button:hover{border-color:#f0a070;background:var(--orange-soft)}
+.choice button.on{border-color:var(--orange);background:var(--orange-soft);box-shadow:0 0 0 1px var(--orange)}
+.choice .cname{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase}
+.choice .cmeta{font-size:13px;color:var(--mut);margin-top:4px;line-height:1.35}
+.camp-cards{display:grid;gap:10px}
+.camp-card{
+  text-align:left;width:100%;cursor:pointer;border:2px solid var(--line);
+  border-radius:12px;padding:14px 16px;background:#fff;font:inherit;color:inherit;
+  position:relative;overflow:hidden;
+}
+.camp-card:hover{border-color:#f0a070;background:var(--orange-soft)}
+.camp-card.on{border-color:var(--orange);background:var(--orange-soft);box-shadow:0 0 0 1px var(--orange)}
+.camp-card .cname{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase}
+.camp-card .cmeta{font-size:13px;color:var(--mut);margin-top:4px;line-height:1.4}
+.camp-card.closed{cursor:not-allowed;opacity:.72;background:#f3f1ed}
+.camp-card.closed:hover{border-color:var(--line);background:#f3f1ed}
+.camp-stamp{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(-18deg);
+  font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--red);
+  border:3px solid var(--red);border-radius:6px;padding:2px 10px;
+  background:rgba(255,255,255,.88);pointer-events:none;
+}
+.photo-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.photo-preview{
+  width:72px;height:72px;border-radius:10px;object-fit:cover;object-position:center 22%;
+  background:#eee;border:1.5px solid var(--line);display:none;
+}
+.photo-preview.on{display:block}
+.photo-actions{display:flex;gap:8px;flex-wrap:wrap;flex:1}
+.photo-actions .btn{width:auto;padding:10px 14px;font-size:15px;display:inline-block}
+.actions{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.btn{
+  font-family:'Barlow Condensed';font-size:18px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.03em;border:none;border-radius:10px;padding:14px 18px;cursor:pointer;
+  background:var(--orange);color:#fff;text-decoration:none;text-align:center;display:block;
+}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.msg{font-size:14px;min-height:20px;margin-top:10px;line-height:1.4}
+.msg.err{color:var(--red)}
+.msg.ok{color:var(--green)}
+.hidden{display:none!important}
+.done{text-align:center;padding:8px 4px}
+.done .check{
+  width:56px;height:56px;border-radius:50%;background:var(--orange-soft);color:var(--orange);
+  display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;font-weight:700;
+}
+.done h2{font-size:28px;text-transform:uppercase;margin-bottom:10px}
+.done p{color:var(--mut);font-size:15px;line-height:1.55;margin-bottom:8px}
+footer{text-align:center;font-size:12px;color:var(--mut);padding:0 16px 28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Nominate a <span>Player</span></h1>
+  <a href="https://camphq.net" class="camphq-logo-link" aria-label="CampHQ home" target="_blank" rel="noopener">
+    <img src="assets/camp-builder-logo.png" alt="CampHQ" class="camphq-logo">
+  </a>
+  <p>Recommend yourself or another player for a 2026 District Select Camp. The official invitation is emailed to the player about three hours after you submit.</p>
+</header>
+
+<main>
+  <div class="layout" id="formLayout">
+    <div class="card" id="formCard">
+      <div class="intro">
+        <h2>2026 District Select Nomination</h2>
+        <p>AAU Select Tour District Select Basketball Camps are built for players who are serious about development, competition, and learning what it takes to grow in the game.</p>
+        <p>Coaches, parents, trainers, teammates, and community members can recommend players who may be a strong fit — or a player can nominate themselves.</p>
+        <div class="who">
+          <b>Who we are looking for</b>
+          Players who show strong potential, coachability, competitiveness, work ethic, basketball IQ, and a real desire to improve. Players do not have to be finished products.
+        </div>
+        <div class="note">Being nominated does not guarantee a camp spot. The official invitation is emailed to the player about three hours after you submit. An invitation does not reserve a place until the player registers and payment is completed.</div>
+      </div>
+
+      <div class="section-title">Who are you nominating?</div>
+      <div class="choice" id="nomTypeChoice">
+        <button type="button" data-type="self">
+          <div class="cname">Myself</div>
+          <div class="cmeta">I’m a player submitting my own nomination.</div>
+        </button>
+        <button type="button" data-type="other">
+          <div class="cname">Another player</div>
+          <div class="cmeta">Coach, parent, trainer, teammate, or community.</div>
+        </button>
+      </div>
+
+      <div class="section-title">Camp</div>
+      <div class="camp-cards" id="campCards"></div>
+      <div class="field-err" data-for="camp"></div>
+
+      <div id="nominatorBlock">
+        <div class="section-title">Nominator</div>
+        <div class="grid">
+          <div class="field span" id="roleField">
+            <label for="nomRole">Your role *</label>
+            <select id="nomRole">
+              <option value="">—</option>
+              <option value="coach">Coach</option>
+              <option value="parent">Parent / guardian</option>
+              <option value="trainer">Trainer</option>
+              <option value="teammate">Teammate</option>
+              <option value="community">Community member</option>
+            </select>
+            <div class="field-err" data-for="nomRole"></div>
+          </div>
+          <div class="field"><label for="nomName">Your full name *</label><input id="nomName" autocomplete="name" autocapitalize="words"><div class="field-err" data-for="nomName"></div></div>
+          <div class="field"><label for="nomEmail">Your email *</label><input id="nomEmail" type="email" autocomplete="email"><div class="field-err" data-for="nomEmail"></div></div>
+        </div>
+      </div>
+
+      <div class="section-title">Player</div>
+      <div class="grid">
+        <div class="field span"><label for="playerName">Player full name *</label><input id="playerName" autocapitalize="words"><div class="field-err" data-for="playerName"></div></div>
+        <div class="field span hidden" id="playerEmailField">
+          <label for="playerEmail">Player email *</label>
+          <input id="playerEmail" type="email" autocomplete="email">
+          <p class="sub" style="margin:6px 0 0">The invitation is emailed here about three hours later — it is not shown on this page.</p>
+          <div class="field-err" data-for="playerEmail"></div>
+        </div>
+        <div class="field">
+          <label for="gradYear">High school graduation class *</label>
+          <select id="gradYear"></select>
+          <div class="field-err" data-for="gradYear"></div>
+        </div>
+        <div class="field">
+          <label for="homeState">Home state *</label>
+          <select id="homeState"></select>
+          <div class="field-err" data-for="homeState"></div>
+        </div>
+        <div class="field span">
+          <label for="igHandle">Instagram handle</label>
+          <input id="igHandle" placeholder="@handle" autocapitalize="off" autocomplete="off">
+        </div>
+        <div class="field span">
+          <label for="playerPhoto">Player photo *</label>
+          <div class="photo-row">
+            <img class="photo-preview" id="photoPreview" alt="Photo preview">
+            <div class="photo-actions">
+              <button class="btn ghost" type="button" id="btnPickPhoto">Choose photo</button>
+              <button class="btn ghost" type="button" id="btnTakePhoto">Take photo</button>
+              <button class="btn ghost" type="button" id="btnClearPhoto" style="display:none">Remove</button>
+            </div>
+          </div>
+          <input type="file" id="playerPhoto" accept="image/*" hidden>
+          <input type="file" id="playerPhotoCamera" accept="image/*" capture="environment" hidden>
+          <div class="field-err" data-for="playerPhoto"></div>
+        </div>
+      </div>
+
+      <div class="msg" id="formMsg"></div>
+      <div class="actions">
+        <button class="btn" type="button" id="btnSubmit">Submit nomination</button>
+        <a class="btn ghost" href="index.html">Back to camps</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card done hidden" id="doneCard">
+    <div class="check">✓</div>
+    <h2>Nomination submitted</h2>
+    <p id="doneCopy">Thank you. The official invitation will be emailed to the player about three hours from now.</p>
+    <p class="note" style="text-align:left;margin:14px auto 0;max-width:520px">A nomination does not guarantee a camp spot. An invitation does not reserve a place until the player is officially registered and camp payment is completed.</p>
+    <div class="actions" style="max-width:420px;margin:16px auto 0">
+      <a class="btn ghost" id="btnRegister" href="register.html">Register for camp</a>
+      <button class="btn ghost" type="button" id="btnAnother">Nominate another player</button>
+    </div>
+  </div>
+</main>
+<footer>Camp Builder
+  <div class="camphq-credit">
+    Created by <a href="https://camphq.net" target="_blank" rel="noopener">CampHQ</a>
+  </div>
+</footer>
+
+<script>
+const SUPABASE_URL = "https://nxncasbkrcermftbviuw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54bmNhc2JrcmNlcm1mdGJ2aXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY3NjYsImV4cCI6MjA5OTc5Mjc2Nn0.XdcpcrTLhWeJWf6DXS2PPkXOGjYy8m9nFtagbFoqt9I";
+
+const CAMPS = [
+  { code:'mid-atlantic-2026', name:'Middle Atlantic', invite:'Middle Atlantic', date:'2026-07-25', info:'Saturday, July 25 · Rowan University, Glassboro, NJ' },
+  { code:'north-carolina-2026', name:'North Carolina', invite:'North Carolina', date:'2026-08-02', info:'Sunday, August 2 · Proehlific Park, Greensboro, NC' },
+  { code:'new-england-2026', name:'New England', invite:'New England', date:'2026-08-08', info:'Saturday, August 8 · The Mill Works, Westford, MA' },
+  { code:'florida-ms-2026', name:'Florida Middle School', invite:'Florida Middle School', date:'2026-08-16', info:'Sunday, August 16 · The Well Activity Center, Apopka, FL' },
+  { code:'florida-hs-2026', name:'Florida High School', invite:'Florida High School', date:'2026-08-23', info:'Sunday, August 23 · The Well Activity Center, Apopka, FL' },
+  { code:'georgia-2026', name:'Georgia', invite:'Georgia', date:'2026-08-29', info:'Saturday, August 29 · Suwannee Sports Academy, Suwanee, GA' },
+  { code:'south-carolina-2026', name:'South Carolina', invite:'South Carolina', date:'2026-09-26', info:'Saturday, September 26 · JB Owens Sportsplex, Easley, SC' }
+];
+
+const STATES = [
+  ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
+  ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['DC','District of Columbia'],['FL','Florida'],
+  ['GA','Georgia'],['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],
+  ['IA','Iowa'],['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],
+  ['MD','Maryland'],['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],
+  ['MO','Missouri'],['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],
+  ['NJ','New Jersey'],['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],
+  ['OH','Ohio'],['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],
+  ['SC','South Carolina'],['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],
+  ['VT','Vermont'],['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],
+  ['WY','Wyoming']
+];
+
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function val(id){ return String(($('#'+id)||{}).value||'').trim(); }
+
+function anonHeaders(extra){
+  return Object.assign({
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: 'Bearer '+SUPABASE_ANON_KEY
+  }, extra||{});
+}
+
+const urlParams=new URLSearchParams(location.search);
+let selectedCamp=null;
+let nominatorType='';
+let photoFile=null;
+let photoUrlLocal='';
+
+function fillSelects(){
+  const y=$('#gradYear');
+  y.innerHTML='<option value="">—</option>';
+  for(let yr=2026; yr<=2035; yr++){
+    const o=document.createElement('option');
+    o.value=String(yr); o.textContent=String(yr);
+    y.appendChild(o);
+  }
+  const st=$('#homeState');
+  st.innerHTML='<option value="">—</option>';
+  STATES.forEach(([abbr,name])=>{
+    const o=document.createElement('option');
+    o.value=abbr; o.textContent=abbr+' — '+name;
+    st.appendChild(o);
+  });
+}
+
+function todayISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function isCampPast(date){
+  if(!date) return false;
+  return String(date).slice(0,10) < todayISO();
+}
+function isCampOpen(c){ return !!(c && !isCampPast(c.date)); }
+
+function renderCamps(){
+  const wrap=$('#campCards');
+  const pre=(urlParams.get('camp')||'').trim().toLowerCase();
+  wrap.innerHTML=CAMPS.map(c=>{
+    const closed=!isCampOpen(c);
+    return `
+    <button type="button" class="camp-card${closed?' closed':''}${!closed && pre===c.code?' on':''}" data-code="${esc(c.code)}" ${closed?'aria-disabled="true"':''}>
+      <div class="cname">${esc(c.name)}</div>
+      <div class="cmeta">${esc(c.info)}</div>
+      ${closed?'<span class="camp-stamp">Closed</span>':''}
+    </button>`;
+  }).join('');
+  const want=pre && CAMPS.find(c=>c.code===pre);
+  if(want && isCampOpen(want)) selectedCamp=want;
+  wrap.querySelectorAll('.camp-card').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const camp=CAMPS.find(c=>c.code===btn.dataset.code)||null;
+      if(!isCampOpen(camp)){
+        setErr('camp','Nominations for this camp are closed.');
+        return;
+      }
+      wrap.querySelectorAll('.camp-card').forEach(x=>x.classList.remove('on'));
+      btn.classList.add('on');
+      selectedCamp=camp;
+      clearErr('camp');
+    });
+  });
+}
+
+function setNominatorType(type){
+  nominatorType=type;
+  $$('#nomTypeChoice button').forEach(b=>b.classList.toggle('on', b.dataset.type===type));
+  const roleField=$('#roleField');
+  const emailField=$('#playerEmailField');
+  if(type==='self'){
+    roleField.classList.add('hidden');
+    emailField.classList.add('hidden');
+    $('#nomRole').value='self';
+    const nm=$('#nomName');
+    if(!nm.value && val('playerName')) nm.value=val('playerName');
+  } else {
+    roleField.classList.remove('hidden');
+    emailField.classList.remove('hidden');
+    if($('#nomRole').value==='self') $('#nomRole').value='';
+  }
+}
+
+function getSelectedPhotoFile(){
+  const a=$('#playerPhoto');
+  const b=$('#playerPhotoCamera');
+  if(a && a.files && a.files[0]) return a.files[0];
+  if(b && b.files && b.files[0]) return b.files[0];
+  return null;
+}
+
+async function syncPhoto(){
+  photoFile=getSelectedPhotoFile();
+  const prev=$('#photoPreview');
+  const clearBtn=$('#btnClearPhoto');
+  if(photoUrlLocal) URL.revokeObjectURL(photoUrlLocal);
+  photoUrlLocal='';
+  if(photoFile){
+    photoUrlLocal=URL.createObjectURL(photoFile);
+    prev.src=photoUrlLocal;
+    prev.classList.add('on');
+    clearBtn.style.display='inline-block';
+    clearErr('playerPhoto');
+  } else {
+    prev.removeAttribute('src');
+    prev.classList.remove('on');
+    clearBtn.style.display='none';
+  }
+}
+
+function normalizeIgHandle(raw){
+  let h=String(raw||'').trim();
+  if(!h) return '';
+  h=h.replace(/^@+/,'').replace(/[^a-zA-Z0-9._]/g,'');
+  return h;
+}
+
+function nominatedEmail(){
+  if(nominatorType==='self') return val('nomEmail');
+  return val('playerEmail');
+}
+
+function clearErr(id){
+  const el=$('[data-for="'+id+'"]');
+  if(el) el.textContent='';
+  const inp=$('#'+id);
+  if(inp) inp.classList.remove('err');
+}
+function setErr(id, msg){
+  const el=$('[data-for="'+id+'"]');
+  if(el) el.textContent=msg||'Required';
+  const inp=$('#'+id);
+  if(inp) inp.classList.add('err');
+}
+
+function validate(){
+  $$('.field-err').forEach(el=>el.textContent='');
+  $$('input.err,select.err').forEach(el=>el.classList.remove('err'));
+  let ok=true;
+  if(!nominatorType){ $('#formMsg').textContent='Choose whether you are nominating yourself or another player.'; $('#formMsg').className='msg err'; ok=false; }
+  if(!selectedCamp){ setErr('camp','Pick a camp.'); ok=false; }
+  else if(!isCampOpen(selectedCamp)){ setErr('camp','Nominations for this camp are closed.'); ok=false; }
+  if(nominatorType==='other' && !val('nomRole')){ setErr('nomRole','Select your role.'); ok=false; }
+  if(!val('nomName')){ setErr('nomName','Enter your name.'); ok=false; }
+  if(!val('nomEmail') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('nomEmail'))){ setErr('nomEmail','Enter a valid email.'); ok=false; }
+  if(!val('playerName')){ setErr('playerName','Enter the player’s name.'); ok=false; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nominatedEmail())){
+    if(nominatorType==='self') setErr('nomEmail','Enter a valid email — the invitation is sent here.');
+    else setErr('playerEmail','Enter the player’s email — the invitation is sent there.');
+    ok=false;
+  }
+  if(!val('gradYear')){ setErr('gradYear','Select a class.'); ok=false; }
+  if(!val('homeState')){ setErr('homeState','Select a state.'); ok=false; }
+  if(!photoFile){ setErr('playerPhoto','Upload a player photo for the invitation.'); ok=false; }
+  return ok;
+}
+
+async function uploadNominationPhoto(id, file){
+  if(!file) return '';
+  const ext=(String(file.name||'').split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+  const safeExt=['jpg','jpeg','png','webp','gif','heic','heif'].includes(ext) ? ext : 'jpg';
+  const camp=(selectedCamp && selectedCamp.code) || 'camp';
+  const path=camp+'/'+id+'.'+safeExt;
+  const res=await fetch(SUPABASE_URL+'/storage/v1/object/nomination-photos/'+path,{
+    method:'POST',
+    headers: anonHeaders({
+      'Content-Type': file.type || 'image/jpeg',
+      'x-upsert': 'true'
+    }),
+    body: file
+  });
+  if(!res.ok){
+    const t=await res.text();
+    if(/Bucket not found|not found|404/i.test(t) || res.status===404){
+      throw new Error('Photo storage isn’t set up yet — ask staff to run migrations/013_nominations.sql.');
+    }
+    if(res.status===401 || res.status===403 || /policy|permission|RLS|42501/i.test(t)){
+      throw new Error('Photo upload blocked — ask staff to run migrations/013_nominations.sql (storage policies).');
+    }
+    throw new Error('Photo upload failed ('+res.status+'). Try a smaller JPEG/PNG.');
+  }
+  return SUPABASE_URL+'/storage/v1/object/public/nomination-photos/'+path;
+}
+
+async function submit(){
+  const btn=$('#btnSubmit');
+  $('#formMsg').textContent='';
+  $('#formMsg').className='msg';
+  if(!validate()){
+    $('#formMsg').textContent=$('#formMsg').textContent || 'Please fix the highlighted fields.';
+    $('#formMsg').className='msg err';
+    return;
+  }
+  if(nominatorType==='self' && !val('nomName')) $('#nomName').value=val('playerName');
+  const id=(crypto.randomUUID && crypto.randomUUID()) || ('nom-'+Date.now());
+  btn.disabled=true;
+  btn.textContent='Uploading photo…';
+  let photoUrl='';
+  try{
+    photoUrl=await uploadNominationPhoto(id, photoFile);
+  }catch(e){
+    $('#formMsg').textContent=e.message||'Photo upload failed.';
+    $('#formMsg').className='msg err';
+    btn.disabled=false;
+    btn.textContent='Submit nomination';
+    return;
+  }
+  btn.textContent='Saving nomination…';
+  const row={
+    id,
+    camp_code: selectedCamp.code,
+    camp_name: selectedCamp.name,
+    nominator_type: nominatorType,
+    nominator_role: nominatorType==='self' ? 'self' : val('nomRole'),
+    nominator_name: val('nomName'),
+    nominator_email: val('nomEmail'),
+    player_name: val('playerName'),
+    player_email: nominatedEmail(),
+    grad_year: val('gradYear'),
+    home_state: val('homeState'),
+    instagram_handle: normalizeIgHandle(val('igHandle')),
+    photo_url: photoUrl
+  };
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/nominations',{
+      method:'POST',
+      headers: anonHeaders({
+        'Content-Type':'application/json',
+        'Prefer':'return=minimal'
+      }),
+      body: JSON.stringify(row)
+    });
+    if(!res.ok){
+      const t=await res.text();
+      if(/player_email/i.test(t) && /column|schema|PGRST/i.test(t)){
+        throw new Error('Ask staff to run migrations/014_nomination_invite_email.sql so invitations can be emailed.');
+      }
+      if(/permission|policy|42501|RLS|not find|PGRST|schema cache/i.test(t) || res.status===401 || res.status===403 || res.status===404){
+        throw new Error('Nominations aren’t enabled yet — ask staff to run migrations/013_nominations.sql in Supabase.');
+      }
+      throw new Error('Save failed ('+res.status+'). Try again in a moment.');
+    }
+    showDone('Thank you. The official invitation will be emailed to the player about three hours from now.');
+  }catch(e){
+    $('#formMsg').textContent=e.message||'Could not save the nomination.';
+    $('#formMsg').className='msg err';
+  } finally {
+    btn.disabled=false;
+    btn.textContent='Submit nomination';
+  }
+}
+
+function showDone(copy){
+  $('#formLayout').classList.add('hidden');
+  const done=$('#doneCard');
+  done.classList.remove('hidden');
+  $('#doneCopy').textContent=copy;
+  $('#btnRegister').href='register.html?camp='+encodeURIComponent(selectedCamp.code);
+}
+
+fillSelects();
+renderCamps();
+
+$$('#nomTypeChoice button').forEach(b=>b.addEventListener('click',()=>setNominatorType(b.dataset.type)));
+$('#playerName').addEventListener('input', ()=>{
+  if(nominatorType==='self' && !$('#nomName').dataset.touched) $('#nomName').value=val('playerName');
+});
+$('#nomName').addEventListener('input', ()=>{ $('#nomName').dataset.touched='1'; });
+
+$('#btnPickPhoto').addEventListener('click', ()=>$('#playerPhoto').click());
+$('#btnTakePhoto').addEventListener('click', ()=>$('#playerPhotoCamera').click());
+$('#playerPhoto').addEventListener('change', ()=>{ $('#playerPhotoCamera').value=''; syncPhoto(); });
+$('#playerPhotoCamera').addEventListener('change', ()=>{ $('#playerPhoto').value=''; syncPhoto(); });
+$('#btnClearPhoto').addEventListener('click', ()=>{
+  $('#playerPhoto').value='';
+  $('#playerPhotoCamera').value='';
+  syncPhoto();
+});
+$('#btnSubmit').addEventListener('click', submit);
+$('#btnAnother').addEventListener('click', ()=>location.reload());
+</script>
+</body>
+</html>

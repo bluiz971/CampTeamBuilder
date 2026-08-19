@@ -463,7 +463,19 @@ function orderTotals(){
   return { campFee, lines, addonTotal, total, tags };
 }
 
-function isCampOpen(c){ return !!(c && c.open !== false); }
+function todayISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function isCampPast(date){
+  if(!date) return false;
+  return String(date).slice(0,10) < todayISO();
+}
+function isCampOpen(c){
+  if(!c || c.open === false) return false;
+  if(isCampPast(c.date)) return false;
+  return true;
+}
 
 function renderCampCards(){
   const wrap=$('#campCards');

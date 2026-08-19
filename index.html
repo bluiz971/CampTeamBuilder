@@ -88,6 +88,7 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .tile .pic.report{background:linear-gradient(135deg,#1e3a5f,#e8590c)}
 .tile .pic.daily{background:linear-gradient(135deg,#0f766e,#134e4a)}
 .tile .pic.reg{background:linear-gradient(135deg,#15803d,#1e2733)}
+.tile .pic.nom{background:linear-gradient(135deg,#0b1f4a,#c41e3a)}
 .tile .cap{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:3px}
 .tile .cap b{font-family:'Barlow Condensed';font-size:19px;text-transform:uppercase;letter-spacing:.02em}
 .tile .cap span{color:var(--mut);font-size:13px}
@@ -167,12 +168,16 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
   <div id="camp-select-screen" class="camp-landing" style="display:none;">
     <div class="home-head">
       <h2>Welcome</h2>
-      <p>Register for a camp, buy add-ons from a camp you already attended, or jump to recruiting and film.</p>
+      <p>Register for a camp, nominate a player, buy add-ons, or jump to recruiting and film.</p>
     </div>
     <div class="tilegrid" id="hubTiles">
       <a class="tile" href="register.html">
         <div class="pic reg">📝</div>
         <div class="cap"><b>Register for Camp</b><span>Sign up and pay for an upcoming Select Tour camp.</span><span class="go">Register Now</span></div>
+      </a>
+      <a class="tile" href="nominate.html">
+        <div class="pic nom">⭐</div>
+        <div class="cap"><b>Nominate a Player</b><span>Recommend yourself or another player and generate an invitation graphic.</span><span class="go">Nominate Now</span></div>
       </a>
       <a class="tile" href="https://aauselecttour.totalcamps.com/shop/GOOD" target="_blank" rel="noopener">
         <div class="pic shop">🛒</div>
@@ -271,6 +276,14 @@ const DEFAULT_APP_URL = "https://collegerecruiting360.com/";
 
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function todayISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function isCampPast(date){
+  if(!date) return false;
+  return String(date).slice(0,10) < todayISO();
+}
 // Heights often arrive as total inches (e.g. 70) — show as 5'10
 function formatHeight(h){
   if(h==null||h==='') return '';
@@ -429,7 +442,7 @@ async function renderCampSelectScreen(){
   document.title='AAU Select Tour Camps';
   $('#hTitle1').innerHTML='AAU Select <span>Tour</span>';
   const subEl=$('#hSub');
-  subEl.textContent='Register, shop add-ons, or pick a camp';
+  subEl.textContent='Register, nominate, shop add-ons, or pick a camp';
   subEl.style.display='block';
   $('#calWrap').style.display='none';
   if(!SUPABASE_URL || SUPABASE_URL.startsWith('REPLACE_')){
@@ -442,7 +455,7 @@ async function renderCampSelectScreen(){
       headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
-    const camps=(await res.json()).filter(c=>c.slug && c.slug!=='admin-cleared');
+    const camps=(await res.json()).filter(c=>c.slug && c.slug!=='admin-cleared' && !isCampPast(c.camp_date));
     if(!camps.length){
       empty.style.display='block';
       return;

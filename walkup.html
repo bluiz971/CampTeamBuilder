@@ -153,6 +153,14 @@ function formatCampDate(d){
   if(isNaN(dt)) return String(d);
   return dt.toLocaleDateString(undefined,{weekday:'short',month:'long',day:'numeric',year:'numeric'});
 }
+function todayISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function isCampPast(date){
+  if(!date) return false;
+  return String(date).slice(0,10) < todayISO();
+}
 
 let camps=[];
 const urlParams=new URLSearchParams(location.search);
@@ -187,7 +195,7 @@ async function loadCamps(){
       { headers: anonHeaders() }
     );
     if(!res.ok) throw new Error('HTTP '+res.status);
-    camps=(await res.json()).filter(c=>c.slug && c.slug!=='admin-cleared');
+    camps=(await res.json()).filter(c=>c.slug && c.slug!=='admin-cleared' && !isCampPast(c.camp_date));
     if(!camps.length){
       sel.innerHTML='<option value="">No active camps</option>';
       setMsg('No active camps are open for registration right now.');
@@ -221,6 +229,7 @@ async function submit(){
   setMsg('');
   const camp=selectedCamp();
   if(!camp){ setMsg('Choose your camp first.'); return; }
+  if(isCampPast(camp.camp_date)){ setMsg('Walk-up for this camp is closed.'); return; }
   const first=$('#first').value.trim();
   const last=$('#last').value.trim();
   const year=$('#year').value.trim();

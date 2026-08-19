@@ -249,7 +249,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel on" id="panel-camps">
   <div class="panel-head">
     <div><h2>Camps</h2>
-    <p>Create and manage camps. Public links use the slug: <code>?camp=your-slug</code>. Share the <b>Camp registration</b> link for advance sign-ups (<code>register.html</code>), and the <b>Walk-up form</b> for day-of players (<code>walkup.html</code>) — walk-ups appear on that camp’s station Check-In list. All roster/team work below applies only to the <b>Active camp</b> in the header.</p></div>
+    <p>Create and manage camps. Public links use the slug: <code>?camp=your-slug</code>. Share the <b>Camp registration</b> link for advance sign-ups (<code>register.html</code>), the <b>Walk-up form</b> for day-of players (<code>walkup.html</code>), and the <b>Nominate</b> link for invitation graphics (<code>nominate.html</code>). All roster/team work below applies only to the <b>Active camp</b> in the header.</p></div>
   </div>
   <div class="mapping" style="margin-bottom:16px">
     <h3 style="margin-bottom:10px">Create camp</h3>
@@ -313,6 +313,16 @@ dialog select{width:100%;margin:10px 0 16px}
       <span id="igQueueNote" style="font-size:13px;color:var(--mut)"></span>
     </div>
     <div id="igQueueList" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div class="mapping" style="margin-bottom:14px" id="nomPanel">
+    <h3 style="margin-bottom:6px">Player Nominations</h3>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Public submissions from <code>nominate.html</code>. The invitation graphic is emailed to the player 3 hours after submit (Netlify function <code>send-nomination-invites</code>). Requires Publish sign-in. Run <code>migrations/013_nominations.sql</code> and <code>014_nomination_invite_email.sql</code> if this list stays empty.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <span id="nomCount" style="font-size:14px;font-weight:600">0 nominations</span>
+      <button class="btn btn-ghost btn-sm" type="button" id="btnRefreshNoms">Refresh</button>
+      <span id="nomNote" style="font-size:13px;color:var(--mut)"></span>
+    </div>
+    <div id="nomList" style="display:flex;flex-direction:column;gap:10px"></div>
   </div>
   <div class="mapping" style="margin-bottom:14px" id="failedChargePanel">
     <h3 style="margin-bottom:6px">Failed Balance Charges</h3>
@@ -839,6 +849,7 @@ function renderCampsTable(){
       const station=base+'/station.html?camp='+encodeURIComponent(c.slug);
       const register=base+'/register.html?camp='+encodeURIComponent(c.slug);
       const walkup=base+'/walkup.html?camp='+encodeURIComponent(c.slug);
+      const nominate=base+'/nominate.html?camp='+encodeURIComponent(c.slug);
       return `<tr>
         <td><b>${esc(c.name)}</b>${c.location?'<br><small style="color:var(--mut)">'+esc(c.location)+'</small>':''}</td>
         <td><code>${esc(c.slug)}</code></td>
@@ -848,7 +859,8 @@ function renderCampsTable(){
           <a href="${esc(parent)}" target="_blank" rel="noopener">Parent</a> ·
           <a href="${esc(station)}" target="_blank" rel="noopener">Station</a> ·
           <a href="${esc(register)}" target="_blank" rel="noopener">Register</a> ·
-          <a href="${esc(walkup)}" target="_blank" rel="noopener">Walk-up</a>
+          <a href="${esc(walkup)}" target="_blank" rel="noopener">Walk-up</a> ·
+          <a href="${esc(nominate)}" target="_blank" rel="noopener">Nominate</a>
         </td>
         <td class="row-actions">
           <button class="btn btn-ghost btn-sm" data-use="${esc(c.id)}">Use</button>
@@ -2511,6 +2523,8 @@ $('#btnSignIn').addEventListener('click', async ()=>{
       await refreshCampsUI();
       await ensureActiveCamp();
       pullLiveTeams(true);
+      refreshIgStoryQueue();
+      refreshNominations();
     } else {
       $('#syncStatus').innerHTML='<span style="color:var(--red)">Sign-in failed: '+esc(body.error_description||body.msg||'check email/password')+'</span>';
     }
@@ -3884,6 +3898,68 @@ const btnRefreshIg=$('#btnRefreshIgQueue');
 if(btnRefreshIg) btnRefreshIg.addEventListener('click', ()=>refreshIgStoryQueue());
 if(authSession && authSession.access_token) refreshIgStoryQueue();
 
+async function refreshNominations(){
+  const list=$('#nomList');
+  const countEl=$('#nomCount');
+  if(!list || !countEl) return;
+  if(!(S.syncUrl && S.syncKey && authSession && authSession.access_token)){
+    countEl.textContent='0 nominations';
+    list.innerHTML='<div style="font-size:13px;color:var(--mut)">Sign in on the Publish tab to load nominations.</div>';
+    return;
+  }
+  try{
+    const res=await fetch(
+      S.syncUrl+'/rest/v1/nominations?select=id,camp_code,camp_name,nominator_type,nominator_role,nominator_name,nominator_email,player_name,player_email,grad_year,home_state,instagram_handle,photo_url,invite_sent_at,invite_error,invite_attempts,submitted_at&order=submitted_at.desc&limit=80',
+      { headers:{ 'apikey':S.syncKey, 'Authorization':'Bearer '+authSession.access_token } }
+    );
+    if(!res.ok){
+      const body=await res.text();
+      if(/player_email|invite_sent_at|invite_error|invite_attempts/i.test(body) && /column|schema|PGRST/i.test(body)){
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Run <code>migrations/014_nomination_invite_email.sql</code> in Supabase to track invitation emails.</div>';
+      } else if(/nominations/i.test(body) && (/not find|schema cache|42P01|PGRST/i.test(body) || res.status===404)){
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Run <code>migrations/013_nominations.sql</code> in Supabase to enable nominations.</div>';
+      } else if(res.status===401 || res.status===403){
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Can’t read nominations — sign in again.</div>';
+      } else {
+        list.innerHTML='<div style="font-size:13px;color:var(--red)">Nominations load failed ('+res.status+').</div>';
+      }
+      countEl.textContent='0 nominations';
+      return;
+    }
+    const rows=await res.json();
+    const n=rows.length;
+    countEl.textContent=n+' nomination'+(n===1?'':'s');
+    if(!n){
+      list.innerHTML='<div style="font-size:13px;color:var(--mut)">No nominations yet.</div>';
+      return;
+    }
+    list.innerHTML=rows.map(r=>{
+      const when=r.submitted_at ? new Date(r.submitted_at).toLocaleString() : '';
+      const who=r.nominator_type==='self' ? 'Self' : (r.nominator_role||'Other');
+      const handle=r.instagram_handle ? '@'+String(r.instagram_handle).replace(/^@/,'') : '';
+      const to=r.player_email || (r.nominator_type==='self' ? r.nominator_email : '');
+      let invite='Invite pending (sends 3 hours after submit)';
+      if(r.invite_sent_at) invite='Invite emailed '+new Date(r.invite_sent_at).toLocaleString();
+      else if(r.invite_error) invite='Invite failed: '+r.invite_error;
+      return `<div style="display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff">
+        ${r.photo_url?`<img src="${esc(r.photo_url)}" alt="" style="width:54px;height:54px;border-radius:8px;object-fit:cover;object-position:center 20%;background:#eee">`:'<div style="width:54px;height:54px;border-radius:8px;background:#eee"></div>'}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;text-transform:uppercase">${esc(r.player_name||'—')} <span style="color:var(--mut);font-size:14px">${esc(r.grad_year||'')} ${esc(r.home_state||'')}</span></div>
+          <div style="font-size:13px;color:var(--mut)">${esc(r.camp_name||r.camp_code||'')} · ${esc(who)} · ${esc(r.nominator_name||'')} ${r.nominator_email?'· '+esc(r.nominator_email):''}</div>
+          <div style="font-size:12px;color:var(--mut)">${esc(handle)} ${to?'· '+esc(to):''} ${when?'· '+esc(when):''}</div>
+          <div style="font-size:12px;margin-top:2px;color:${r.invite_error&&!r.invite_sent_at?'var(--red)':r.invite_sent_at?'var(--green)':'var(--mut)'}">${esc(invite)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    countEl.textContent='0 nominations';
+    list.innerHTML='<div style="font-size:13px;color:var(--red)">Could not reach Supabase.</div>';
+  }
+}
+const btnRefreshNoms=$('#btnRefreshNoms');
+if(btnRefreshNoms) btnRefreshNoms.addEventListener('click', ()=>refreshNominations());
+if(authSession && authSession.access_token) refreshNominations();
+
 function centsToMoney(c){
   const n=Number(c)||0;
   return '$'+(n/100).toFixed(n%100===0?0:2);
@@ -4036,6 +4112,7 @@ function renderSiteLink(){
   const station=base+'/station.html?camp='+encodeURIComponent(S.syncCode);
   const register=base+'/register.html?camp='+encodeURIComponent(S.syncCode);
   const walkup=base+'/walkup.html?camp='+encodeURIComponent(S.syncCode);
+  const nominate=base+'/nominate.html?camp='+encodeURIComponent(S.syncCode);
   note.innerHTML='<div style="line-height:1.8">'
     +'<div><b>Staff login:</b> <a href="'+esc(base+'/login.html')+'" target="_blank" rel="noopener" style="color:var(--orange);font-weight:600;text-decoration:none">'+esc(base+'/login.html')+'</a></div>'
     +'<div><b>Parent:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(link)+'</code> '
@@ -4048,6 +4125,8 @@ function renderSiteLink(){
     +'<div><b>Walk-up form:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(walkup)+'</code> '
     +'<button class="btn btn-dark btn-sm" id="btnCopyWalkup" style="margin-left:6px">Copy</button> '
     +'<a href="'+esc(walkup)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a></div>'
+    +'<div><b>Nominate:</b> <code style="background:#f0eee9;padding:3px 8px;border-radius:5px">'+esc(nominate)+'</code> '
+    +'<a href="'+esc(nominate)+'" target="_blank" rel="noopener" style="margin-left:6px;color:var(--orange);font-weight:600;text-decoration:none">↗ Open</a></div>'
     +'</div>';
   const b=document.getElementById('btnCopyLink');
   if(b) b.addEventListener('click', ()=>{

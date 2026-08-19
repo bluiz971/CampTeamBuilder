@@ -21,3 +21,10 @@
 # sharp is a native module — keep it external for Netlify bundling
 [functions."approve-instagram-story"]
   external_node_modules = ["sharp"]
+
+# Email nomination invitation graphics 3 hours after submit.
+# Requires Netlify scheduled functions (Pro+) plus RESEND_API_KEY or SENDGRID_API_KEY.
+[functions."send-nomination-invites"]
+  schedule = "*/15 * * * *"
+  external_node_modules = ["sharp"]
+  included_files = ["assets/invite-template.png"]

@@ -15,8 +15,11 @@ Run these in Supabase → **SQL Editor**, in order:
 11. **`010_registration_deposit_balance.sql`** — deposit / balance fields (`pay_status`, `amount_total`, `amount_paid`, `balance_charge_error`). Auto-charge is one attempt only (`deposit_paid` → `balance_charged` or `charge_failed`).
 12. **`011_registration_instagram_stories.sql`** — Instagram Story approval fields (`instagram_handle`, `photo_url`, `ig_story_status`, …) + public `registration-photos` Storage bucket for `register.html` uploads.
 13. **`012_registration_camp_date.sql`** — `camp_date` on registrations (for deposit auto-charge 7 days before camp) + ensures deposit/balance columns exist.
+14. **`013_nominations.sql`** — public nominations (`nominate.html`) → `nominations` table + `nomination-photos` Storage bucket.
+15. **`014_nomination_invite_email.sql`** — `player_email` + invite send tracking. Netlify function `send-nomination-invites` emails the invitation PNG 3 hours after submit.
 
 After that:
 
 - Sign in on **admin.html → Publish**, then open **Camps** to manage camps.
-- Public links: `/?camp=your-slug`, `/station.html?camp=your-slug`, `/register.html?camp=your-slug` (advance signup), `/walkup.html?camp=your-slug` (day-of).
+- Public links: `/?camp=your-slug`, `/station.html?camp=your-slug`, `/register.html?camp=your-slug` (advance signup), `/walkup.html?camp=your-slug` (day-of), `/nominate.html` (player nominations).
+- Nomination invitations: Netlify env `RESEND_API_KEY` (or `SENDGRID_API_KEY`) + `MAIL_FROM` (verified sender). Scheduled function `send-nomination-invites` runs every 15 minutes and emails the graphic 3 hours after submit.
