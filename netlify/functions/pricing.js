@@ -8,6 +8,11 @@ const CAMPS = {
     priceCents: 14000,
     date: null
   },
+  'florida-hs-2026': {
+    name: 'Florida Select Tour Camp 2026',
+    priceCents: 14000,
+    date: '2026-08-23'
+  },
   'georgia-2026': {
     name: 'Georgia Select Tour Camp 2026',
     priceCents: 14000,
