@@ -26,8 +26,8 @@ function json(statusCode, body) {
 async function requireAuthUser(event) {
   const auth = event.headers.authorization || event.headers.Authorization || '';
   if (!/^Bearer\s+\S+/i.test(auth)) return null;
-  const url = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const url = (process.env.SUPABASE_URL || 'https://nxncasbkrcermftbviuw.supabase.co').replace(/\/$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
   if (!url || !key) return null;
   const res = await fetch(url + '/auth/v1/user', {
     headers: { apikey: key, Authorization: auth }

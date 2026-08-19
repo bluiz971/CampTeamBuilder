@@ -23,6 +23,11 @@ const BAR = { x: 161, y: 754, w: 470, h: 96 };
 const CAMP_BOX = { x: 70, y: 896, w: 652, h: 46 };
 const NAVY = '#082554';
 const DEFAULT_SITE = 'https://selecttourevents.com';
+const DEFAULT_SUPABASE_URL = 'https://nxncasbkrcermftbviuw.supabase.co';
+
+function supabaseUrl(){
+  return (process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL).replace(/\/$/, '');
+}
 
 function px(n){ return Math.round(n * SCALE); }
 
@@ -53,11 +58,8 @@ function mailConfigured(){
 }
 
 function assertConfigured(){
-  if (!(process.env.SUPABASE_URL || '').replace(/\/$/, '')) {
-    throw new Error('Missing SUPABASE_URL');
-  }
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY — add it in Netlify for All functions (same key the Stripe functions use).');
   }
   if (!mailConfigured()) {
     throw new Error('No email provider configured (set RESEND_API_KEY or SENDGRID_API_KEY, plus MAIL_FROM).');
@@ -65,9 +67,9 @@ function assertConfigured(){
 }
 
 async function supabase(restPath, opts = {}){
-  const url = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+  const url = supabaseUrl();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  if (!key) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY — add it in Netlify for All functions (same key the Stripe functions use).');
   const res = await fetch(url + '/rest/v1/' + restPath, {
     ...opts,
     headers: {
