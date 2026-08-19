@@ -81,16 +81,17 @@ main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
 .invite-photo{position:absolute;left:19.536%;top:43.555%;width:61.051%;height:33.203%;overflow:hidden;background:#1a2740}
 .invite-photo img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block}
 .invite-photo .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9aa4b1;font-size:12px}
-.invite-bar{position:absolute;left:14.652%;top:76.758%;width:69.719%;height:8.59%;background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:flex-end;padding:0 3.6% 1.1%;box-sizing:border-box}
-.invite-name{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:5.6cqw;line-height:.92;text-align:center;text-transform:uppercase;letter-spacing:.01em;white-space:nowrap;flex:0 0 auto}
-.invite-meta{display:grid;grid-template-columns:1fr 1.4fr 1fr;align-items:end;gap:4px;margin-top:2px;flex:0 0 auto}
+.invite-bar{position:absolute;left:14.652%;top:76.758%;width:69.719%;height:8.59%;background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:1.8% 10% 1.2%;box-sizing:border-box}
+.invite-name{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:4cqw;line-height:1;text-align:center;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex:0 0 auto;max-width:100%;overflow:hidden}
+.invite-meta{display:grid;grid-template-columns:1fr 1.4fr 1fr;align-items:end;gap:4px;margin-top:1px;flex:0 0 auto}
 .invite-meta span{display:flex;flex-direction:column;line-height:1}
 .invite-meta span:first-child{align-items:flex-start;text-align:left}
 .invite-meta span:nth-child(2){align-items:center;text-align:center}
 .invite-meta span:last-child{align-items:flex-end;text-align:right}
-.invite-meta b{color:#c8102e;font-weight:800;font-size:3.1cqw;font-style:italic;letter-spacing:.02em}
-.invite-meta small{color:#fff;font-size:1.45cqw;font-weight:700;letter-spacing:.12em;margin-top:1px}
-.invite-camp{position:absolute;left:16%;top:91.6%;width:68%;height:4.7%;display:flex;align-items:center;justify-content:center;background:#ececec;color:#0a1e4a;font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:5.2cqw;text-transform:uppercase;letter-spacing:.04em;text-align:center;white-space:nowrap;overflow:hidden;border:0;box-shadow:none}
+.invite-meta b{color:#c8102e;font-weight:800;font-size:2.7cqw;font-style:italic;letter-spacing:.02em}
+.invite-meta small{color:#fff;font-size:1.35cqw;font-weight:700;letter-spacing:.12em;margin-top:1px}
+.invite-camp{position:absolute;left:12%;top:91.6%;width:76%;height:4.7%;display:flex;align-items:center;justify-content:center;gap:.45em;background:#ececec;color:#0a1e4a;font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:4.4cqw;text-transform:uppercase;letter-spacing:.06em;text-align:center;white-space:nowrap;overflow:hidden;border:0;box-shadow:none}
+.invite-star{color:#c8102e;font-size:.52em;font-style:normal;line-height:1;position:relative;top:-.06em}
 input[type=text],input[type=number],input[type=search],select{font-family:'Barlow';font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--orange);outline-offset:1px}
 
@@ -359,7 +360,11 @@ dialog select{width:100%;margin:10px 0 16px}
             <span><b id="nomInviteState"></b><small>STATE</small></span>
           </div>
         </div>
-        <div class="invite-camp" id="nomInviteCamp"></div>
+        <div class="invite-camp">
+          <span class="invite-star" aria-hidden="true">★</span>
+          <span id="nomInviteCamp"></span>
+          <span class="invite-star" aria-hidden="true">★</span>
+        </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
         <button class="btn btn-ghost btn-sm" type="button" id="nomInviteClose">Close</button>
