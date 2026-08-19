@@ -15,13 +15,14 @@ const sharp = require('sharp');
 
 const DELAY_MS = 3 * 60 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
-const TPL_W = 792;
-const TPL_H = 988;
+const TPL_W = 819;
+const TPL_H = 1024;
 const SCALE = 1;
-const PHOTO = { x: 188, y: 430, w: 416, h: 326 };
-const BAR = { x: 161, y: 754, w: 470, h: 96 };
-const CAMP_BOX = { x: 70, y: 896, w: 652, h: 46 };
+const PHOTO = { x: 160, y: 446, w: 500, h: 340 };
+const BAR = { x: 120, y: 786, w: 571, h: 84 };
+const CAMP_BOX = { x: 100, y: 940, w: 620, h: 46 };
 const NAVY = '#082554';
+const RED = '#c8102e';
 const DEFAULT_SITE = 'https://selecttourevents.com';
 const DEFAULT_SUPABASE_URL = 'https://nxncasbkrcermftbviuw.supabase.co';
 
@@ -136,25 +137,31 @@ async function composeInvitePng(row){
   const handle = String(row.instagram_handle || '').replace(/^@+/, '').trim();
   const state = String(row.home_state || '').trim().toUpperCase();
   const campName = String(row.camp_name || '').trim() || 'District Select Camp';
-  const nameSize = name.length > 22 ? 22 : name.length > 16 ? 27 : 32;
-  const campSize = campName.length > 22 ? 20 : campName.length > 16 ? 24 : 28;
+  const nameSize = name.length > 22 ? 22 : name.length > 16 ? 28 : 34;
+  const campSize = campName.length > 22 ? 22 : campName.length > 16 ? 28 : 34;
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <rect x="${bar.x}" y="${bar.y}" width="${bar.w}" height="${bar.h}" fill="${NAVY}"/>
-  <text x="${bar.x + bar.w / 2}" y="${bar.y + 38}" text-anchor="middle" fill="#ffffff"
+  <text x="${bar.x + bar.w / 2}" y="${bar.y + 36}" text-anchor="middle" fill="#ffffff"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="${nameSize}" font-style="italic" font-weight="800">${escapeXml(name)}</text>
-  <text x="${bar.x + 16}" y="${bar.y + 74}" text-anchor="start" fill="#ffffff"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13">${escapeXml(year)}</text>
-  <text x="${bar.x + bar.w / 2}" y="${bar.y + 74}" text-anchor="middle" fill="#ffffff"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13">${escapeXml(handle)}</text>
-  <text x="${bar.x + bar.w - 16}" y="${bar.y + 74}" text-anchor="end" fill="#ffffff"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13">${escapeXml(state)}</text>
-  <rect x="${camp.x}" y="${camp.y}" width="${camp.w}" height="${camp.h}" fill="#f7f7f7"/>
-  <text x="${camp.x + camp.w / 2}" y="${camp.y + camp.h / 2 + 8}" text-anchor="middle" fill="${NAVY}"
+    font-size="${nameSize}" font-style="italic" font-weight="800">${escapeXml(name.toUpperCase())}</text>
+  <text x="${bar.x + 28}" y="${bar.y + 68}" text-anchor="start"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" font-weight="700">
+    <tspan fill="${RED}">${escapeXml(year)}</tspan><tspan fill="#ffffff"> CLASS</tspan>
+  </text>
+  <text x="${bar.x + bar.w / 2}" y="${bar.y + 68}" text-anchor="middle"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" font-weight="700">
+    <tspan fill="${RED}">${escapeXml(handle)}</tspan><tspan fill="#ffffff"> USERNAME</tspan>
+  </text>
+  <text x="${bar.x + bar.w - 28}" y="${bar.y + 68}" text-anchor="end"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" font-weight="700">
+    <tspan fill="${RED}">${escapeXml(state)}</tspan><tspan fill="#ffffff"> STATE</tspan>
+  </text>
+  <rect x="${camp.x}" y="${camp.y}" width="${camp.w}" height="${camp.h}" fill="#f4f4f4"/>
+  <text x="${camp.x + camp.w / 2}" y="${camp.y + camp.h / 2 + 11}" text-anchor="middle" fill="${NAVY}"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="${campSize}" font-weight="800">${escapeXml(campName)}</text>
+    font-size="${campSize}" font-style="italic" font-weight="800">${escapeXml(campName.toUpperCase())}</text>
 </svg>`;
 
   layers.push({ input: Buffer.from(svg), top: 0, left: 0 });

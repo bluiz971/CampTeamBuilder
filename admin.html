@@ -76,15 +76,16 @@ main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
 .invite-modal{position:fixed;inset:0;z-index:80;background:rgba(20,26,34,.55);display:none;align-items:center;justify-content:center;padding:16px}
 .invite-modal.on{display:flex}
 .invite-modal-card{background:#fff;border-radius:14px;max-width:420px;width:100%;max-height:94vh;overflow:auto;padding:16px 16px 18px;box-shadow:0 16px 40px rgba(20,26,34,.25)}
-.invite-stage{position:relative;width:100%;aspect-ratio:792 / 988;background:#f3f3f3;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(20,26,34,.12)}
+.invite-stage{position:relative;width:100%;aspect-ratio:819 / 1024;background:#f3f3f3;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(20,26,34,.12)}
 .invite-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
-.invite-photo{position:absolute;left:23.737%;top:43.522%;width:52.525%;height:33%;overflow:hidden;background:#1a2740}
+.invite-photo{position:absolute;left:19.536%;top:43.555%;width:61.051%;height:33.203%;overflow:hidden;background:#1a2740}
 .invite-photo img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block}
 .invite-photo .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9aa4b1;font-size:12px}
-.invite-bar{position:absolute;left:20.328%;top:76.316%;width:59.343%;height:9.717%;background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:1.2% 4% 1.6%}
-.invite-name{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:clamp(18px,5.2vw,28px);line-height:1;text-align:center;text-transform:uppercase;letter-spacing:.01em;white-space:nowrap;overflow:hidden}
-.invite-meta{display:flex;justify-content:space-between;gap:6px;margin-top:4px;font-size:clamp(10px,2.4vw,13px);font-weight:600;letter-spacing:.02em}
-.invite-camp{position:absolute;left:8.838%;top:90.688%;width:82.323%;height:4.656%;display:flex;align-items:center;justify-content:center;background:#f7f7f7;color:var(--navy);font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:clamp(16px,4.4vw,24px);text-transform:uppercase;letter-spacing:.02em;text-align:center;white-space:nowrap;overflow:hidden}
+.invite-bar{position:absolute;left:14.652%;top:76.758%;width:69.719%;height:8.203%;background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:1% 4% 1.4%}
+.invite-name{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:clamp(18px,5.2vw,30px);line-height:1;text-align:center;text-transform:uppercase;letter-spacing:.01em;white-space:nowrap;overflow:hidden}
+.invite-meta{display:flex;justify-content:space-between;gap:6px;margin-top:3px;font-size:clamp(9px,2.2vw,12px);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.invite-meta b{color:#c8102e;font-weight:800}
+.invite-camp{position:absolute;left:12.21%;top:91.797%;width:75.702%;height:4.492%;display:flex;align-items:center;justify-content:center;background:#f4f4f4;color:var(--navy);font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:clamp(16px,4.6vw,26px);text-transform:uppercase;letter-spacing:.02em;text-align:center;white-space:nowrap;overflow:hidden}
 input[type=text],input[type=number],input[type=search],select{font-family:'Barlow';font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--orange);outline-offset:1px}
 
@@ -348,9 +349,9 @@ dialog select{width:100%;margin:10px 0 16px}
         <div class="invite-bar">
           <div class="invite-name" id="nomInviteName"></div>
           <div class="invite-meta">
-            <span id="nomInviteYear"></span>
-            <span id="nomInviteHandle"></span>
-            <span id="nomInviteState"></span>
+            <span><b id="nomInviteYear"></b> CLASS</span>
+            <span><b id="nomInviteHandle"></b> USERNAME</span>
+            <span><b id="nomInviteState"></b> STATE</span>
           </div>
         </div>
         <div class="invite-camp" id="nomInviteCamp"></div>
@@ -4073,14 +4074,14 @@ function openNomInvitePreview(id){
   const handle=String(row.instagram_handle||'').replace(/^@+/,'').trim();
   const to=row.player_email || (row.nominator_type==='self' ? row.nominator_email : '');
   const nameEl=$('#nomInviteName');
-  nameEl.textContent=name;
+  nameEl.textContent=name.toUpperCase();
   nameEl.style.fontSize = name.length>22 ? '18px' : name.length>16 ? '22px' : '';
   $('#nomInviteYear').textContent=row.grad_year||'';
   $('#nomInviteHandle').textContent=handle;
   $('#nomInviteState').textContent=String(row.home_state||'').trim().toUpperCase();
   const camp=String(row.camp_name||row.camp_code||'District Select Camp').trim();
   const campEl=$('#nomInviteCamp');
-  campEl.textContent=camp;
+  campEl.textContent=camp.toUpperCase();
   campEl.style.fontSize = camp.length>22 ? '16px' : camp.length>16 ? '18px' : '';
   const photo=$('#nomInvitePhoto');
   const ph=$('#nomInvitePhotoPh');
