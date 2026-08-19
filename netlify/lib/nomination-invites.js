@@ -144,46 +144,61 @@ async function composeInvitePng(row){
   const handle = String(row.instagram_handle || '').replace(/^@+/, '').trim();
   const state = String(row.home_state || '').trim().toUpperCase();
   const campName = inviteCampLabel(row);
-  const nameSize = name.length > 18 ? 22 : name.length > 14 ? 26 : 28;
+  const nameSize = name.length > 18 ? 20 : name.length > 14 ? 23 : 25;
   const campSize = campName.length > 18 ? 24 : campName.length > 12 ? 30 : 34;
   const handleShown = handle ? '@' + handle : '';
-  const leftX = bar.x + 36;
+  const leftX = bar.x + 42;
   const midX = bar.x + bar.w / 2;
-  const rightX = bar.x + bar.w - 36;
-  const valueY = bar.y + 66;
-  const labelY = bar.y + 80;
+  const rightX = bar.x + bar.w - 42;
+  const valueY = bar.y + 68;
+  const labelY = bar.y + 81;
+  const campMidX = camp.x + camp.w / 2;
+  const campTextY = camp.y + camp.h / 2 + 11;
+  const starY = camp.y + camp.h / 2;
+  const starR = 7;
+  function starPoly(cx, cy, r){
+    const pts = [];
+    for (let i = 0; i < 10; i++){
+      const rad = (i % 2 === 0 ? r : r * 0.4);
+      const a = -Math.PI / 2 + i * Math.PI / 5;
+      pts.push((cx + rad * Math.cos(a)).toFixed(1) + ',' + (cy + rad * Math.sin(a)).toFixed(1));
+    }
+    return pts.join(' ');
+  }
+  const starGap = 18 + campName.length * (campSize * 0.32);
+  const starLeft = campMidX - starGap;
+  const starRight = campMidX + starGap;
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <rect x="${bar.x}" y="${bar.y}" width="${bar.w}" height="${bar.h}" fill="${NAVY}"/>
-  <text x="${midX}" y="${bar.y + 44}" text-anchor="middle" fill="#ffffff"
+  <text x="${midX}" y="${bar.y + 40}" text-anchor="middle" fill="#ffffff"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="${nameSize}" font-style="italic" font-weight="800">${escapeXml(name.toUpperCase())}</text>
+    font-size="${nameSize}" font-style="italic" font-weight="800" letter-spacing="1.5">${escapeXml(name.toUpperCase())}</text>
   <text x="${leftX}" y="${valueY}" text-anchor="start" fill="${RED}"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="16" font-style="italic" font-weight="800">${escapeXml(year)}</text>
+    font-size="15" font-style="italic" font-weight="800">${escapeXml(year)}</text>
   <text x="${leftX}" y="${labelY}" text-anchor="start" fill="#ffffff"
     font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
     font-size="8" font-weight="700" letter-spacing="1.5">CLASS</text>
   <text x="${midX}" y="${valueY}" text-anchor="middle" fill="${RED}"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="15" font-style="italic" font-weight="800">${escapeXml(handleShown)}</text>
+    font-size="14" font-style="italic" font-weight="800">${escapeXml(handleShown)}</text>
   <text x="${midX}" y="${labelY}" text-anchor="middle" fill="#ffffff"
     font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
     font-size="8" font-weight="700" letter-spacing="1.5">USERNAME</text>
   <text x="${rightX}" y="${valueY}" text-anchor="end" fill="${RED}"
     font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="16" font-style="italic" font-weight="800">${escapeXml(state)}</text>
+    font-size="15" font-style="italic" font-weight="800">${escapeXml(state)}</text>
   <text x="${rightX}" y="${labelY}" text-anchor="end" fill="#ffffff"
     font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
     font-size="8" font-weight="700" letter-spacing="1.5">STATE</text>
   <rect x="${camp.x}" y="${camp.y}" width="${camp.w}" height="${camp.h}" fill="#ececec"/>
-  <text x="${camp.x + camp.w / 2}" y="${camp.y + camp.h / 2 + 12}" text-anchor="middle"
-    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="800">
-    <tspan fill="${RED}" font-size="16" font-style="normal">★  </tspan>
-    <tspan fill="#0a1e4a" font-size="${campSize}" font-style="italic">${escapeXml(campName)}</tspan>
-    <tspan fill="${RED}" font-size="16" font-style="normal">  ★</tspan>
-  </text>
+  <polygon fill="${RED}" points="${starPoly(starLeft, starY, starR)}"/>
+  <text x="${campMidX}" y="${campTextY}" text-anchor="middle" fill="#0a1e4a"
+    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="${campSize}" font-style="italic" font-weight="800">${escapeXml(campName)}</text>
+  <polygon fill="${RED}" points="${starPoly(starRight, starY, starR)}"/>
 </svg>`;
 
   layers.push({ input: Buffer.from(svg), top: 0, left: 0 });
