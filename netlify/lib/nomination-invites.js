@@ -21,10 +21,9 @@ const TPL_H = 1024;
 const SCALE = 1;
 const PHOTO = { x: 160, y: 446, w: 500, h: 340 };
 const BAR = { x: 120, y: 786, w: 571, h: 110 };
-const CAMP_COVER = { y: 906, h: 34, minW: 320 };
+const CAMP_SLOT = { x: 294, y: 912, w: 324, h: 24 };
 const NAVY = '#082554';
 const RED = '#ff3355';
-const CAMP_BG = '#f0f0f0';
 const DEFAULT_SITE = 'https://selecttourevents.com';
 const DEFAULT_SUPABASE_URL = 'https://nxncasbkrcermftbviuw.supabase.co';
 
@@ -81,6 +80,16 @@ function fonts(){
   return inviteFonts;
 }
 
+function shiftPathCommands(commands, dx){
+  return commands.map((cmd) => {
+    const c = Object.assign({}, cmd);
+    if (c.x != null) c.x += dx;
+    if (c.x1 != null) c.x1 += dx;
+    if (c.x2 != null) c.x2 += dx;
+    return c;
+  });
+}
+
 function textPath(font, text, x, y, fontSize, opts = {}){
   const s = String(text || '');
   if (!s) return '';
@@ -97,18 +106,20 @@ function textPath(font, text, x, y, fontSize, opts = {}){
     }
     return adv;
   });
-  const width = advances.reduce((a, b) => a + b, 0);
-  let cx = x;
-  if (anchor === 'middle') cx -= width / 2;
-  else if (anchor === 'end') cx -= width;
-  const parts = [];
+  const path = new opentype.Path();
+  let cx = 0;
   for (let i = 0; i < glyphs.length; i++){
-    const d = glyphs[i].getPath(cx, y, fontSize).toPathData(2);
-    if (d) parts.push(d);
+    const p = glyphs[i].getPath(cx, y, fontSize);
+    path.commands.push.apply(path.commands, p.commands);
     cx += advances[i];
   }
-  if (!parts.length) return '';
-  return `<path d="${parts.join(' ')}" fill="${fill}"/>`;
+  if (!path.commands.length) return '';
+  const box = path.getBoundingBox();
+  let dx = x;
+  if (anchor === 'middle') dx = x - (box.x1 + box.x2) / 2;
+  else if (anchor === 'end') dx = x - box.x2;
+  path.commands = shiftPathCommands(path.commands, dx);
+  return `<path d="${path.toPathData(2)}" fill="${fill}"/>`;
 }
 
 function textWidth(font, text, fontSize, letterSpacing){
@@ -215,7 +226,6 @@ async function composeInvitePng(row){
   const state = String(row.home_state || '').trim().toUpperCase();
   const campName = inviteCampLabel(row);
   const nameSize = name.length > 20 ? 30 : name.length > 16 ? 34 : 38;
-  const campSize = campName.length > 18 ? 26 : campName.length > 12 ? 32 : 36;
   const handleShown = handle ? '@' + handle : '';
   const leftX = bar.x + 36;
   const midX = bar.x + bar.w / 2;
@@ -223,12 +233,19 @@ async function composeInvitePng(row){
   const nameY = bar.y + 48;
   const valueY = bar.y + 78;
   const labelY = bar.y + 98;
-  const campMidX = W / 2;
-  const campTextY = px(CAMP_COVER.y + 26);
-  const campW = Math.max(px(CAMP_COVER.minW), Math.ceil(textWidth(italic, campName, campSize) + 28));
-  const campX = Math.round(campMidX - campW / 2);
-  const campY = px(CAMP_COVER.y);
-  const campH = px(CAMP_COVER.h);
+  const campBox = { x: px(CAMP_SLOT.x), y: px(CAMP_SLOT.y), w: px(CAMP_SLOT.w), h: px(CAMP_SLOT.h) };
+  const campMidX = campBox.x + campBox.w / 2;
+  let campSize = 24;
+  while (campSize > 16 && textWidth(italic, campName, campSize, 1) > campBox.w - 12) campSize--;
+  const campTextY = campBox.y + Math.round(campBox.h * 0.86);
+
+  const patchTop = Math.max(0, campBox.y - 12);
+  const patch = await sharp(templatePath())
+    .extract({ left: campBox.x, top: patchTop, width: campBox.w, height: 8 })
+    .resize(campBox.w, campBox.h, { fit: 'fill' })
+    .png()
+    .toBuffer();
+  layers.push({ input: patch, left: campBox.x, top: campBox.y });
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
@@ -240,7 +257,6 @@ async function composeInvitePng(row){
   ${textPath(bold, 'USERNAME', midX, labelY, 9, { anchor: 'middle', fill: '#ffffff', letterSpacing: 2 })}
   ${textPath(italic, state, rightX, valueY, 18, { anchor: 'end', fill: RED })}
   ${textPath(bold, 'STATE', rightX, labelY, 9, { anchor: 'end', fill: '#ffffff', letterSpacing: 2 })}
-  <rect x="${campX}" y="${campY}" width="${campW}" height="${campH}" fill="${CAMP_BG}"/>
   ${textPath(italic, campName, campMidX, campTextY, campSize, { anchor: 'middle', fill: RED, letterSpacing: 1 })}
 </svg>`;
 
