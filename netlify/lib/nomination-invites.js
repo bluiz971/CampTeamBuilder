@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const opentype = require('opentype.js');
 
 const DELAY_MS = 3 * 60 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -20,9 +21,10 @@ const TPL_H = 1024;
 const SCALE = 1;
 const PHOTO = { x: 160, y: 446, w: 500, h: 340 };
 const BAR = { x: 120, y: 786, w: 571, h: 110 };
-const CAMP_BOX = { x: 140, y: 938, w: 540, h: 48 };
+const CAMP_COVER = { y: 906, h: 34, minW: 320 };
 const NAVY = '#082554';
 const RED = '#ff3355';
+const CAMP_BG = '#f0f0f0';
 const DEFAULT_SITE = 'https://selecttourevents.com';
 const DEFAULT_SUPABASE_URL = 'https://nxncasbkrcermftbviuw.supabase.co';
 
@@ -48,17 +50,81 @@ function escapeXml(s){
     .replace(/'/g, '&apos;');
 }
 
-function templatePath(){
+function bundledAsset(rel, missing){
   const names = [
-    path.join(process.cwd(), 'assets/invite-template.png'),
-    path.join(__dirname, '../../assets/invite-template.png'),
-    path.join(__dirname, '../functions/invite-template.png'),
-    path.join(__dirname, 'invite-template.png')
+    path.join(process.cwd(), rel),
+    path.join(__dirname, '../../', rel),
+    path.join(__dirname, path.basename(rel))
   ];
   for (const p of names){
     if (fs.existsSync(p)) return p;
   }
-  throw new Error('invite-template.png not found (include assets/invite-template.png in the function bundle)');
+  throw new Error(missing);
+}
+
+function templatePath(){
+  return bundledAsset('assets/invite-template.png', 'invite-template.png not found (include assets/invite-template.png in the function bundle)');
+}
+
+function fontPath(file){
+  return bundledAsset('assets/fonts/' + file, file + ' not found (include assets/fonts in the function bundle)');
+}
+
+let inviteFonts = null;
+function fonts(){
+  if (!inviteFonts){
+    inviteFonts = {
+      italic: opentype.parse(fs.readFileSync(fontPath('BarlowCondensed-ExtraBoldItalic.ttf'))),
+      bold: opentype.parse(fs.readFileSync(fontPath('BarlowCondensed-Bold.ttf')))
+    };
+  }
+  return inviteFonts;
+}
+
+function textPath(font, text, x, y, fontSize, opts = {}){
+  const s = String(text || '');
+  if (!s) return '';
+  const anchor = opts.anchor || 'start';
+  const fill = opts.fill || '#ffffff';
+  const letterSpacing = Number(opts.letterSpacing) || 0;
+  const glyphs = font.stringToGlyphs(s);
+  const scale = fontSize / font.unitsPerEm;
+  const advances = glyphs.map((g, i) => {
+    let adv = g.advanceWidth * scale;
+    if (i < glyphs.length - 1){
+      adv += (font.getKerningValue(g, glyphs[i + 1]) || 0) * scale;
+      adv += letterSpacing;
+    }
+    return adv;
+  });
+  const width = advances.reduce((a, b) => a + b, 0);
+  let cx = x;
+  if (anchor === 'middle') cx -= width / 2;
+  else if (anchor === 'end') cx -= width;
+  const parts = [];
+  for (let i = 0; i < glyphs.length; i++){
+    const d = glyphs[i].getPath(cx, y, fontSize).toPathData(2);
+    if (d) parts.push(d);
+    cx += advances[i];
+  }
+  if (!parts.length) return '';
+  return `<path d="${parts.join(' ')}" fill="${fill}"/>`;
+}
+
+function textWidth(font, text, fontSize, letterSpacing){
+  const s = String(text || '');
+  if (!s) return 0;
+  const glyphs = font.stringToGlyphs(s);
+  const scale = fontSize / font.unitsPerEm;
+  let width = 0;
+  for (let i = 0; i < glyphs.length; i++){
+    width += glyphs[i].advanceWidth * scale;
+    if (i < glyphs.length - 1){
+      width += (font.getKerningValue(glyphs[i], glyphs[i + 1]) || 0) * scale;
+      width += Number(letterSpacing) || 0;
+    }
+  }
+  return width;
 }
 
 function resendApiKey(){
@@ -123,7 +189,7 @@ async function composeInvitePng(row){
   const H = px(TPL_H);
   const photoBox = { x: px(PHOTO.x), y: px(PHOTO.y), w: px(PHOTO.w), h: px(PHOTO.h) };
   const bar = { x: px(BAR.x), y: px(BAR.y), w: px(BAR.w), h: px(BAR.h) };
-  const camp = { x: px(CAMP_BOX.x), y: px(CAMP_BOX.y), w: px(CAMP_BOX.w), h: px(CAMP_BOX.h) };
+  const { italic, bold } = fonts();
 
   const base = await sharp(templatePath())
     .resize(W, H, { kernel: 'lanczos3' })
@@ -157,37 +223,25 @@ async function composeInvitePng(row){
   const nameY = bar.y + 48;
   const valueY = bar.y + 78;
   const labelY = bar.y + 98;
-  const campMidX = camp.x + camp.w / 2;
-  const campTextY = camp.y + camp.h / 2 + 12;
+  const campMidX = W / 2;
+  const campTextY = px(CAMP_COVER.y + 26);
+  const campW = Math.max(px(CAMP_COVER.minW), Math.ceil(textWidth(italic, campName, campSize) + 28));
+  const campX = Math.round(campMidX - campW / 2);
+  const campY = px(CAMP_COVER.y);
+  const campH = px(CAMP_COVER.h);
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <rect x="${bar.x}" y="${bar.y}" width="${bar.w}" height="${bar.h}" fill="${NAVY}"/>
-  <text x="${midX}" y="${nameY}" text-anchor="middle" fill="#ffffff"
-    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="${nameSize}" font-style="italic" font-weight="800" letter-spacing="1">${escapeXml(name.toUpperCase())}</text>
-  <text x="${leftX}" y="${valueY}" text-anchor="start" fill="${RED}"
-    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="18" font-style="italic" font-weight="800">${escapeXml(year)}</text>
-  <text x="${leftX}" y="${labelY}" text-anchor="start" fill="#ffffff"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="9" font-weight="700" letter-spacing="2">CLASS</text>
-  <text x="${midX}" y="${valueY}" text-anchor="middle" fill="${RED}"
-    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="16" font-style="italic" font-weight="800">${escapeXml(handleShown)}</text>
-  <text x="${midX}" y="${labelY}" text-anchor="middle" fill="#ffffff"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="9" font-weight="700" letter-spacing="2">USERNAME</text>
-  <text x="${rightX}" y="${valueY}" text-anchor="end" fill="${RED}"
-    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="18" font-style="italic" font-weight="800">${escapeXml(state)}</text>
-  <text x="${rightX}" y="${labelY}" text-anchor="end" fill="#ffffff"
-    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="9" font-weight="700" letter-spacing="2">STATE</text>
-  <rect x="${camp.x}" y="${camp.y}" width="${camp.w}" height="${camp.h}" fill="#ececec"/>
-  <text x="${campMidX}" y="${campTextY}" text-anchor="middle" fill="#0a1e4a"
-    font-family="Arial Black, Helvetica Neue, Helvetica, Arial, sans-serif"
-    font-size="${campSize}" font-style="italic" font-weight="800">${escapeXml(campName)}</text>
+  ${textPath(italic, name.toUpperCase(), midX, nameY, nameSize, { anchor: 'middle', fill: '#ffffff', letterSpacing: 1 })}
+  ${textPath(italic, year, leftX, valueY, 18, { anchor: 'start', fill: RED })}
+  ${textPath(bold, 'CLASS', leftX, labelY, 9, { anchor: 'start', fill: '#ffffff', letterSpacing: 2 })}
+  ${textPath(italic, handleShown, midX, valueY, 16, { anchor: 'middle', fill: RED })}
+  ${textPath(bold, 'USERNAME', midX, labelY, 9, { anchor: 'middle', fill: '#ffffff', letterSpacing: 2 })}
+  ${textPath(italic, state, rightX, valueY, 18, { anchor: 'end', fill: RED })}
+  ${textPath(bold, 'STATE', rightX, labelY, 9, { anchor: 'end', fill: '#ffffff', letterSpacing: 2 })}
+  <rect x="${campX}" y="${campY}" width="${campW}" height="${campH}" fill="${CAMP_BG}"/>
+  ${textPath(italic, campName, campMidX, campTextY, campSize, { anchor: 'middle', fill: RED, letterSpacing: 1 })}
 </svg>`;
 
   layers.push({ input: Buffer.from(svg), top: 0, left: 0 });
@@ -320,9 +374,10 @@ async function run(opts = {}){
   let rows = [];
   try {
     if (onlyId){
+      const sentFilter = skipDelay ? '' : '&invite_sent_at=is.null';
       rows = await supabase(
         'nominations?id=eq.' + encodeURIComponent(onlyId) +
-        '&invite_sent_at=is.null&select=' + selectFields()
+        sentFilter + '&select=' + selectFields()
       );
     } else {
       rows = await supabase(
@@ -398,4 +453,4 @@ async function run(opts = {}){
   return { statusCode: sent && !failed ? 200 : (failed && !sent ? 500 : 200), body: { ok: failed === 0, sent, failed, results } };
 }
 
-module.exports = { run, DELAY_MS };
+module.exports = { run, DELAY_MS, composeInvitePng };

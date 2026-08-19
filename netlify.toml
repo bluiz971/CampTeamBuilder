@@ -27,9 +27,9 @@
 [functions."send-nomination-invites"]
   schedule = "*/15 * * * *"
   external_node_modules = ["sharp"]
-  included_files = ["assets/invite-template.png"]
+  included_files = ["assets/invite-template.png", "assets/fonts/*.ttf"]
 
 [functions."process-nomination-invites"]
   timeout = 26
   external_node_modules = ["sharp"]
-  included_files = ["assets/invite-template.png"]
+  included_files = ["assets/invite-template.png", "assets/fonts/*.ttf"]
