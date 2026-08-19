@@ -12,7 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,700;1,800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --ink:#141a22;         /* scoreboard slate */
@@ -28,6 +28,7 @@
   --red:#c92a2a;
   --red-soft:#fdecec;
   --mut:#6b7280;
+  --navy:#082554;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Barlow',system-ui,sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
@@ -72,6 +73,18 @@ main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
 .btn-dark{background:var(--ink);color:#fff}
 .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
 .btn-sm{padding:7px 14px;font-size:14px}
+.invite-modal{position:fixed;inset:0;z-index:80;background:rgba(20,26,34,.55);display:none;align-items:center;justify-content:center;padding:16px}
+.invite-modal.on{display:flex}
+.invite-modal-card{background:#fff;border-radius:14px;max-width:420px;width:100%;max-height:94vh;overflow:auto;padding:16px 16px 18px;box-shadow:0 16px 40px rgba(20,26,34,.25)}
+.invite-stage{position:relative;width:100%;aspect-ratio:792 / 988;background:#f3f3f3;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(20,26,34,.12)}
+.invite-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
+.invite-photo{position:absolute;left:23.737%;top:43.522%;width:52.525%;height:33%;overflow:hidden;background:#1a2740}
+.invite-photo img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block}
+.invite-photo .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9aa4b1;font-size:12px}
+.invite-bar{position:absolute;left:20.328%;top:76.316%;width:59.343%;height:9.717%;background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:1.2% 4% 1.6%}
+.invite-name{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:clamp(18px,5.2vw,28px);line-height:1;text-align:center;text-transform:uppercase;letter-spacing:.01em;white-space:nowrap;overflow:hidden}
+.invite-meta{display:flex;justify-content:space-between;gap:6px;margin-top:4px;font-size:clamp(10px,2.4vw,13px);font-weight:600;letter-spacing:.02em}
+.invite-camp{position:absolute;left:8.838%;top:90.688%;width:82.323%;height:4.656%;display:flex;align-items:center;justify-content:center;background:#f7f7f7;color:var(--navy);font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:clamp(16px,4.4vw,24px);text-transform:uppercase;letter-spacing:.02em;text-align:center;white-space:nowrap;overflow:hidden}
 input[type=text],input[type=number],input[type=search],select{font-family:'Barlow';font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--orange);outline-offset:1px}
 
@@ -316,7 +329,7 @@ dialog select{width:100%;margin:10px 0 16px}
   </div>
   <div class="mapping" style="margin-bottom:14px" id="nomPanel">
     <h3 style="margin-bottom:6px">Player Nominations</h3>
-    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Public submissions from <code>nominate.html</code>. Invitations email automatically 3 hours after submit, or use <b>Send invite</b> to send now. Requires Publish sign-in. Run <code>migrations/013_nominations.sql</code>, <code>014_nomination_invite_email.sql</code>, and <code>015_nomination_invite_grants.sql</code> if this list stays empty or invites fail to mark sent.</p>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Public submissions from <code>nominate.html</code>. Preview the invitation graphic, then <b>Send invite</b> now or wait 3 hours for the automatic email. Requires Publish sign-in. Run <code>migrations/013_nominations.sql</code>, <code>014_nomination_invite_email.sql</code>, and <code>015_nomination_invite_grants.sql</code> if this list stays empty or invites fail to mark sent.</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <span id="nomCount" style="font-size:14px;font-weight:600">0 nominations</span>
       <button class="btn btn-ghost btn-sm" type="button" id="btnRefreshNoms">Refresh</button>
@@ -324,6 +337,29 @@ dialog select{width:100%;margin:10px 0 16px}
       <span id="nomNote" style="font-size:13px;color:var(--mut)"></span>
     </div>
     <div id="nomList" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div id="nomInviteModal" class="invite-modal" hidden>
+    <div class="invite-modal-card">
+      <h3 style="margin-bottom:4px">Invitation preview</h3>
+      <p id="nomInviteMeta" style="font-size:13px;color:var(--mut);margin-bottom:12px"></p>
+      <div class="invite-stage">
+        <img class="invite-bg" src="assets/invite-template.png" alt="">
+        <div class="invite-photo"><img id="nomInvitePhoto" alt=""><div class="ph" id="nomInvitePhotoPh">No photo</div></div>
+        <div class="invite-bar">
+          <div class="invite-name" id="nomInviteName"></div>
+          <div class="invite-meta">
+            <span id="nomInviteYear"></span>
+            <span id="nomInviteHandle"></span>
+            <span id="nomInviteState"></span>
+          </div>
+        </div>
+        <div class="invite-camp" id="nomInviteCamp"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-ghost btn-sm" type="button" id="nomInviteClose">Close</button>
+        <button class="btn btn-dark btn-sm" type="button" id="nomInviteSend">Send this invite</button>
+      </div>
+    </div>
   </div>
   <div class="mapping" style="margin-bottom:14px" id="failedChargePanel">
     <h3 style="margin-bottom:6px">Failed Balance Charges</h3>
@@ -3928,6 +3964,8 @@ async function refreshNominations(){
       return;
     }
     const rows=await res.json();
+    nomById={};
+    rows.forEach(r=>{ if(r && r.id) nomById[r.id]=r; });
     const n=rows.length;
     countEl.textContent=n+' nomination'+(n===1?'':'s');
     if(!n){
@@ -3951,7 +3989,10 @@ async function refreshNominations(){
           <div style="font-size:12px;color:var(--mut)">${esc(handle)} ${to?'· '+esc(to):''} ${when?'· '+esc(when):''}</div>
           <div style="font-size:12px;margin-top:2px;color:${r.invite_error&&!r.invite_sent_at?'var(--red)':r.invite_sent_at?'var(--green)':'var(--mut)'}">${esc(invite)}</div>
         </div>
-        ${sendBtn}
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn btn-ghost btn-sm" type="button" data-nom-preview="${esc(r.id)}">Preview</button>
+          ${sendBtn}
+        </div>
       </div>`;
     }).join('');
   }catch(e){
@@ -3964,7 +4005,7 @@ async function sendNominationInvites(payload, btn){
   const label=btn?btn.textContent:'';
   if(!(authSession && authSession.access_token)){
     if(note) note.innerHTML='<span style="color:var(--red)">Sign in on the Publish tab first.</span>';
-    return;
+    return 0;
   }
   if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
   if(note) note.textContent='Sending invitation email…';
@@ -3991,8 +4032,10 @@ async function sendNominationInvites(payload, btn){
       if(note) note.innerHTML='<span style="color:var(--mut)">'+esc(data.message||'Nothing due to send.')+'</span>';
     }
     await refreshNominations();
+    return sent;
   }catch(e){
     if(note) note.innerHTML='<span style="color:var(--red)">Network error calling process-nomination-invites.</span>';
+    return 0;
   }finally{
     if(btn){ btn.disabled=false; btn.textContent=label; }
   }
@@ -4003,9 +4046,72 @@ const btnSendDueNoms=$('#btnSendDueNoms');
 if(btnSendDueNoms) btnSendDueNoms.addEventListener('click', ()=>sendNominationInvites({ sendDue:true }, btnSendDueNoms));
 const nomListEl=$('#nomList');
 if(nomListEl) nomListEl.addEventListener('click', (ev)=>{
+  const previewBtn=ev.target && ev.target.closest ? ev.target.closest('[data-nom-preview]') : null;
+  if(previewBtn){
+    openNomInvitePreview(previewBtn.getAttribute('data-nom-preview'));
+    return;
+  }
   const btn=ev.target && ev.target.closest ? ev.target.closest('[data-nom-send]') : null;
   if(!btn) return;
   sendNominationInvites({ id: btn.getAttribute('data-nom-send'), sendNow:true }, btn);
+});
+let nomById={};
+let nomPreviewId='';
+function closeNomInvitePreview(){
+  const modal=$('#nomInviteModal');
+  if(!modal) return;
+  modal.classList.remove('on');
+  modal.hidden=true;
+  nomPreviewId='';
+}
+function openNomInvitePreview(id){
+  const row=nomById[id];
+  const modal=$('#nomInviteModal');
+  if(!row || !modal) return;
+  nomPreviewId=id;
+  const name=String(row.player_name||'Player').trim();
+  const handle=String(row.instagram_handle||'').replace(/^@+/,'').trim();
+  const to=row.player_email || (row.nominator_type==='self' ? row.nominator_email : '');
+  const nameEl=$('#nomInviteName');
+  nameEl.textContent=name;
+  nameEl.style.fontSize = name.length>22 ? '18px' : name.length>16 ? '22px' : '';
+  $('#nomInviteYear').textContent=row.grad_year||'';
+  $('#nomInviteHandle').textContent=handle;
+  $('#nomInviteState').textContent=String(row.home_state||'').trim().toUpperCase();
+  const camp=String(row.camp_name||row.camp_code||'District Select Camp').trim();
+  const campEl=$('#nomInviteCamp');
+  campEl.textContent=camp;
+  campEl.style.fontSize = camp.length>22 ? '16px' : camp.length>16 ? '18px' : '';
+  const photo=$('#nomInvitePhoto');
+  const ph=$('#nomInvitePhotoPh');
+  if(row.photo_url){
+    photo.src=row.photo_url;
+    photo.style.display='block';
+    if(ph) ph.style.display='none';
+  } else {
+    photo.removeAttribute('src');
+    photo.style.display='none';
+    if(ph) ph.style.display='flex';
+  }
+  const meta=$('#nomInviteMeta');
+  if(meta) meta.textContent=(to?'Emails '+to:'No player email')+(row.invite_sent_at?' · already sent':'');
+  const sendBtn=$('#nomInviteSend');
+  if(sendBtn){
+    sendBtn.hidden=!!row.invite_sent_at;
+    sendBtn.disabled=!!row.invite_sent_at;
+  }
+  modal.hidden=false;
+  modal.classList.add('on');
+}
+const nomInviteClose=$('#nomInviteClose');
+if(nomInviteClose) nomInviteClose.addEventListener('click', closeNomInvitePreview);
+const nomInviteModal=$('#nomInviteModal');
+if(nomInviteModal) nomInviteModal.addEventListener('click', (ev)=>{ if(ev.target===nomInviteModal) closeNomInvitePreview(); });
+const nomInviteSend=$('#nomInviteSend');
+if(nomInviteSend) nomInviteSend.addEventListener('click', async ()=>{
+  if(!nomPreviewId) return;
+  const sent=await sendNominationInvites({ id: nomPreviewId, sendNow:true }, nomInviteSend);
+  if(sent) closeNomInvitePreview();
 });
 if(authSession && authSession.access_token) refreshNominations();
 
