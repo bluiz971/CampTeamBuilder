@@ -78,8 +78,8 @@ main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
 .invite-modal-card{background:#fff;border-radius:14px;max-width:420px;width:100%;max-height:94vh;overflow:auto;padding:16px 16px 18px;box-shadow:0 16px 40px rgba(20,26,34,.25)}
 .invite-stage{position:relative;width:100%;aspect-ratio:819 / 1024;background:#f3f3f3;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(20,26,34,.12);container-type:inline-size}
 .invite-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
-.invite-photo{position:absolute;left:19.536%;top:43.555%;width:61.051%;height:33.203%;overflow:hidden;background:#1a2740}
-.invite-photo img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block}
+.invite-photo{position:absolute;left:20.513%;top:42.969%;width:58.852%;height:33.789%;overflow:hidden;background:#1a2740;border-radius:3.8% / 5.2%;box-sizing:border-box;padding-top:5.861%}
+.invite-photo img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block}
 .invite-photo .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9aa4b1;font-size:12px}
 .invite-bar{position:absolute;left:14.652%;top:76.758%;width:69.719%;height:10.74%;background:#082554;color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:2.2% 7% 1.8%;box-sizing:border-box}
 .invite-name{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:5.8cqw;line-height:1;text-align:center;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex:0 0 auto;max-width:100%;overflow:hidden}
@@ -90,7 +90,8 @@ main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
 .invite-meta span:last-child{align-items:flex-end;text-align:right}
 .invite-meta b{color:#ff3355;font-weight:800;font-size:3.1cqw;font-style:italic;letter-spacing:.02em}
 .invite-meta small{display:block;color:#fff;font-size:1.45cqw;font-weight:700;letter-spacing:.14em;margin-top:.28em}
-.invite-camp{position:absolute;left:35.90%;top:89.06%;width:39.56%;height:2.34%;display:flex;align-items:center;justify-content:center;padding:0;background:#f2f2f0;color:#ff3355;font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:2.93cqw;line-height:1;text-transform:uppercase;letter-spacing:.04em;text-align:center;white-space:nowrap;overflow:hidden;border:0;box-shadow:none}
+.invite-camp-cover{position:absolute;left:26.86%;top:88.67%;width:46.40%;height:2.54%;background:#eee}
+.invite-camp{position:absolute;left:30.28%;top:92.77%;width:39.56%;height:2.15%;display:flex;align-items:center;justify-content:center;padding:0;background:transparent;color:#ff3355;font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;font-size:2.69cqw;line-height:1;text-transform:uppercase;letter-spacing:.04em;text-align:center;white-space:nowrap;overflow:hidden;border:0;box-shadow:none}
 input[type=text],input[type=number],input[type=search],select{font-family:'Barlow';font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--orange);outline-offset:1px}
 
@@ -359,6 +360,7 @@ dialog select{width:100%;margin:10px 0 16px}
             <span><b id="nomInviteState"></b><small>STATE</small></span>
           </div>
         </div>
+        <div class="invite-camp-cover" aria-hidden="true"></div>
         <div class="invite-camp">
           <span id="nomInviteCamp"></span>
         </div>
