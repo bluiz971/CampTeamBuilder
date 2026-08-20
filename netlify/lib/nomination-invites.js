@@ -19,9 +19,14 @@ const MAX_ATTEMPTS = 5;
 const TPL_W = 819;
 const TPL_H = 1024;
 const SCALE = 1;
-const PHOTO = { x: 160, y: 446, w: 500, h: 340 };
+// Inner metallic-frame opening (not the chrome bezel). Top-biased crop keeps heads in frame.
+const PHOTO = { x: 164, y: 438, w: 490, h: 348 };
+const PHOTO_FOCUS_Y = 0.02;
+const PHOTO_RADIUS = 18;
 const BAR = { x: 120, y: 786, w: 571, h: 110 };
-const CAMP_SLOT = { x: 294, y: 912, w: 324, h: 24 };
+// Cover leftover "DISTRICT SELECT CAMP" title; draw camp name between the footer stars.
+const CAMP_HIDE = { x: 220, y: 908, w: 380, h: 26 };
+const CAMP_SLOT = { x: 248, y: 946, w: 324, h: 24 };
 const NAVY = '#082554';
 const RED = '#ff3355';
 const DEFAULT_SITE = 'https://selecttourevents.com';
@@ -204,12 +209,21 @@ async function coverPhoto(buf, w, h){
   const scaledW = Math.max(w, Math.round(srcW * scale));
   const scaledH = Math.max(h, Math.round(srcH * scale));
   let left = Math.round(0.5 * (scaledW - w));
-  let top = Math.round(0.18 * (scaledH - h));
+  let top = Math.round(PHOTO_FOCUS_Y * (scaledH - h));
   left = Math.max(0, Math.min(left, scaledW - w));
   top = Math.max(0, Math.min(top, scaledH - h));
-  return sharp(rotated)
+  const cropped = await sharp(rotated)
     .resize(scaledW, scaledH)
     .extract({ left, top, width: w, height: h })
+    .png()
+    .toBuffer();
+  const mask = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+    `<rect x="0" y="0" width="${w}" height="${h}" rx="${PHOTO_RADIUS}" ry="${PHOTO_RADIUS}" fill="#fff"/>` +
+    `</svg>`
+  );
+  return sharp(cropped)
+    .composite([{ input: mask, blend: 'dest-in' }])
     .png()
     .toBuffer();
 }
@@ -228,6 +242,12 @@ async function composeInvitePng(row){
 
   const layers = [];
   if (row.photo_url){
+    const photoBack = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
+      `<rect x="${photoBox.x}" y="${photoBox.y}" width="${photoBox.w}" height="${photoBox.h}" rx="${PHOTO_RADIUS}" ry="${PHOTO_RADIUS}" fill="#1a2740"/>` +
+      `</svg>`
+    );
+    layers.push({ input: photoBack, top: 0, left: 0 });
     const photoRes = await fetch(row.photo_url);
     if (!photoRes.ok) throw new Error('Could not download nomination photo (' + photoRes.status + ')');
     const photoBuf = Buffer.from(await photoRes.arrayBuffer());
@@ -248,19 +268,20 @@ async function composeInvitePng(row){
   const nameY = bar.y + 48;
   const valueY = bar.y + 78;
   const labelY = bar.y + 98;
+  const hideBox = { x: px(CAMP_HIDE.x), y: px(CAMP_HIDE.y), w: px(CAMP_HIDE.w), h: px(CAMP_HIDE.h) };
   const campBox = { x: px(CAMP_SLOT.x), y: px(CAMP_SLOT.y), w: px(CAMP_SLOT.w), h: px(CAMP_SLOT.h) };
   const campMidX = campBox.x + campBox.w / 2;
   let campSize = 24;
-  while (campSize > 16 && textWidth(italic, campName, campSize, 1) > campBox.w - 12) campSize--;
-  const campTextY = campBox.y + Math.round(campBox.h * 0.86);
+  while (campSize > 14 && textWidth(italic, campName, campSize, 1) > campBox.w - 12) campSize--;
+  const campTextY = campBox.y + Math.round(campBox.h * 0.82);
 
-  const patchTop = Math.max(0, campBox.y - 12);
-  const patch = await sharp(templatePath())
-    .extract({ left: campBox.x, top: patchTop, width: campBox.w, height: 8 })
-    .resize(campBox.w, campBox.h, { fit: 'fill' })
+  const hideSampleTop = 936;
+  const hidePatch = await sharp(templatePath())
+    .extract({ left: hideBox.x, top: hideSampleTop, width: hideBox.w, height: 6 })
+    .resize(hideBox.w, hideBox.h, { fit: 'fill' })
     .png()
     .toBuffer();
-  layers.push({ input: patch, left: campBox.x, top: campBox.y });
+  layers.push({ input: hidePatch, left: hideBox.x, top: hideBox.y });
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
