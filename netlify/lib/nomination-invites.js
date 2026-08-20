@@ -16,18 +16,18 @@ const opentype = require('opentype.js');
 
 const DELAY_MS = 3 * 60 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
-const TPL_W = 819;
-const TPL_H = 1024;
+const TPL_W = 568;
+const TPL_H = 707;
 const SCALE = 1;
 // Inner metallic-frame opening. Photo sits below a navy pad so hair is not clipped by the bezel.
-const PHOTO = { x: 168, y: 440, w: 482, h: 346 };
-const PHOTO_PAD_TOP = 48;
+const PHOTO = { x: 96, y: 290, w: 376, h: 252 };
+const PHOTO_PAD_TOP = 16;
 const PHOTO_FOCUS_Y = 0;
-const PHOTO_RADIUS = 18;
-const BAR = { x: 120, y: 786, w: 571, h: 110 };
-// Cover leftover "DISTRICT SELECT CAMP" title; draw camp name between the footer stars.
-const CAMP_HIDE = { x: 220, y: 908, w: 380, h: 26 };
-const CAMP_SLOT = { x: 248, y: 950, w: 324, h: 22 };
+const PHOTO_RADIUS = 12;
+const BAR = { x: 82, y: 542, w: 404, h: 66 };
+// Cover baked-in "NORTH CAROLINA" and draw the actual camp name between the footer stars.
+const CAMP_HIDE = { x: 176, y: 654, w: 216, h: 28 };
+const CAMP_SLOT = { x: 176, y: 654, w: 216, h: 28 };
 const NAVY = '#082554';
 const RED = '#ff3355';
 const DEFAULT_SITE = 'https://selecttourevents.com';
@@ -262,22 +262,22 @@ async function composeInvitePng(row){
   const handle = String(row.instagram_handle || '').replace(/^@+/, '').trim();
   const state = String(row.home_state || '').trim().toUpperCase();
   const campName = inviteCampLabel(row);
-  const nameSize = name.length > 20 ? 30 : name.length > 16 ? 34 : 38;
+  const nameSize = name.length > 20 ? 18 : name.length > 16 ? 22 : 24;
   const handleShown = handle ? '@' + handle : '';
-  const leftX = bar.x + 36;
+  const leftX = bar.x + 22;
   const midX = bar.x + bar.w / 2;
-  const rightX = bar.x + bar.w - 36;
-  const nameY = bar.y + 48;
-  const valueY = bar.y + 78;
-  const labelY = bar.y + 98;
+  const rightX = bar.x + bar.w - 22;
+  const nameY = bar.y + 24;
+  const valueY = bar.y + 40;
+  const labelY = bar.y + 52;
   const hideBox = { x: px(CAMP_HIDE.x), y: px(CAMP_HIDE.y), w: px(CAMP_HIDE.w), h: px(CAMP_HIDE.h) };
   const campBox = { x: px(CAMP_SLOT.x), y: px(CAMP_SLOT.y), w: px(CAMP_SLOT.w), h: px(CAMP_SLOT.h) };
   const campMidX = campBox.x + campBox.w / 2;
   let campSize = 22;
-  while (campSize > 13 && textWidth(italic, campName, campSize, 1) > campBox.w - 8) campSize--;
-  const campTextY = campBox.y + Math.round(campBox.h * 0.88);
+  while (campSize > 12 && textWidth(italic, campName, campSize, 1) > campBox.w - 8) campSize--;
+  const campTextY = campBox.y + Math.round(campBox.h * 0.82);
 
-  const hideSampleTop = 936;
+  const hideSampleTop = 628;
   const hidePatch = await sharp(templatePath())
     .extract({ left: hideBox.x, top: hideSampleTop, width: hideBox.w, height: 6 })
     .resize(hideBox.w, hideBox.h, { fit: 'fill' })
@@ -289,13 +289,13 @@ async function composeInvitePng(row){
 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <rect x="${bar.x}" y="${bar.y}" width="${bar.w}" height="${bar.h}" fill="${NAVY}"/>
   ${textPath(italic, name.toUpperCase(), midX, nameY, nameSize, { anchor: 'middle', fill: '#ffffff', letterSpacing: 1 })}
-  ${textPath(italic, year, leftX, valueY, 18, { anchor: 'start', fill: RED })}
-  ${textPath(bold, 'CLASS', leftX, labelY, 9, { anchor: 'start', fill: '#ffffff', letterSpacing: 2 })}
-  ${textPath(italic, handleShown, midX, valueY, 16, { anchor: 'middle', fill: RED })}
-  ${textPath(bold, 'USERNAME', midX, labelY, 9, { anchor: 'middle', fill: '#ffffff', letterSpacing: 2 })}
-  ${textPath(italic, state, rightX, valueY, 18, { anchor: 'end', fill: RED })}
-  ${textPath(bold, 'STATE', rightX, labelY, 9, { anchor: 'end', fill: '#ffffff', letterSpacing: 2 })}
-  ${textPath(italic, campName, campMidX, campTextY, campSize, { anchor: 'middle', fill: RED, letterSpacing: 1 })}
+  ${textPath(italic, year, leftX, valueY, 12, { anchor: 'start', fill: RED })}
+  ${textPath(bold, 'CLASS', leftX, labelY, 7, { anchor: 'start', fill: '#ffffff', letterSpacing: 2 })}
+  ${textPath(italic, handleShown, midX, valueY, 11, { anchor: 'middle', fill: RED })}
+  ${textPath(bold, 'USERNAME', midX, labelY, 7, { anchor: 'middle', fill: '#ffffff', letterSpacing: 2 })}
+  ${textPath(italic, state, rightX, valueY, 12, { anchor: 'end', fill: RED })}
+  ${textPath(bold, 'STATE', rightX, labelY, 7, { anchor: 'end', fill: '#ffffff', letterSpacing: 2 })}
+  ${textPath(italic, campName, campMidX, campTextY, campSize, { anchor: 'middle', fill: NAVY, letterSpacing: 1 })}
 </svg>`;
 
   layers.push({ input: Buffer.from(svg), top: 0, left: 0 });
