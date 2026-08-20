@@ -19,14 +19,15 @@ const MAX_ATTEMPTS = 5;
 const TPL_W = 819;
 const TPL_H = 1024;
 const SCALE = 1;
-// Inner metallic-frame opening (not the chrome bezel). Top-biased crop keeps heads in frame.
-const PHOTO = { x: 164, y: 438, w: 490, h: 348 };
-const PHOTO_FOCUS_Y = 0.02;
+// Inner metallic-frame opening. Photo sits below a navy pad so hair is not clipped by the bezel.
+const PHOTO = { x: 168, y: 440, w: 482, h: 346 };
+const PHOTO_PAD_TOP = 48;
+const PHOTO_FOCUS_Y = 0;
 const PHOTO_RADIUS = 18;
 const BAR = { x: 120, y: 786, w: 571, h: 110 };
 // Cover leftover "DISTRICT SELECT CAMP" title; draw camp name between the footer stars.
 const CAMP_HIDE = { x: 220, y: 908, w: 380, h: 26 };
-const CAMP_SLOT = { x: 248, y: 946, w: 324, h: 24 };
+const CAMP_SLOT = { x: 248, y: 950, w: 324, h: 22 };
 const NAVY = '#082554';
 const RED = '#ff3355';
 const DEFAULT_SITE = 'https://selecttourevents.com';
@@ -251,8 +252,9 @@ async function composeInvitePng(row){
     const photoRes = await fetch(row.photo_url);
     if (!photoRes.ok) throw new Error('Could not download nomination photo (' + photoRes.status + ')');
     const photoBuf = Buffer.from(await photoRes.arrayBuffer());
-    const cropped = await coverPhoto(photoBuf, photoBox.w, photoBox.h);
-    layers.push({ input: cropped, left: photoBox.x, top: photoBox.y });
+    const photoH = Math.max(1, photoBox.h - px(PHOTO_PAD_TOP));
+    const cropped = await coverPhoto(photoBuf, photoBox.w, photoH);
+    layers.push({ input: cropped, left: photoBox.x, top: photoBox.y + px(PHOTO_PAD_TOP) });
   }
 
   const name = String(row.player_name || 'Player').trim();
@@ -271,9 +273,9 @@ async function composeInvitePng(row){
   const hideBox = { x: px(CAMP_HIDE.x), y: px(CAMP_HIDE.y), w: px(CAMP_HIDE.w), h: px(CAMP_HIDE.h) };
   const campBox = { x: px(CAMP_SLOT.x), y: px(CAMP_SLOT.y), w: px(CAMP_SLOT.w), h: px(CAMP_SLOT.h) };
   const campMidX = campBox.x + campBox.w / 2;
-  let campSize = 24;
-  while (campSize > 14 && textWidth(italic, campName, campSize, 1) > campBox.w - 12) campSize--;
-  const campTextY = campBox.y + Math.round(campBox.h * 0.82);
+  let campSize = 22;
+  while (campSize > 13 && textWidth(italic, campName, campSize, 1) > campBox.w - 8) campSize--;
+  const campTextY = campBox.y + Math.round(campBox.h * 0.88);
 
   const hideSampleTop = 936;
   const hidePatch = await sharp(templatePath())
