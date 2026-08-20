@@ -195,6 +195,25 @@ function selectFields(){
   return 'id,camp_code,camp_name,nominator_type,nominator_email,player_name,player_email,grad_year,home_state,instagram_handle,photo_url,invite_attempts,submitted_at';
 }
 
+async function coverPhoto(buf, w, h){
+  const rotated = await sharp(buf).rotate().toBuffer();
+  const meta = await sharp(rotated).metadata();
+  const srcW = meta.width || w;
+  const srcH = meta.height || h;
+  const scale = Math.max(w / srcW, h / srcH);
+  const scaledW = Math.max(w, Math.round(srcW * scale));
+  const scaledH = Math.max(h, Math.round(srcH * scale));
+  let left = Math.round(0.5 * (scaledW - w));
+  let top = Math.round(0.18 * (scaledH - h));
+  left = Math.max(0, Math.min(left, scaledW - w));
+  top = Math.max(0, Math.min(top, scaledH - h));
+  return sharp(rotated)
+    .resize(scaledW, scaledH)
+    .extract({ left, top, width: w, height: h })
+    .png()
+    .toBuffer();
+}
+
 async function composeInvitePng(row){
   const W = px(TPL_W);
   const H = px(TPL_H);
@@ -212,11 +231,7 @@ async function composeInvitePng(row){
     const photoRes = await fetch(row.photo_url);
     if (!photoRes.ok) throw new Error('Could not download nomination photo (' + photoRes.status + ')');
     const photoBuf = Buffer.from(await photoRes.arrayBuffer());
-    const cropped = await sharp(photoBuf)
-      .rotate()
-      .resize(photoBox.w, photoBox.h, { fit: 'cover', position: 'attention' })
-      .png()
-      .toBuffer();
+    const cropped = await coverPhoto(photoBuf, photoBox.w, photoBox.h);
     layers.push({ input: cropped, left: photoBox.x, top: photoBox.y });
   }
 
