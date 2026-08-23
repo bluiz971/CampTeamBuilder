@@ -79,14 +79,15 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .tile:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(20,26,34,.12)}
 .tile .pic{height:130px;display:flex;align-items:center;justify-content:center;font-size:52px;color:#fff}
 .tile .pic.app{background:linear-gradient(135deg,#141a22,#2c3947)}
+.tile .pic.cr360{background:#0b1a2e url('assets/cr360-tile.png') center/contain no-repeat;font-size:0}
 .tile .pic.shop{background:linear-gradient(135deg,var(--orange),#ffb63d)}
-.tile .pic.sched{background:linear-gradient(135deg,#1e2733,#3a4a5c)}
-.tile .pic.teamz{background:linear-gradient(135deg,#e8590c,#c92a2a)}
-.tile .pic.insta{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
-.tile .pic.yt{background:linear-gradient(135deg,#b91c1c,#ff0033)}
-.tile .pic.web{background:linear-gradient(135deg,#15803d,#1e2733)}
-.tile .pic.report{background:linear-gradient(135deg,#1e3a5f,#e8590c)}
-.tile .pic.daily{background:linear-gradient(135deg,#0f766e,#134e4a)}
+.tile .pic.sched{background:#141a22 url('assets/schedule-tile.png') center 38%/cover no-repeat;font-size:0}
+.tile .pic.teamz{background:#141a22 url('assets/teams-tile.png') center 32%/cover no-repeat;font-size:0}
+.tile .pic.insta{background:#0b1a2e url('assets/instagram-tile.png') center/contain no-repeat;font-size:0}
+.tile .pic.yt{background:#141a22 url('assets/youtube-tile.png') center 40%/cover no-repeat;font-size:0}
+.tile .pic.web{background:#0b1a2e url('assets/web-tile.png') center/contain no-repeat;font-size:0}
+.tile .pic.report{background:#141a22 url('assets/report-tile.png') center/cover no-repeat;font-size:0}
+.tile .pic.daily{background:#141a22 url('assets/daily-tile.png') center 42%/cover no-repeat;font-size:0}
 .tile .pic.reg{background:linear-gradient(135deg,#15803d,#1e2733)}
 .tile .pic.nom{background:linear-gradient(135deg,#0b1f4a,#c41e3a)}
 .tile .cap{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:3px}
@@ -184,11 +185,11 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
         <div class="cap"><b>Add-Ons Shop</b><span>Already attended? Buy mixtapes, evals, film &amp; more.</span><span class="go">Shop Now ↗</span></div>
       </a>
       <a class="tile" href="https://www.youtube.com/@AAUSelectTour" target="_blank" rel="noopener">
-        <div class="pic yt">▶️</div>
+        <div class="pic yt"></div>
         <div class="cap"><b>YouTube</b><span>Select Tour videos, highlights, and mixtapes.</span><span class="go">Watch ↗</span></div>
       </a>
       <a class="tile" href="https://collegerecruiting360.com/" target="_blank" rel="noopener">
-        <div class="pic app">🏀</div>
+        <div class="pic cr360"></div>
         <div class="cap"><b>College Recruiting 360</b><span>Find colleges that fit the student, then the athlete — academics first, basketball second.</span><span class="go">Visit Site ↗</span></div>
       </a>
     </div>
@@ -606,34 +607,34 @@ function renderHome(){
   const reportReady = reportN > 0;
   const navReport=$('#navReport');
   if(navReport) navReport.style.display='';
-  tiles.push({view:'teams',pic:'teamz',icon:'👕',label:'Teams',desc:teamsReady?(D.teams.length+' teams assigned'):'No Teams Posted yet',go:'View Teams'});
-  tiles.push({view:'schedule',pic:'sched',icon:'📅',label:'Game Schedule',desc:D.sched.length?'games posted':'Posted once available',go:'View Schedule'});
+  tiles.push({view:'teams',pic:'teamz',icon:'',label:'Teams',desc:teamsReady?(D.teams.length+' teams assigned'):'No Teams Posted yet',go:'View Teams'});
+  tiles.push({view:'schedule',pic:'sched',icon:'',label:'Game Schedule',desc:D.sched.length?'games posted':'Posted once available',go:'View Schedule'});
   const dailyUrl=String(D.dailySchedUrl||'').trim();
   const dailyItems=Array.isArray(D.dailySched)?D.dailySched:[];
   const dailyReady=dailyItems.length>0 || !!dailyUrl;
   const dailyLabel=String(D.dailySchedLabel||'').trim() || 'Daily Camp Schedule';
   if(dailyReady){
-    tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:dailyLabel,desc:'Camp Schedule Available Now',go:'View Schedule'});
+    tiles.push({view:'daily',pic:'daily',icon:'',label:dailyLabel,desc:'Camp Schedule Available Now',go:'View Schedule'});
   } else {
-    tiles.push({view:'daily',pic:'daily',icon:'🗓️',label:'Daily Camp Schedule',desc:'Posted once available',go:'View Schedule'});
+    tiles.push({view:'daily',pic:'daily',icon:'',label:'Daily Camp Schedule',desc:'Posted once available',go:'View Schedule'});
   }
   tiles.push({
     view:'report',
     pic:'report',
-    icon:'📋',
+    icon:'',
     label:'Post Camp Report',
     desc: reportReady ? (reportN+' standout'+(reportN===1?'':'s')+' highlighted') : 'Posted once available',
     go: reportReady ? 'Read Report' : 'View Report'
   });
   if(D.shopUrl) tiles.push({href:D.shopUrl,ext:true,pic:'shop',icon:'🛒',label:'Add-Ons Shop',desc:'Mixtapes, evals, film & more',go:'Shop Now ↗'});
-  tiles.push({href:DEFAULT_CR360_URL,ext:true,pic:'app',icon:'🏀',label:'College Recruiting 360',desc:'Find colleges that fit the student, then the athlete — academics first, basketball second.',go:'Visit Site ↗'});
+  tiles.push({href:DEFAULT_CR360_URL,ext:true,pic:'cr360',icon:'',label:'College Recruiting 360',desc:'Find colleges that fit the student, then the athlete — academics first, basketball second.',go:'Visit Site ↗'});
   const appUrl=String(D.appUrl||'').trim();
   if(appUrl && !/collegerecruiting360\.com/i.test(appUrl)){
     tiles.push({href:appUrl,ext:true,pic:'app',icon:'📱',label:'Select 360',desc:'Training, recruiting & player tools',go:'Open App ↗'});
   }
-  tiles.push({href:webUrl,ext:true,pic:'web',icon:'🌐',label:'AAU Select Tour',desc:'Official website & other camps',go:'Visit Site ↗'});
-  tiles.push({href:igUrl,ext:true,pic:'insta',icon:'📸',label:'Instagram',desc:'Photos & camp highlights',go:'Follow Us ↗'});
-  tiles.push({href:ytUrl,ext:true,pic:'yt',icon:'▶️',label:'YouTube',desc:'Select Tour videos & highlights',go:'Watch ↗'});
+  tiles.push({href:webUrl,ext:true,pic:'web',icon:'',label:'AAU Select Tour',desc:'Official website & other camps',go:'Visit Site ↗'});
+  tiles.push({href:igUrl,ext:true,pic:'insta',icon:'',label:'Instagram',desc:'Photos & camp highlights',go:'Follow Us ↗'});
+  tiles.push({href:ytUrl,ext:true,pic:'yt',icon:'',label:'YouTube',desc:'Select Tour videos & highlights',go:'Watch ↗'});
   $('#homeTiles').innerHTML=tiles.map(t=>{
     const inner=`<div class="pic ${t.pic}">${t.icon}</div><div class="cap"><b>${esc(t.label)}</b><span>${esc(t.desc)}</span><span class="go">${esc(t.go)}</span></div>`;
     return t.ext
