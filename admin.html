@@ -482,11 +482,11 @@ dialog select{width:100%;margin:10px 0 16px}
     <div><label>Group A years</label>
       <input type="number" id="gA1" min="2020" max="2045" value="2027" style="width:84px"> –
       <input type="number" id="gA2" min="2020" max="2045" value="2030" style="width:84px"></div>
-    <div><label>Group A teams</label><input type="number" id="numA" min="1" max="20" value="4" style="width:70px"></div>
+    <div><label>Group A teams</label><input type="number" id="numA" min="1" max="20" value="12" style="width:70px"></div>
     <div><label>Group B years</label>
       <input type="number" id="gB1" min="2020" max="2045" value="2031" style="width:84px"> –
       <input type="number" id="gB2" min="2020" max="2045" value="2035" style="width:84px"></div>
-    <div><label>Group B teams</label><input type="number" id="numB" min="1" max="20" value="6" style="width:70px"></div>
+    <div><label>Group B teams</label><input type="number" id="numB" min="1" max="20" value="16" style="width:70px"></div>
     <button class="btn btn-orange" id="btnGen">🏀 Generate Balanced Teams</button>
     <button class="btn btn-ghost" type="button" id="btnSuggestCounts">Suggest counts</button>
     <div class="balance-note" id="balNote"></div>
@@ -2104,6 +2104,7 @@ function byTeamThenJersey(a,b){
 function renderTeams(){
   const out=$('#teamsOut'), sum=$('#htSummary');
   $('#gA1').value=S.gA1; $('#gA2').value=S.gA2; $('#gB1').value=S.gB1; $('#gB2').value=S.gB2;
+  $('#numA').value=S.numA; $('#numB').value=S.numB;
   renderTally();
   $('#grpDesc').textContent=`Group A = ${S.gA1}–${S.gA2} (Teams 1–${S.numA}), Group B = ${S.gB1}–${S.gB2} (Teams ${S.numA+1}–${S.numA+S.numB})`;
   if(!S.teams){

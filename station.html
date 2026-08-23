@@ -607,7 +607,7 @@ async function switchCamp(nextCode){
   campCode = String(nextCode||'').trim().toLowerCase().replace(/[^a-z0-9-]/g,'-');
   localStorage.setItem('stationCampCode', campCode);
   campId=null; campRow=null;
-  players=[]; teams=[]; renderList();
+  players=[]; teams=[]; groupCountsLocked=false; renderList();
   if(await resolveCamp()){
     pollPlayers(); pollTeams();
   }else{
@@ -819,6 +819,7 @@ async function pollPlayers(){
 let teams=[];
 let teamsPosted=false;
 let pendingLocalTeams=false; // true after Generate until Sync succeeds
+let groupCountsLocked=false; // user typed team counts — don't let live poll revert to 4/6
 let lastTeamsUpdatedAt=''; // camp_live.updated_at — used to pull remote changes across accounts
 let showWriteUp=false;
 let campLiveExtra={}; // preserve title/sched/etc when we push teams
@@ -880,6 +881,7 @@ function suggestTeamCounts(){
   groupCfg.numA=teamsForCount(pool.filter(p=>stationGroupOf(p.year)==='A').length);
   groupCfg.numB=teamsForCount(pool.filter(p=>stationGroupOf(p.year)==='B').length);
   if($('#stNumA')){ $('#stNumA').value=groupCfg.numA; $('#stNumB').value=groupCfg.numB; }
+  groupCountsLocked=true;
 }
 function toPublicTeams(built){
   const byId={}; players.forEach(p=>byId[p.id]=p);
@@ -896,6 +898,7 @@ function toPublicTeams(built){
 }
 function generateStationTeams(){
   readGroupInputs();
+  groupCountsLocked=true;
   const pool=eligibleForTeams();
   if(!pool.length){ toast('No checked-in players with jersey numbers'); return; }
   const catRank={Big:0,Wing:1,Guard:2};
@@ -1050,7 +1053,7 @@ function renderGroupTally(){
     + card('','Group A', groupCfg.gA1, groupCfg.gA2, inA, numA, 'Teams 1–'+numA)
     + card('b','Group B', groupCfg.gB1, groupCfg.gB2, inB, numB, 'Teams '+(numA+1)+'–'+(numA+numB))
     + (outside.length? `<div class="gt-card" style="grid-column:1/-1;border-left-color:var(--red)"><h4>Outside both ranges</h4><div class="gt-detail"><b>${outside.length}</b> numbered player(s) outside ${groupCfg.gA1}–${groupCfg.gA2} and ${groupCfg.gB1}–${groupCfg.gB2}.</div></div>`:'')
-    + `<div style="grid-column:1/-1;font-size:12px;color:var(--mut)">Suggested from player counts: A=${sugA}, B=${sugB}. Tap <b>Suggest counts</b> to fill those in, or type your own.</div>`
+    + `<div style="grid-column:1/-1;font-size:12px;color:var(--mut)">Type the team counts you want (they stay until you Generate). Suggested from player counts: A=${sugA}, B=${sugB}. <b>Suggest counts</b> only fills those in if you tap it.</div>`
     + `</div>`;
 }
 function renderTeamsToolbar(){
@@ -1235,7 +1238,10 @@ function bindTeamsToolbar(){
   ['stGA1','stGA2','stGB1','stGB2','stNumA','stNumB'].forEach(id=>{
     const el=$('#'+id); if(!el) return;
     el.addEventListener('change', ()=>{ readGroupInputs(); renderList(); });
-    el.addEventListener('input', ()=>{ readGroupInputs(); });
+    el.addEventListener('input', ()=>{
+      readGroupInputs();
+      if(id==='stNumA' || id==='stNumB') groupCountsLocked=true;
+    });
   });
   const gen=$('#stBtnGen'), sync=$('#stBtnSync'), clr=$('#stBtnClearTeams'), add=$('#stBtnAddLate'), wu=$('#stBtnWriteUp'), sug=$('#stBtnSuggestCounts');
   if(gen) gen.addEventListener('click', ()=>generateStationTeams());
@@ -1262,19 +1268,29 @@ async function pollTeams(){
     // Empty local always accepts remote so a second account sees the first's generate.
     const remoteTeams=Array.isArray(data.teams) ? data.teams : [];
     const shouldPull=!pendingLocalTeams || !teams.length;
-    if(shouldPull && (updatedAt!==lastTeamsUpdatedAt || (!teams.length && remoteTeams.length))){
+    const pulledTeams=shouldPull && (updatedAt!==lastTeamsUpdatedAt || (!teams.length && remoteTeams.length));
+    if(pulledTeams){
       teams=remoteTeams;
       teamsPosted = teams.length ? (data.teamsPosted!==false) : false;
       lastTeamsUpdatedAt=updatedAt;
       if(teams.length) pendingLocalTeams=false;
     }
     if(data.groups){
-      groupCfg={
-        gA1:Number(data.groups.gA1)||groupCfg.gA1, gA2:Number(data.groups.gA2)||groupCfg.gA2,
-        gB1:Number(data.groups.gB1)||groupCfg.gB1, gB2:Number(data.groups.gB2)||groupCfg.gB2,
-        numA:Number(data.groups.numA)||groupCfg.numA, numB:Number(data.groups.numB)||groupCfg.numB
-      };
-    } else if(teams.length && !pendingLocalTeams){
+      const remoteA=Number(data.groups.numA);
+      const remoteB=Number(data.groups.numB);
+      groupCfg.gA1=Number(data.groups.gA1)||groupCfg.gA1;
+      groupCfg.gA2=Number(data.groups.gA2)||groupCfg.gA2;
+      groupCfg.gB1=Number(data.groups.gB1)||groupCfg.gB1;
+      groupCfg.gB2=Number(data.groups.gB2)||groupCfg.gB2;
+      // Don't apply live 4/6 over a count the director just typed, unless
+      // the remote teams actually match those counts (a real generate).
+      const remoteMatchTeams=remoteA>=1 && remoteB>=1 && remoteTeams.length===(remoteA+remoteB);
+      if(!groupCountsLocked || remoteMatchTeams){
+        if(remoteA>=1) groupCfg.numA=remoteA;
+        if(remoteB>=1) groupCfg.numB=remoteB;
+        if(remoteMatchTeams) groupCountsLocked=false;
+      }
+    } else if(teams.length && !pendingLocalTeams && !groupCountsLocked){
       const byNum=teams.map(t=>({ n:+(String(t.name).match(/\d+/)||[0])[0], years:t.players.map(p=>+p.yr).filter(Boolean) }))
         .filter(t=>t.n).sort((a,b)=>a.n-b.n);
       const split=groupCfg.numA || Math.ceil(byNum.length/2) || 3;

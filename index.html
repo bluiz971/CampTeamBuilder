@@ -78,9 +78,9 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s;cursor:pointer}
 .tile:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(20,26,34,.12)}
 .tile .pic{height:130px;display:flex;align-items:center;justify-content:center;font-size:52px;color:#fff}
-.tile .pic.app{background:linear-gradient(135deg,#141a22,#2c3947)}
+.tile .pic.app{background:#000 url('assets/select360-tile.png') center/contain no-repeat;font-size:0}
 .tile .pic.cr360{background:#0b1a2e url('assets/cr360-tile.png') center/contain no-repeat;font-size:0}
-.tile .pic.shop{background:linear-gradient(135deg,var(--orange),#ffb63d)}
+.tile .pic.shop{background:#141a22 url('assets/shop-tile.png') center 45%/cover no-repeat;font-size:0}
 .tile .pic.sched{background:#141a22 url('assets/schedule-tile.png') center 38%/cover no-repeat;font-size:0}
 .tile .pic.teamz{background:#141a22 url('assets/teams-tile.png') center 32%/cover no-repeat;font-size:0}
 .tile .pic.insta{background:#0b1a2e url('assets/instagram-tile.png') center/contain no-repeat;font-size:0}
@@ -181,7 +181,7 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
         <div class="cap"><b>Nominate a Player</b><span>Recommend yourself or another player and generate an invitation graphic.</span><span class="go">Nominate Now</span></div>
       </a>
       <a class="tile" href="https://aauselecttour.totalcamps.com/shop/GOOD" target="_blank" rel="noopener">
-        <div class="pic shop">🛒</div>
+        <div class="pic shop"></div>
         <div class="cap"><b>Add-Ons Shop</b><span>Already attended? Buy mixtapes, evals, film &amp; more.</span><span class="go">Shop Now ↗</span></div>
       </a>
       <a class="tile" href="https://www.youtube.com/@AAUSelectTour" target="_blank" rel="noopener">
@@ -626,11 +626,11 @@ function renderHome(){
     desc: reportReady ? (reportN+' standout'+(reportN===1?'':'s')+' highlighted') : 'Posted once available',
     go: reportReady ? 'Read Report' : 'View Report'
   });
-  if(D.shopUrl) tiles.push({href:D.shopUrl,ext:true,pic:'shop',icon:'🛒',label:'Add-Ons Shop',desc:'Mixtapes, evals, film & more',go:'Shop Now ↗'});
+  if(D.shopUrl) tiles.push({href:D.shopUrl,ext:true,pic:'shop',icon:'',label:'Add-Ons Shop',desc:'Mixtapes, evals, film & more',go:'Shop Now ↗'});
   tiles.push({href:DEFAULT_CR360_URL,ext:true,pic:'cr360',icon:'',label:'College Recruiting 360',desc:'Find colleges that fit the student, then the athlete — academics first, basketball second.',go:'Visit Site ↗'});
   const appUrl=String(D.appUrl||'').trim();
   if(appUrl && !/collegerecruiting360\.com/i.test(appUrl)){
-    tiles.push({href:appUrl,ext:true,pic:'app',icon:'📱',label:'Select 360',desc:'Training, recruiting & player tools',go:'Open App ↗'});
+    tiles.push({href:appUrl,ext:true,pic:'app',icon:'',label:'Select 360',desc:'Training, recruiting & player tools',go:'Open App ↗'});
   }
   tiles.push({href:webUrl,ext:true,pic:'web',icon:'',label:'AAU Select Tour',desc:'Official website & other camps',go:'Visit Site ↗'});
   tiles.push({href:igUrl,ext:true,pic:'insta',icon:'',label:'Instagram',desc:'Photos & camp highlights',go:'Follow Us ↗'});
