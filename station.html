@@ -218,12 +218,14 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 #regDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
 #regDlg .dlg-actions .bigbtn{min-width:110px}
 
-#editPlayerDlg{border:none;border-radius:14px;padding:20px;max-width:400px;width:calc(100% - 24px);box-shadow:0 16px 40px rgba(20,26,34,.3)}
+#editPlayerDlg{border:none;border-radius:14px;padding:20px;max-width:420px;width:calc(100% - 24px);box-shadow:0 16px 40px rgba(20,26,34,.3)}
 #editPlayerDlg::backdrop{background:rgba(20,26,34,.45)}
 #editPlayerDlg h3{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase;margin-bottom:6px}
 #editPlayerDlg .edit-fld{margin:0 0 12px}
 #editPlayerDlg .edit-fld label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:4px}
 #editPlayerDlg .edit-fld input,#editPlayerDlg .edit-fld select{width:100%;font-size:16px;padding:11px 12px;border:1.5px solid var(--line);border-radius:9px;box-sizing:border-box}
+#editPlayerDlg .edit-row{display:flex;gap:8px}
+#editPlayerDlg .edit-row .edit-fld{flex:1;min-width:0}
 #editPlayerDlg .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
 #editPlayerDlg .dlg-actions .bigbtn{min-width:110px}
 
@@ -393,6 +395,10 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
   <h3>Edit player info</h3>
   <p id="editPlayerWho" class="reg-sub" style="margin-bottom:14px"></p>
   <input type="hidden" id="editPlayerId">
+  <div class="edit-row">
+    <div class="edit-fld"><label for="editPlayerFirst">First name</label><input type="text" id="editPlayerFirst" placeholder="First" autocomplete="off" autocapitalize="words"></div>
+    <div class="edit-fld"><label for="editPlayerLast">Last name</label><input type="text" id="editPlayerLast" placeholder="Last" autocomplete="off" autocapitalize="words"></div>
+  </div>
   <div class="edit-fld"><label for="editPlayerYear">Grad Year</label><input type="tel" id="editPlayerYear" inputmode="numeric" placeholder="e.g. 2028" maxlength="4" autocomplete="off"></div>
   <div class="edit-fld"><label for="editPlayerPos">Position</label><input type="text" id="editPlayerPos" list="editPosList" placeholder="e.g. Guard, Wing, Big" autocomplete="off"></div>
   <datalist id="editPosList"><option value="PG"><option value="SG"><option value="SF"><option value="PF"><option value="C"><option value="G"><option value="W"><option value="F"><option value="Big"></datalist>
@@ -467,6 +473,8 @@ function heightToInches(h){
   if(m) return (+m[1])*12 + (+(m[2]||0));
   m=s.match(/^([4-7])\.(\d{1,2})$/);
   if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
+  m=s.match(/^([3-8])\s*:\s*(\d{1,2})$/);
+  if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
   m=s.match(/^(\d+(?:\.\d+)?)\s*cm$/i);
   if(m) return Math.round(+m[1]/2.54);
   if(/^0\.\d+$/.test(s)){
@@ -475,8 +483,14 @@ function heightToInches(h){
     const feet=Math.floor(totalMin/60), inch=totalMin%60;
     if(feet>=3 && feet<=8 && inch>=0 && inch<12) return feet*12+inch;
   }
-  if(/^\d{2}(\.\d+)?$/.test(s)){ const v=+s; if(v>40&&v<90) return Math.round(v); }
+  if(/^\d{2}(\.\d+)?$/.test(s)){
+    const v=+s;
+    if(v>=50 && v<=59) return Math.floor(v/10)*12 + (v%10);
+    if(v>40&&v<90) return Math.round(v);
+  }
   if(/^[4-7]$/.test(s)) return (+s)*12;
+  m=s.match(/^([4-7])(\d{2})$/);
+  if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
   m=s.match(/^(\d{3})$/);
   if(m && +m[1]>=120 && +m[1]<=231) return Math.round(+m[1]/2.54);
   return 0;
@@ -891,10 +905,72 @@ function toPublicTeams(built){
       .sort((a,b)=>(+a.jersey||0)-(+b.jersey||0))
       .map(p=>({
         j:String(p.jersey), n:p.first+' '+p.last, yr:String(p.grad_year||''),
-        pos:p.position||'', ht:formatHeight(p.height)==='—'?'':formatHeight(p.height),
+        pos:p.position||'',         ht:pubHt(p.height),
         sc:p.school||'', ph:p.photo_url||''
       }))
   }));
+}
+function pubHt(h){
+  const s=formatHeight(h);
+  return (!s || s==='—') ? '' : s;
+}
+function liveTeamCard(p){
+  return {
+    j:String(p.jersey||''),
+    n:((p.first||'')+' '+(p.last||'')).trim(),
+    yr:String(p.grad_year||p.year||''),
+    pos:p.position||'',
+    ht:pubHt(p.height),
+    sc:p.school||'',
+    ph:p.photo_url||''
+  };
+}
+function findLiveByJersey(j){
+  const jj=normJersey(j);
+  if(!jj) return null;
+  return players.find(p=>normJersey(p.jersey)===jj) || null;
+}
+function refreshTeamsFromRoster(){
+  if(!teams.length) return false;
+  let changed=false;
+  teams.forEach(t=>{
+    (t.players||[]).forEach((tp,i)=>{
+      const live=findLiveByJersey(tp.j);
+      if(!live) return;
+      const next=liveTeamCard(live);
+      if(next.n!==tp.n || next.ht!==tp.ht || next.yr!==tp.yr || next.pos!==tp.pos || next.sc!==tp.sc || next.ph!==tp.ph || next.j!==String(tp.j||'')){
+        t.players[i]=Object.assign({}, tp, next);
+        changed=true;
+      }
+    });
+  });
+  return changed;
+}
+function refreshWriteUpFromRoster(){
+  const wu=campLiveExtra && campLiveExtra.writeUp;
+  if(!wu || !Array.isArray(wu.standouts)) return false;
+  wu.standouts=wu.standouts.map(s=>{
+    const live=findLiveByJersey(s.j);
+    if(!live) return s;
+    return Object.assign({}, s, {
+      n: ((live.first||'')+' '+(live.last||'')).trim() || s.n,
+      yr: String(live.grad_year||live.year||s.yr||''),
+      pos: live.position||s.pos||'',
+      ht: pubHt(live.height)||s.ht||'',
+      ph: live.photo_url||s.ph||'',
+      school: live.school||s.school||''
+    });
+  });
+  return true;
+}
+let hydratePushBusy=false;
+async function pushRosterFieldsToLive(){
+  const teamsChanged=refreshTeamsFromRoster();
+  refreshWriteUpFromRoster();
+  if(teamsChanged && teams.length){
+    pendingLocalTeams=true;
+    if(teamsPosted) await syncStationTeams();
+  }
 }
 function generateStationTeams(){
   readGroupInputs();
@@ -998,6 +1074,8 @@ async function syncStationTeams(){
   readGroupInputs();
   const note=$('#stTeamsNote');
   if(note){ note.className='teams-note'; note.textContent='Syncing…'; }
+  refreshTeamsFromRoster();
+  refreshWriteUpFromRoster();
   const roster=[];
   teams.forEach(t=>t.players.forEach(p=>{
     roster.push({ n:p.n, j:String(p.j), team:t.name, yr:p.yr, pos:p.pos||'', ht:p.ht||'', sc:p.sc||'', ph:p.ph||'' });
@@ -1274,6 +1352,11 @@ async function pollTeams(){
       teamsPosted = teams.length ? (data.teamsPosted!==false) : false;
       lastTeamsUpdatedAt=updatedAt;
       if(teams.length) pendingLocalTeams=false;
+    }
+    if(teams.length && players.length && refreshTeamsFromRoster() && teamsPosted && !pendingLocalTeams && !hydratePushBusy){
+      hydratePushBusy=true;
+      pendingLocalTeams=true;
+      Promise.resolve(syncStationTeams()).finally(()=>{ hydratePushBusy=false; });
     }
     if(data.groups){
       const remoteA=Number(data.groups.numA);
@@ -2217,6 +2300,7 @@ function renderList(){
         <div class="ht-wrap"><label>Height</label>
           <input class="htinput${needsHeight(p)?' need':''}" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="5'10" data-ht="${p.id}" value="${esc(htShow==='—'?'':htShow)}">
         </div>
+        <button class="bigbtn ghost" data-editi="${p.id}">Edit Info</button>
         <button class="bigbtn" data-checkin="${p.id}">Check In ✓</button>
       </div>`;
       }).join('');
@@ -2246,9 +2330,11 @@ function renderList(){
       });
       inp.addEventListener('change', async ()=>{
         await saveHt(inp.dataset.ht);
+        await pushRosterFieldsToLive();
         requestListRender();
       });
     });
+    wrap.querySelectorAll('[data-editi]').forEach(b=>b.addEventListener('click', ()=>openEditPlayerInfo(b.dataset.editi)));
     wrap.querySelectorAll('[data-checkin]').forEach(b=>b.addEventListener('click', async ()=>{
       const id=b.dataset.checkin;
       const height=readHt(id);
@@ -2373,7 +2459,12 @@ function renderList(){
       if(raw && !heightToInches(raw)){
         if(!confirm('Couldn’t read that height. Save it anyway as typed?')) return;
       }
-      if(await patchPlayer(id, {height:raw})){ toast(raw?'Height saved':'Height cleared'); renderList(); }
+      const height=normalizeHeightValue(raw)||raw;
+      if(await patchPlayer(id, {height})){
+        toast(height?'Height saved':'Height cleared');
+        await pushRosterFieldsToLive();
+        renderList();
+      }
     }));
     wrap.querySelectorAll('[data-editj]').forEach(b=>b.addEventListener('click', ()=>editPlayerJersey(b.dataset.editj)));
     wrap.querySelectorAll('[data-pop]').forEach(b=>b.addEventListener('click', ()=>openAddonPopover(b.dataset.pop)));
@@ -2422,12 +2513,14 @@ function openEditPlayerInfo(id){
   const p=players.find(x=>String(x.id)===String(id)); if(!p) return;
   $('#editPlayerId').value=String(id);
   $('#editPlayerWho').textContent=(normJersey(p.jersey)?'#'+normJersey(p.jersey)+' ':'')+p.first+' '+p.last;
+  $('#editPlayerFirst').value=p.first||'';
+  $('#editPlayerLast').value=p.last||'';
   $('#editPlayerYear').value=p.grad_year||'';
   $('#editPlayerPos').value=p.position||'';
   $('#editPlayerEmail').value=p.email||'';
   const dlg=$('#editPlayerDlg');
   if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open','');
-  setTimeout(()=>$('#editPlayerYear').focus(), 50);
+  setTimeout(()=>$('#editPlayerFirst').focus(), 50);
 }
 function closeEditPlayerInfo(){
   const dlg=$('#editPlayerDlg');
@@ -2437,28 +2530,14 @@ async function saveEditPlayerInfo(){
   const id=$('#editPlayerId').value;
   const p=players.find(x=>String(x.id)===String(id));
   if(!p){ closeEditPlayerInfo(); return; }
+  const first=String($('#editPlayerFirst').value||'').trim();
+  const last=String($('#editPlayerLast').value||'').trim();
+  if(!first || !last){ toast('First and last name are required'); return; }
   const year=String($('#editPlayerYear').value||'').trim();
   const position=String($('#editPlayerPos').value||'').trim();
   const email=String($('#editPlayerEmail').value||'').trim();
-  const yearChanged=String(p.grad_year||'')!==year;
-  const posChanged=String(p.position||'')!==position;
-  if(!(await patchPlayer(id, {grad_year:year, position, email}))) return;
-  // Keep assigned team cards in sync for year/position display
-  if(yearChanged || posChanged){
-    const j=normJersey(p.jersey);
-    const name=((p.first||'')+' '+(p.last||'')).trim().toLowerCase();
-    let teamChanged=false;
-    teams.forEach(t=>{
-      (t.players||[]).forEach(tp=>{
-        if(String(tp.j)===String(j) && String(tp.n||'').trim().toLowerCase()===name){
-          if(yearChanged) tp.yr=year;
-          if(posChanged) tp.pos=position;
-          teamChanged=true;
-        }
-      });
-    });
-    if(teamChanged){ pendingLocalTeams=true; teamsPosted=false; }
-  }
+  if(!(await patchPlayer(id, {first, last, grad_year:year, position, email}))) return;
+  await pushRosterFieldsToLive();
   closeEditPlayerInfo();
   toast('Player info saved');
   renderList();

@@ -286,19 +286,36 @@ function isCampPast(date){
   if(!date) return false;
   return String(date).slice(0,10) < todayISO();
 }
-// Heights often arrive as total inches (e.g. 70) — show as 5'10
+// Heights often arrive as total inches (e.g. 70) or 5'6 / 5:06 / 56 — show as 5'6
 function formatHeight(h){
   if(h==null||h==='') return '';
-  const s=String(h).trim();
+  let s=String(h).trim();
   if(!s||s==='—'||s==='-') return '';
-  let m=s.match(/^(\d+)\s*['′]\s*(\d{1,2})\s*["″]?$/);
-  if(m) return m[1]+"'"+ (+m[2]);
+  s=s.replace(/[\u2018\u2019\u201B\u2032\u2035`´]/g,"'")
+     .replace(/[\u201C\u201D\u2033]/g,'"')
+     .replace(/,/g,"'")
+     .replace(/\s+/g,' ')
+     .trim();
+  let m=s.match(/^(\d+)\s*'\s*(\d{1,2})?\s*"?\s*$/);
+  if(m) return m[1]+"'"+(+(m[2]||0));
   m=s.match(/^(\d+)\s*(?:ft|feet|foot)\.?\s*(\d{1,2})?/i);
-  if(m) return m[1]+"'"+ (+(m[2]||0));
-  const n=Number(s);
-  if(Number.isFinite(n)){
+  if(m) return m[1]+"'"+(+(m[2]||0));
+  m=s.match(/^([3-8])\s*[-–—:]\s*(\d{1,2})$/);
+  if(m && +m[2]<12) return m[1]+"'"+(+m[2]);
+  m=s.match(/^([4-7])\.(\d{1,2})$/);
+  if(m && +m[2]<12) return m[1]+"'"+(+m[2]);
+  if(/^\d{2}(\.\d+)?$/.test(s)){
+    const n=+s;
+    if(n>=50 && n<=59) return Math.floor(n/10)+"'"+(n%10);
     if(n>40&&n<90){ const f=Math.floor(n/12), inch=Math.round(n%12); return f+"'"+inch; }
-    if(n>=3&&n<8){ const f=Math.floor(n), inch=Math.round((n-f)*12); return f+"'"+inch; }
+  }
+  m=s.match(/^([4-7])(\d{2})$/);
+  if(m && +m[2]<12) return m[1]+"'"+(+m[2]);
+  if(/^[4-7]$/.test(s)) return s+"'0";
+  const n=Number(s);
+  if(Number.isFinite(n) && n>40&&n<90){
+    const f=Math.floor(n/12), inch=Math.round(n%12);
+    return f+"'"+inch;
   }
   return s;
 }

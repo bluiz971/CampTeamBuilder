@@ -209,10 +209,12 @@ dialog::backdrop{background:rgba(20,26,34,.55)}
 dialog h3{font-size:20px;text-transform:uppercase;margin-bottom:10px}
 dialog select{width:100%;margin:10px 0 16px}
 .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
-#editPlayerDlg{max-width:400px}
+#editPlayerDlg{max-width:420px}
 .edit-fld{margin:0 0 12px}
 .edit-fld label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);display:block;margin-bottom:4px}
 .edit-fld input{width:100%;box-sizing:border-box}
+.edit-row{display:flex;gap:8px}
+.edit-row .edit-fld{flex:1;min-width:0}
 
 @media(max-width:640px){
   .ci-row{grid-template-columns:auto 1fr auto;grid-template-areas:"num who check" "num badge ht"}
@@ -453,7 +455,7 @@ dialog select{width:100%;margin:10px 0 16px}
 <section class="panel" id="panel-players">
   <div class="panel-head">
     <div><h2>Player Data</h2>
-    <p>Everyone on this camp’s roster. Use <b>Edit Info</b> to change year, email, or position; <b>Edit Ht</b> / <b>Edit #</b> for height and jersey; or <b>Clear #</b> to send them back to the Jersey page. Players missing height (especially walk-ups) are highlighted.</p></div>
+    <p>Everyone on this camp’s roster. Use <b>Edit Info</b> to fix a misspelled name, year, email, or position; <b>Edit Ht</b> / <b>Edit #</b> for height and jersey; or <b>Clear #</b> to send them back to the Jersey page. Name and height changes update the parent profile. Players missing height (especially walk-ups) are highlighted.</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-orange btn-sm" type="button" id="btnRestorePlayers">⬇ Restore roster</button>
       <button class="btn btn-dark btn-sm" id="btnCsvPlayers">Export CSV</button>
@@ -651,6 +653,10 @@ dialog select{width:100%;margin:10px 0 16px}
   <h3>Edit player info</h3>
   <p id="editPlayerWho" style="font-size:14px;color:var(--mut);margin-bottom:14px"></p>
   <input type="hidden" id="editPlayerIdx">
+  <div class="edit-row">
+    <div class="edit-fld"><label for="editPlayerFirst">First name</label><input type="text" id="editPlayerFirst" placeholder="First" autocomplete="off" autocapitalize="words"></div>
+    <div class="edit-fld"><label for="editPlayerLast">Last name</label><input type="text" id="editPlayerLast" placeholder="Last" autocomplete="off" autocapitalize="words"></div>
+  </div>
   <div class="edit-fld"><label for="editPlayerYear">Grad Year</label><input type="text" id="editPlayerYear" placeholder="e.g. 2028" inputmode="numeric"></div>
   <div class="edit-fld"><label for="editPlayerPos">Position</label><input type="text" id="editPlayerPos" placeholder="e.g. Guard, Wing, Big"></div>
   <div class="edit-fld"><label for="editPlayerEmail">Email</label><input type="text" id="editPlayerEmail" placeholder="parent@example.com" autocomplete="off"></div>
@@ -1128,6 +1134,8 @@ function heightToInches(h){
   if(m) return (+m[1])*12 + (+(m[2]||0));
   m=s.match(/^([4-7])\.(\d{1,2})$/);              // 5.11 typed as feet.inches
   if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
+  m=s.match(/^([3-8])\s*:\s*(\d{1,2})$/);         // 5:06 Excel time-as-text → 5'6
+  if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
   m=s.match(/^(\d+(?:\.\d+)?)\s*cm$/i);           // 178 cm
   if(m) return Math.round(+m[1]/2.54);
   // Pure Excel serial left as text "0.21111"
@@ -1137,8 +1145,15 @@ function heightToInches(h){
     const feet=Math.floor(totalMin/60), inch=totalMin%60;
     if(feet>=3 && feet<=8 && inch>=0 && inch<12) return feet*12+inch;
   }
-  if(/^\d{2}(\.\d+)?$/.test(s)){ const v=+s; if(v>40&&v<90) return Math.round(v); } // 71 inches
+  if(/^\d{2}(\.\d+)?$/.test(s)){
+    const v=+s;
+    // Spreadsheet shorthand 56 → 5'6 (50–59). 60–89 stay inches (66 → 5'6).
+    if(v>=50 && v<=59) return Math.floor(v/10)*12 + (v%10);
+    if(v>40&&v<90) return Math.round(v);
+  }
   if(/^[4-7]$/.test(s)) return (+s)*12;           // just "6"
+  m=s.match(/^([4-7])(\d{2})$/);                  // 506 → 5'6
+  if(m && +m[2]<12) return (+m[1])*12 + (+m[2]);
   m=s.match(/^(\d{3})$/);                         // 178 (cm, no unit)
   if(m && +m[1]>=120 && +m[1]<=231) return Math.round(+m[1]/2.54);
   return 0;
@@ -1633,6 +1648,7 @@ function renderCheckin(){
         }catch(e){}
       }
       refresh();
+      autoPushLive();
     });
     inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } });
   });
@@ -1795,7 +1811,7 @@ function renderPlayers(){
       const payNote=payTip?`<div style="font-size:11px;color:var(--mut);margin-top:3px;max-width:140px;line-height:1.3" title="${esc(payTip)}">${esc(payTip.length>48?payTip.slice(0,47)+'…':payTip)}</div>`:'';
       return `<tr class="${miss?'need-ht-row':''}"><td>${p.photoUrl?`<img src="${esc(p.photoUrl)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">`:'<span style="color:var(--mut)">—</span>'}</td><td>${g?'Group '+g:'—'}</td><td>${team?esc(team):'<span style="color:var(--mut)">—</span>'}</td><td class="jnum">${p.jersey?esc(p.jersey):'—'}</td><td><b class="${miss?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>${isWalkUp(p)?' <span class="badge walk">Walk-up</span>':''}${miss?' <span class="badge needht">Need Height</span>':''}</td><td>${esc(p.year)}</td><td>${miss?'<span class="badge needht">—</span>':esc(formatHeight(p.height))}</td><td>${esc(p.position)||'—'}</td><td>${payCell}${payNote}</td><td style="font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(p.email||'')}">${esc(p.email)||'—'}</td><td>${esc(p.school)}</td><td>${esc(p.city)}</td>
       <td class="addon-cell">${tags.map(a=>`<span class="tag">${esc(a)}</span>`).join('')}<button class="addon-add" data-addon="${i}" title="Add / edit add-ons">+ Add</button></td>
-      <td class="row-actions"><button class="btn btn-ghost btn-sm" data-ei="${i}" title="Edit year, email, position">Edit Info</button><button class="btn btn-ghost btn-sm" data-eh="${i}" title="Edit height">Edit Ht</button><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
+      <td class="row-actions"><button class="btn btn-ghost btn-sm" data-ei="${i}" title="Edit name, year, email, position">Edit Info</button><button class="btn btn-ghost btn-sm" data-eh="${i}" title="Edit height">Edit Ht</button><button class="btn btn-ghost btn-sm" data-ej="${i}" title="Change jersey number">Edit #</button><button class="btn btn-ghost btn-sm" data-cj="${i}" title="Remove jersey (back to Jersey page)">Clear #</button></td></tr>`;
     }).join('');
   t.querySelectorAll('[data-ei]').forEach(b=>b.addEventListener('click',()=>openEditPlayer(+b.dataset.ei)));
   t.querySelectorAll('[data-eh]').forEach(b=>b.addEventListener('click', async ()=>{
@@ -1807,8 +1823,9 @@ function renderPlayers(){
     if(raw && !inches){
       if(!confirm('Couldn’t read that height. Save it anyway as typed?')) return;
     }
-    p.height=raw;
-    p.hin=inches||0;
+    const height=normalizeHeightValue(raw)||raw;
+    p.height=height;
+    p.hin=heightToInches(height)||0;
     store.save();
     refresh();
     if(authSession && authSession.access_token && p.uid){
@@ -1816,10 +1833,11 @@ function renderPlayers(){
         await fetch(S.syncUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.uid),{
           method:'PATCH',
           headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
-          body:JSON.stringify({ height: raw })
+          body:JSON.stringify({ height })
         });
       }catch(e){}
     }
+    autoPushLive();
   }));
   t.querySelectorAll('[data-ej]').forEach(b=>b.addEventListener('click', async ()=>{
     const p=S.players[+b.dataset.ej];
@@ -1881,22 +1899,27 @@ function openEditPlayer(idx){
   if(!p) return;
   $('#editPlayerIdx').value=String(idx);
   $('#editPlayerWho').textContent=(p.jersey?'#'+p.jersey+' ':'')+p.first+' '+p.last;
+  $('#editPlayerFirst').value=p.first||'';
+  $('#editPlayerLast').value=p.last||'';
   $('#editPlayerYear').value=p.year||'';
   $('#editPlayerPos').value=p.position||'';
   $('#editPlayerEmail').value=p.email||'';
   $('#editPlayerDlg').showModal();
-  setTimeout(()=>$('#editPlayerYear').focus(), 50);
+  setTimeout(()=>$('#editPlayerFirst').focus(), 50);
 }
 
 async function saveEditPlayer(){
   const idx=+$('#editPlayerIdx').value;
   const p=S.players[idx];
   if(!p){ $('#editPlayerDlg').close(); return; }
+  const first=String($('#editPlayerFirst').value||'').trim();
+  const last=String($('#editPlayerLast').value||'').trim();
+  if(!first || !last){ alert('First and last name are required.'); return; }
   const year=String($('#editPlayerYear').value||'').trim();
   const position=String($('#editPlayerPos').value||'').trim();
   const email=String($('#editPlayerEmail').value||'').trim();
-  const yearChanged=String(p.year||'')!==year;
-  const posChanged=(p.position||'')!==position;
+  p.first=first;
+  p.last=last;
   p.year=year;
   p.position=position;
   p.email=email;
@@ -1908,11 +1931,11 @@ async function saveEditPlayer(){
       await fetch(S.syncUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.uid),{
         method:'PATCH',
         headers:authHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
-        body:JSON.stringify({ grad_year:year, position, email })
+        body:JSON.stringify({ first, last, grad_year:year, position, email })
       });
     }catch(e){}
   }
-  if(yearChanged || posChanged) autoPushLive();
+  autoPushLive();
 }
 
 // Popover to toggle add-ons on a player
@@ -2634,9 +2657,10 @@ async function pushLive(silent, opts){
         const rows=await cur.json();
         const d=rows && rows[0] && rows[0].data;
         if(d && d.teamsPosted && d.teams && d.teams.length){
-          payload.teams=d.teams; payload.roster=d.roster||[]; payload.teamsPosted=true;
+          const fresh=refreshPublicTeamsFromPlayers(d.teams);
+          payload.teams=fresh.teams; payload.roster=fresh.roster; payload.teamsPosted=true;
         }
-        if(d && d.writeUp) payload.writeUp=d.writeUp;
+        if(d && d.writeUp) payload.writeUp=refreshWriteUpFromPlayers(d.writeUp);
       }
     }catch(e){ /* keep empty teams */ }
   } else {
@@ -2648,7 +2672,7 @@ async function pushLive(silent, opts){
       if(cur.ok){
         const rows=await cur.json();
         const d=rows && rows[0] && rows[0].data;
-        if(d && d.writeUp) payload.writeUp=d.writeUp;
+        if(d && d.writeUp) payload.writeUp=refreshWriteUpFromPlayers(d.writeUp);
       }
     }catch(e){}
   }
@@ -4226,6 +4250,58 @@ const btnRestoreBanner=$('#btnRestoreStationsBanner');
 if(btnRestoreBanner) btnRestoreBanner.addEventListener('click', ()=>pullRosterFromStations());
 $('#btnClearStations').addEventListener('click', ()=>runClearStations());
 $('#btnClearStationsBanner').addEventListener('click', ()=>runClearStations());
+
+function pubHt(h){
+  const s=formatHeight(h);
+  return (!s || s==='—') ? '' : s;
+}
+function findPlayerByJersey(j){
+  const jj=normJersey(j);
+  if(!jj) return null;
+  return S.players.find(p=>normJersey(p.jersey)===jj) || null;
+}
+function livePublicCard(p, fallback){
+  fallback=fallback||{};
+  return {
+    j: String(p.jersey||fallback.j||''),
+    n: ((p.first||'')+' '+(p.last||'')).trim() || fallback.n || '',
+    yr: String(p.year||fallback.yr||''),
+    pos: p.position||fallback.pos||'',
+    ht: pubHt(p.height) || fallback.ht || '',
+    sc: p.school||fallback.sc||'',
+    ph: p.photoUrl||fallback.ph||''
+  };
+}
+function refreshPublicTeamsFromPlayers(teamsList){
+  const teams=(teamsList||[]).map(t=>({
+    name:t.name,
+    players:(t.players||[]).map(tp=>{
+      const live=findPlayerByJersey(tp.j);
+      return live ? livePublicCard(live, tp) : tp;
+    })
+  }));
+  const roster=[];
+  teams.forEach(t=>(t.players||[]).forEach(p=>{
+    roster.push({ n:p.n, j:String(p.j), team:t.name, yr:p.yr, pos:p.pos||'', ht:p.ht||'', sc:p.sc||'', ph:p.ph||'' });
+  }));
+  return {teams, roster};
+}
+function refreshWriteUpFromPlayers(wu){
+  if(!wu || typeof wu!=='object') return wu;
+  const standouts=(wu.standouts||[]).map(s=>{
+    const live=findPlayerByJersey(s.j);
+    if(!live) return s;
+    return Object.assign({}, s, {
+      n: ((live.first||'')+' '+(live.last||'')).trim() || s.n,
+      yr: String(live.year||s.yr||''),
+      pos: live.position||s.pos||'',
+      ht: pubHt(live.height) || s.ht || '',
+      ph: live.photoUrl||s.ph||'',
+      school: live.school||s.school||''
+    });
+  });
+  return Object.assign({}, wu, {standouts});
+}
 
 function buildPublicData(opts){
   opts=opts||{};
