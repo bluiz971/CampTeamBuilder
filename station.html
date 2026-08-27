@@ -58,6 +58,11 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
 .searchbar{margin-bottom:14px}
 .searchbar input{width:100%;font-size:18px;padding:14px 16px;border:2px solid var(--line);border-radius:10px;background:#fff}
 .searchbar input:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+.sortbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sortbar span{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.sortbar button{font-family:'Barlow Condensed';font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:8px 12px;border-radius:8px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.sortbar button.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.pd-group{font-family:'Barlow Condensed';font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:8px 4px 0}
 
 .plist{display:flex;flex-direction:column;gap:10px}
 .prow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -290,7 +295,15 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 60px}
     </div>
   </header>
   <main>
-    <div class="searchbar"><input type="search" id="q" placeholder="Search name or school…"></div>
+    <div class="searchbar">
+      <input type="search" id="q" placeholder="Search name or school…">
+      <div class="sortbar" id="pdSortBar" hidden>
+        <span>Sort</span>
+        <button type="button" data-pdsort="name">A–Z</button>
+        <button type="button" data-pdsort="jersey" class="on">Jersey #</button>
+        <button type="button" data-pdsort="team">Team</button>
+      </div>
+    </div>
     <div class="plist" id="plist"></div>
   </main>
 </div>
@@ -765,7 +778,7 @@ function authHeaders(extra){
 
 // --- Shared player list, polled every 4s ---
 let players=[];
-let role='checkin', query='';
+let role='checkin', query='', pdSort='jersey';
 function playerNameKey(first, last){
   return (String(first||'').trim()+'|'+String(last||'').trim()).toLowerCase();
 }
@@ -1394,6 +1407,16 @@ $$('.roletabs button').forEach(b=>b.addEventListener('click', ()=>{
   renderList();
 }));
 $('#q').addEventListener('input', e=>{ query=e.target.value.toLowerCase().trim(); renderList(); });
+const pdSortBar=$('#pdSortBar');
+if(pdSortBar){
+  pdSortBar.querySelectorAll('[data-pdsort]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      pdSort=b.dataset.pdsort;
+      pdSortBar.querySelectorAll('[data-pdsort]').forEach(x=>x.classList.toggle('on', x===b));
+      renderList();
+    });
+  });
+}
 
 function hasDue(p){ return (parseFloat(p.balance)||0)>0 || (p.pay_status && !/paid/i.test(p.pay_status)); }
 function needsHeight(p){
@@ -1410,7 +1433,44 @@ function playerStatusBadges(p){
 }
 function matches(p){
   if(!query) return true;
-  return (`${p.first} ${p.last} ${p.school}`).toLowerCase().includes(query);
+  const team=teamNameOfPlayer(p);
+  return (`${p.first} ${p.last} ${p.school} ${p.jersey||''} ${team}`).toLowerCase().includes(query);
+}
+function teamNameOfPlayer(p){
+  const j=normJersey(p && p.jersey);
+  if(!j) return '';
+  for(const t of (teams||[])){
+    if((t.players||[]).some(tp=>normJersey(tp.j)===j)) return t.name||'';
+  }
+  return '';
+}
+function teamOrderKey(name){
+  const m=String(name||'').match(/(\d+)/);
+  return m ? +m[1] : 9999;
+}
+function sortPlayerDataRows(rows){
+  const list=rows.slice();
+  if(pdSort==='name'){
+    list.sort((a,b)=>{
+      const fn=String(a.first||'').localeCompare(String(b.first||''), undefined, {sensitivity:'base'});
+      if(fn) return fn;
+      return String(a.last||'').localeCompare(String(b.last||''), undefined, {sensitivity:'base'});
+    });
+  } else if(pdSort==='team'){
+    list.sort((a,b)=>{
+      const ta=teamNameOfPlayer(a), tb=teamNameOfPlayer(b);
+      if(!!ta !== !!tb) return ta ? -1 : 1;
+      const kn=teamOrderKey(ta)-teamOrderKey(tb);
+      if(kn) return kn;
+      const tn=String(ta).localeCompare(String(tb), undefined, {numeric:true, sensitivity:'base'});
+      if(tn) return tn;
+      return (+normJersey(a.jersey)||0)-(+normJersey(b.jersey)||0);
+    });
+  } else {
+    list.sort((a,b)=>(+normJersey(a.jersey)||0)-(+normJersey(b.jersey)||0)
+      || String(a.last||'').localeCompare(String(b.last||''), undefined, {sensitivity:'base'}));
+  }
+  return list;
 }
 // Parse pre-purchased add-ons from registration "items" text (same rules as admin)
 function addOnsFromItems(items){
@@ -2209,6 +2269,8 @@ async function exportTopPerformerCard(p, share){
 
 function renderList(){
   const wrap=$('#plist');
+  const sortBar=$('#pdSortBar');
+  if(sortBar) sortBar.hidden = role!=='playerdata';
 
   if(role==='teams'){
     // Hide search on teams — generation + roster cards
@@ -2279,8 +2341,7 @@ function renderList(){
   }
   else if(role==='playerdata'){
     // Jersey assigned → Player Data (photo optional)
-    rows=players.filter(p=>normJersey(p.jersey) && matches(p))
-      .sort((a,b)=>(+normJersey(a.jersey)||0)-(+normJersey(b.jersey)||0));
+    rows=sortPlayerDataRows(players.filter(p=>normJersey(p.jersey) && matches(p)));
   }
   else rows=players.filter(p=>matches(p));
 
@@ -2429,14 +2490,25 @@ function renderList(){
   } else if(role==='playerdata'){
     const miss=rows.filter(needsHeight).length;
     const htBanner=miss?`<div style="font-size:13px;color:#92400e;background:#fffbeb;border:1px solid #f5d78e;border-radius:10px;padding:10px 12px;margin-bottom:10px"><span class="badge needht">Need Height</span> <b>${miss}</b> player${miss===1?'':'s'} missing height — tap <b>Edit Ht</b> before teams are generated.</div>`:'';
-    wrap.innerHTML=htBanner+rows.map(p=>{
+    wrap.innerHTML=htBanner+(()=>{
+      let lastTeam=null;
+      return rows.map(p=>{
       const tags=displayAddOns(p);
       const missHt=needsHeight(p);
-      return `<div class="prow photo-row${missHt?' need-ht-row':''}">
+      const team=teamNameOfPlayer(p);
+      let head='';
+      if(pdSort==='team'){
+        const label=team||'Unassigned';
+        if(label!==lastTeam){
+          lastTeam=label;
+          head=`<div class="pd-group">${esc(label)}</div>`;
+        }
+      }
+      return `${head}<div class="prow photo-row${missHt?' need-ht-row':''}">
       ${p.photo_url?`<img class="thumb" src="${esc(p.photo_url)}">`:'<div class="noimg">👤</div>'}
       <div class="who">
         <b class="${missHt?'need-ht-name':''}">${esc(p.first)} ${esc(p.last)}</b>
-        <small>#${esc(p.jersey)} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${missHt?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}${p.email?' · '+esc(p.email):''}</small>
+        <small>#${esc(p.jersey)}${team?' · '+esc(team):''} · ${esc(p.grad_year)} · ${esc(p.position)||'—'} · ${missHt?'Ht missing':(esc(formatHeight(p.height))||'—')} · ${esc(p.school)}${p.email?' · '+esc(p.email):''}</small>
         <div style="margin-top:4px">${tags.length?tags.map(a=>`<span class="tag">${esc(a)}</span>`).join(''):'<span style="color:var(--mut);font-size:12px">No add-ons</span>'}</div>
       </div>
       ${missHt?'<span class="badge needht">Need Height</span>':''}${isWalkUp(p)?'<span class="badge walk">Walk-up</span>':''}
@@ -2447,7 +2519,8 @@ function renderList(){
       <button class="bigbtn ghost" data-pop="${p.id}">+ Add-On</button>
       <button class="bigbtn ghost" data-photo="${p.id}">${p.photo_url?'Retake 📷':'Take Photo 📷'}</button>
     </div>`;
-    }).join('');
+      }).join('');
+    })();
     wrap.querySelectorAll('[data-editi]').forEach(b=>b.addEventListener('click', ()=>openEditPlayerInfo(b.dataset.editi)));
     wrap.querySelectorAll('[data-edith]').forEach(b=>b.addEventListener('click', async ()=>{
       const id=b.dataset.edith;
