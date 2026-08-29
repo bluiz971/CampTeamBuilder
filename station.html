@@ -2126,7 +2126,8 @@ async function buildTopPerformerCanvas(p){
     try{ await document.fonts.ready; }catch(e){}
   }
   const W=760;
-  const photoH=520;
+  // Match the portrait photo area shown in the on-screen card.
+  const photoH=1040;
   const pad=44;
   const badgeH=68;
   const badgeOver=badgeH/2;
@@ -2152,9 +2153,10 @@ async function buildTopPerformerCanvas(p){
   ctx.fillRect(0, 0, W, photoH);
   const img=await loadImage(p.ph);
   if(img && img.width){
-    const scale=Math.max(W/img.width, photoH/img.height);
+    // Keep the entire original posed photo instead of cover-cropping it.
+    const scale=Math.min(W/img.width, photoH/img.height);
     const dw=img.width*scale, dh=img.height*scale;
-    const dx=(W-dw)/2, dy=(photoH-dh)*0.22;
+    const dx=(W-dw)/2, dy=(photoH-dh)/2;
     ctx.drawImage(img, dx, dy, dw, dh);
   } else {
     ctx.fillStyle='#9aa4b1';
