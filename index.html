@@ -103,12 +103,12 @@ footer{text-align:center;color:var(--mut);font-size:12px;padding:20px}
 .clickable{cursor:pointer}
 .clickable:hover{background:var(--orange-soft,#fdeee3)}
 .scrim{position:fixed;inset:0;background:rgba(20,26,34,.55);z-index:200}
-.pmodal{position:fixed;z-index:210;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;width:92%;max-width:380px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.3)}
-.pmodal .photo{width:100%;height:260px;background:linear-gradient(135deg,#1e2733,#3a4a5c);display:flex;align-items:center;justify-content:center;color:#8b96a4;font-size:70px;position:relative}
-.pmodal .photo img{width:100%;height:100%;object-fit:cover;object-position:center 25%}
-.pmodal .close{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;background:rgba(20,26,34,.55);color:#fff;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.pmodal .jbadge{position:absolute;bottom:-20px;left:20px;background:var(--orange);color:#fff;font-family:'Barlow Condensed';font-weight:700;font-size:26px;padding:6px 16px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
-.pmodal .info{padding:30px 22px 22px}
+.pmodal{position:fixed;z-index:210;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;width:92%;max-width:400px;max-height:calc(100vh - 24px);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.3);display:flex;flex-direction:column}
+.pmodal .photo{width:100%;height:min(62vh, 520px);background:#141a22;display:flex;align-items:center;justify-content:center;color:#8b96a4;font-size:70px;position:relative;flex-shrink:0}
+.pmodal .photo img{width:100%;height:100%;object-fit:contain;object-position:center center;display:block}
+.pmodal .close{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;background:rgba(20,26,34,.55);color:#fff;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+.pmodal .jbadge{position:absolute;bottom:-20px;left:20px;background:var(--orange);color:#fff;font-family:'Barlow Condensed';font-weight:700;font-size:26px;padding:6px 16px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.2);z-index:1}
+.pmodal .info{padding:30px 22px 22px;overflow:auto}
 .pmodal .info h3{font-size:24px;text-transform:uppercase;margin-bottom:4px}
 .pmodal .info .team{font-family:'Barlow Condensed';font-size:17px;font-weight:600;color:var(--orange);text-transform:uppercase;margin-bottom:14px}
 .pmodal .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:14px}
@@ -365,6 +365,25 @@ function formatCampDate(d){
   if(isNaN(dt)) return String(d);
   return dt.toLocaleDateString(undefined,{weekday:'short',month:'long',day:'numeric',year:'numeric'});
 }
+function districtTitleParts(name){
+  let lead=String(name||'').trim()
+    .replace(/[-_]?20\d{2}\s*$/,'')
+    .replace(/[-_]+$/,'')
+    .replace(/\s+district$/i,'')
+    .replace(/[-_]+$/,'')
+    .replace(/[-_]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+  if(lead && !/\s/.test(lead)) lead=lead.replace(/\b\w/,c=>c.toUpperCase());
+  if(!lead) lead='Camp';
+  return { lead, accent:'District', text: lead+' District' };
+}
+function setDistrictHeadline(name){
+  const t=districtTitleParts(name);
+  const el=$('#hTitle1');
+  if(el) el.innerHTML=esc(t.lead)+' <span>'+esc(t.accent)+'</span>';
+  return t;
+}
 function showCampNotFound(msg){
   $('#loadingState').style.display='none';
   $('#notFoundState').style.display='block';
@@ -380,9 +399,8 @@ function showNothingPosted(name){
 }
 function renderCampHeader(){
   if(!campRow) return;
-  const title=campRow.name||'Camp';
-  const parts=title.split(' ');
-  $('#hTitle1').innerHTML=esc(parts.slice(0,-1).join(' ')||title)+' <span>'+esc(parts.slice(-1)[0]||'')+'</span>';
+  const t=setDistrictHeadline(campRow.name||campRow.slug||'Camp');
+  document.title=t.text;
   const bits=[];
   if(campRow.location) bits.push(campRow.location);
   if(campRow.camp_date) bits.push(formatCampDate(campRow.camp_date));
@@ -487,7 +505,7 @@ async function renderCampSelectScreen(){
         : '';
       const meta=[dateLabel, camp.location||''].filter(Boolean).join(' · ');
       card.innerHTML=`
-        <div class="camp-select-card-name">${esc(camp.name||camp.slug)}</div>
+        <div class="camp-select-card-name">${esc(districtTitleParts(camp.name||camp.slug).text)}</div>
         ${meta?`<div class="camp-select-card-date">${esc(meta)}</div>`:''}
         <button type="button" class="camp-select-card-btn" data-camp="${esc(camp.slug)}">View Camp</button>
       `;
@@ -561,8 +579,12 @@ function setBadge(txt){ const b=$('#liveBadge'); if(b) b.innerHTML=esc(txt).repl
 function renderHeader(){
   if(campRow){ renderCampHeader(); return; }
   const title=D.title||'Camp Teams & Schedule';
-  const parts=title.split(' ');
-  $('#hTitle1').innerHTML=esc(parts.slice(0,-1).join(' ')||title)+' <span>'+esc(parts.slice(-1)[0]||'')+'</span>';
+  const parts=String(title).trim().split(/\s+/).filter(Boolean);
+  if(parts.length<=1){
+    $('#hTitle1').innerHTML='<span>'+esc(title)+'</span>';
+  } else {
+    $('#hTitle1').innerHTML=esc(parts.slice(0,-1).join(' '))+' <span>'+esc(parts.slice(-1)[0])+'</span>';
+  }
   const subEl=$('#hSub');
   if(D.sub){ subEl.textContent=D.sub; subEl.style.display='block'; } else { subEl.style.display='none'; }
 }
